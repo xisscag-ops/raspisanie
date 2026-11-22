@@ -41,14 +41,24 @@ jobs:
           echo "APK_NAME=${APK_NAME}" >> "$GITHUB_ENV"
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+        run: |
+          set -o pipefail
+          if ! ./gradlew testDebugUnitTest --console=plain 2>&1 | tee test.log; then
+            grep -E "^(e: |ERROR:|FAILURE:|> Task .* FAILED|Caused by:|.*Test.*FAILED)" test.log | head -n 30 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
 
       - name: Build signed Release APK
-        run: >
-          ./gradlew assembleRelease
-          -PappVersionCode=${{ env.VERSION_CODE }}
-          -PappVersionName=${{ env.VERSION_NAME }}
-          --stacktrace
+        run: |
+          set -o pipefail
+          if ! ./gradlew assembleRelease -PappVersionCode=${{ env.VERSION_CODE }} -PappVersionName=${{ env.VERSION_NAME }} --console=plain 2>&1 | tee build.log; then
+            grep -E "^(e: |FAILURE:|> Task .* FAILED|Caused by:)" build.log | head -n 30 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            exit 1
+          fi
 
       - name: Prepare versioned APK file
         run: cp app/build/outputs/apk/release/app-release.apk "${{ env.APK_NAME }}"
