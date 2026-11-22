@@ -6,11 +6,20 @@ import android.content.Intent
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.os.Process
+import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.delay
 import ru.ngieu.raspisanie.data.AppIconStyle
 import ru.ngieu.raspisanie.data.ResolvedAppIcon
 import ru.ngieu.raspisanie.data.ThemeModeSetting
+
+data class SystemIconDiagnostics(
+    val aliases: List<String> = emptyList(),
+    val launcherAppsIcon: Bitmap? = null,
+    val pmActivityIcon: Bitmap? = null,
+    val pmAppIcon: Bitmap? = null,
+)
 
 data class IconApplyResult(
     val changed: Boolean,
@@ -45,6 +54,47 @@ object AppIconManager {
     fun isSystemDark(context: Context): Boolean {
         val nightMask = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         return nightMask == Configuration.UI_MODE_NIGHT_YES
+    }
+
+    fun readSystemDiagnostics(context: Context): SystemIconDiagnostics {
+        return runCatching {
+            val pm = context.packageManager
+            val pkg = context.packageName
+            val launcherApps = context.getSystemService(LauncherApps::class.java)
+            val activities = launcherApps
+                ?.getActivityList(pkg, Process.myUserHandle())
+                .orEmpty()
+
+            val aliases = if (activities.isNotEmpty()) {
+                activities.map { it.componentName.shortClassName.substringAfterLast('.') }
+            } else {
+                readLauncherAppsAliases(context)
+            }
+
+            val launcherIconBitmap = runCatching {
+                activities.firstOrNull()?.getIcon(0)?.toBitmap(width = 96, height = 96)
+            }.getOrNull()
+
+            val activeComponent = activities.firstOrNull()?.componentName ?: run {
+                val active = readActiveIcon(context)
+                active?.let { ComponentName(pkg, it.aliasClassName) }
+            }
+
+            val pmActivityBitmap = runCatching {
+                activeComponent?.let { pm.getActivityIcon(it).toBitmap(width = 96, height = 96) }
+            }.getOrNull()
+
+            val pmAppBitmap = runCatching {
+                pm.getApplicationIcon(pkg).toBitmap(width = 96, height = 96)
+            }.getOrNull()
+
+            SystemIconDiagnostics(
+                aliases = aliases,
+                launcherAppsIcon = launcherIconBitmap,
+                pmActivityIcon = pmActivityBitmap,
+                pmAppIcon = pmAppBitmap,
+            )
+        }.getOrDefault(SystemIconDiagnostics(aliases = readLauncherAppsAliases(context)))
     }
 
     fun readLauncherAppsAliases(context: Context): List<String> {

@@ -83,6 +83,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -2014,6 +2015,7 @@ private fun SettingsTab(
                 resolvedIcon = resolvedIcon,
                 activeLauncherIcon = state.activeLauncherIcon,
                 launcherAliases = state.launcherAliases,
+                systemIconDiagnostics = state.systemIconDiagnostics,
                 iconSyncError = state.iconSyncError,
                 titleColor = titleColor,
                 subColor = subColor,
@@ -2318,6 +2320,7 @@ private fun AppIconSelectorCard(
     resolvedIcon: ResolvedAppIcon,
     activeLauncherIcon: ResolvedAppIcon?,
     launcherAliases: List<String>,
+    systemIconDiagnostics: SystemIconDiagnostics,
     iconSyncError: String?,
     titleColor: Color,
     subColor: Color,
@@ -2541,6 +2544,49 @@ private fun AppIconSelectorCard(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                        }
+                        if (systemIconDiagnostics.launcherAppsIcon != null ||
+                            systemIconDiagnostics.pmActivityIcon != null ||
+                            systemIconDiagnostics.pmAppIcon != null
+                        ) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                val diagIcons = listOf(
+                                    "LA" to systemIconDiagnostics.launcherAppsIcon,
+                                    "Act" to systemIconDiagnostics.pmActivityIcon,
+                                    "App" to systemIconDiagnostics.pmAppIcon,
+                                )
+                                diagIcons.forEach { (label, bmp) ->
+                                    if (bmp != null) {
+                                        val img = remember(bmp) { bmp.asImageBitmap() }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        ) {
+                                            Image(
+                                                bitmap = img,
+                                                contentDescription = label,
+                                                modifier = Modifier
+                                                    .size(22.dp)
+                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .border(
+                                                        0.5.dp,
+                                                        Color.Gray.copy(alpha = 0.4f),
+                                                        RoundedCornerShape(6.dp),
+                                                    ),
+                                            )
+                                            Text(
+                                                text = label,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = subColor.copy(alpha = 0.7f),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                     GlassCard(
