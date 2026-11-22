@@ -63,6 +63,16 @@ jobs:
       - name: Prepare versioned APK file
         run: cp app/build/outputs/apk/release/app-release.apk "${{ env.APK_NAME }}"
 
+      - name: Inspect compiled APK launcher aliases and icon assets
+        run: |
+          AAPT2=$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -name aapt2 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$AAPT2" ]; then
+            echo "=== Manifest activity-alias & application icon ==="
+            "$AAPT2" dump xmltree "${{ env.APK_NAME }}" --file AndroidManifest.xml | grep -E "E: (application|activity|activity-alias)|A: android:(name|icon|roundIcon|enabled|targetActivity)"
+          fi
+          echo "=== Launcher assets in APK ==="
+          unzip -l "${{ env.APK_NAME }}" | grep -E "ic_launcher|ic_icon_preview" || true
+
       - name: Upload Release APK artifact
         uses: actions/upload-artifact@v4
         with:

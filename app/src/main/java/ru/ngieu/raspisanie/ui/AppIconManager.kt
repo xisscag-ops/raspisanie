@@ -3,8 +3,11 @@ package ru.ngieu.raspisanie.ui
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Process
+import kotlinx.coroutines.delay
 import ru.ngieu.raspisanie.data.AppIconStyle
 import ru.ngieu.raspisanie.data.ResolvedAppIcon
 import ru.ngieu.raspisanie.data.ThemeModeSetting
@@ -12,6 +15,7 @@ import ru.ngieu.raspisanie.data.ThemeModeSetting
 data class IconApplyResult(
     val changed: Boolean,
     val activeIcon: ResolvedAppIcon?,
+    val launcherAliases: List<String> = emptyList(),
     val errorMessage: String? = null,
 )
 
@@ -41,6 +45,27 @@ object AppIconManager {
     fun isSystemDark(context: Context): Boolean {
         val nightMask = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         return nightMask == Configuration.UI_MODE_NIGHT_YES
+    }
+
+    fun readLauncherAppsAliases(context: Context): List<String> {
+        return runCatching {
+            val launcherApps = context.getSystemService(LauncherApps::class.java)
+            val fromLauncherApps = launcherApps
+                ?.getActivityList(context.packageName, Process.myUserHandle())
+                ?.map { it.componentName.shortClassName.substringAfterLast('.') }
+                .orEmpty()
+            if (fromLauncherApps.isNotEmpty()) {
+                return@runCatching fromLauncherApps
+            }
+
+            val launcherIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setPackage(context.packageName)
+            }
+            context.packageManager
+                .queryIntentActivities(launcherIntent, 0)
+                .map { it.activityInfo.name.substringAfterLast('.') }
+        }.getOrDefault(emptyList())
     }
 
     fun readActiveIcon(context: Context): ResolvedAppIcon? {
@@ -97,7 +122,11 @@ object AppIconManager {
             }
 
             if (targetAlreadyEnabled && othersToDisable.isEmpty()) {
-                return IconApplyResult(changed = false, activeIcon = target)
+                return IconApplyResult(
+                    changed = false,
+                    activeIcon = target,
+                    launcherAliases = readLauncherAppsAliases(context),
+                )
             }
 
             // Enable target alias first so the app never has zero enabled launcher entries.
@@ -127,17 +156,19 @@ object AppIconManager {
             IconApplyResult(
                 changed = true,
                 activeIcon = readActiveIcon(context) ?: target,
+                launcherAliases = readLauncherAppsAliases(context),
             )
         } catch (t: Throwable) {
             IconApplyResult(
                 changed = false,
                 activeIcon = readActiveIcon(context),
+                launcherAliases = readLauncherAppsAliases(context),
                 errorMessage = t.message ?: t::class.java.simpleName,
             )
         }
     }
 
-    fun forceRefreshIcon(
+    suspend fun forceRefreshIcon(
         context: Context,
         target: ResolvedAppIcon,
     ): IconApplyResult {
@@ -145,20 +176,27 @@ object AppIconManager {
             val appCtx = context.applicationContext
             val pm = appCtx.packageManager
             val pkg = appCtx.packageName
-            val tempAlias = ResolvedAppIcon.entries.first { it != target }
+            val tempAlias = ResolvedAppIcon.entries.last { it != target }
 
-            // Briefly flip through another alias so PackageManagerService emits an immediate
-            // ACTION_PACKAGE_CHANGED broadcast even if the target alias was already enabled.
+            // Phase 1: move to a temporary alias so PackageManager & LauncherApps observe a real transition.
             pm.setComponentEnabledSetting(
                 ComponentName(pkg, tempAlias.aliasClassName),
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                 PackageManager.DONT_KILL_APP,
             )
-            pm.setComponentEnabledSetting(
-                ComponentName(pkg, target.aliasClassName),
-                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                PackageManager.DONT_KILL_APP,
-            )
+            ResolvedAppIcon.entries.forEach { icon ->
+                if (icon != tempAlias && isEffectivelyEnabled(pm, pkg, icon)) {
+                    pm.setComponentEnabledSetting(
+                        ComponentName(pkg, icon.aliasClassName),
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        PackageManager.DONT_KILL_APP,
+                    )
+                }
+            }
+
+            delay(350L)
+
+            // Phase 2: switch back to the target alias and flush immediately without DONT_KILL_APP.
             pm.setComponentEnabledSetting(
                 ComponentName(pkg, target.aliasClassName),
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
@@ -173,11 +211,13 @@ object AppIconManager {
             IconApplyResult(
                 changed = true,
                 activeIcon = readActiveIcon(appCtx) ?: target,
+                launcherAliases = readLauncherAppsAliases(appCtx),
             )
         } catch (t: Throwable) {
             IconApplyResult(
                 changed = false,
                 activeIcon = readActiveIcon(context),
+                launcherAliases = readLauncherAppsAliases(context),
                 errorMessage = t.message ?: t::class.java.simpleName,
             )
         }

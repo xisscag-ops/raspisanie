@@ -2013,6 +2013,7 @@ private fun SettingsTab(
                 iconStyle = state.iconStyle,
                 resolvedIcon = resolvedIcon,
                 activeLauncherIcon = state.activeLauncherIcon,
+                launcherAliases = state.launcherAliases,
                 iconSyncError = state.iconSyncError,
                 titleColor = titleColor,
                 subColor = subColor,
@@ -2316,6 +2317,7 @@ private fun AppIconSelectorCard(
     iconStyle: AppIconStyle,
     resolvedIcon: ResolvedAppIcon,
     activeLauncherIcon: ResolvedAppIcon?,
+    launcherAliases: List<String>,
     iconSyncError: String?,
     titleColor: Color,
     subColor: Color,
@@ -2521,16 +2523,26 @@ private fun AppIconSelectorCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(
-                        text = if (activeLauncherIcon != null) {
-                            "Активно в лаунчере: ${activeLauncherIcon.label}"
-                        } else {
-                            "В режиме «Авто» иконка меняется вместе с темой."
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = subColor.copy(alpha = 0.85f),
-                        modifier = Modifier.weight(1f),
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (activeLauncherIcon != null) {
+                                "Активно в лаунчере: ${activeLauncherIcon.label}"
+                            } else {
+                                "В режиме «Авто» иконка меняется вместе с темой."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subColor.copy(alpha = 0.85f),
+                        )
+                        if (launcherAliases.isNotEmpty()) {
+                            Text(
+                                text = "LauncherApps: ${launcherAliases.joinToString(", ")}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = subColor.copy(alpha = 0.65f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                     GlassCard(
                         cornerRadius = 10.dp,
                         onClick = onForceRefreshIcon,
