@@ -1,0 +1,226 @@
+package ru.ngieu.raspisanie.data
+
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonPrimitive
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+
+object ScheduleParser {
+
+    val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        coerceInputValues = true
+    }
+
+    private val dateFormatters = listOf(
+        DateTimeFormatter.ISO_LOCAL_DATE,
+        DateTimeFormatter.ofPattern("dd.MM.yyyy"),
+        DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+        DateTimeFormatter.ofPattern("yyyy.MM.dd"),
+    )
+
+    private val timeRegex = Regex("""(\d{1,2})[:.](\d{2})""")
+    private val numberRegex = Regex("""(\d+)""")
+
+    fun parseActors(rawJson: String): List<ActorDto> {
+        val root = json.parseToJsonElement(rawJson)
+        val array = extractArray(root, listOf("data", "actors", "result", "items")) ?: return emptyList()
+        return array.mapNotNull { element ->
+            runCatching { json.decodeFromJsonElement<ActorDto>(element) }.getOrNull()
+        }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
+    }
+
+    fun findGroupActorId(actors: List<ActorDto>, targetGroupName: String): String? {
+        val normalizedTarget = normalizeGroupName(targetGroupName)
+        return actors.firstOrNull { normalizeGroupName(it.name) == normalizedTarget }?.id
+    }
+
+    fun parseWeekType(rawJson: String): WeekTypeInfo? {
+        val root = json.parseToJsonElement(rawJson)
+        val obj: JsonObject? = when (root) {
+            is JsonArray -> root.firstOrNull() as? JsonObject
+            is JsonObject -> {
+                val nested = extractArray(root, listOf("data", "result"))
+                if (nested != null) {
+                    nested.firstOrNull() as? JsonObject
+                } else {
+                    root
+                }
+            }
+            else -> null
+        }
+        if (obj == null) return null
+
+        val isUpper = findFieldCaseInsensitive(obj, "IsUpperWeek")?.let { parseBooleanElement(it) }
+            ?: return null
+
+        val dateStr = findFieldCaseInsensitive(obj, "Date")
+            ?.let { (it as? JsonPrimitive)?.contentOrNull }
+        val parsedDate = dateStr?.let(::parseDate) ?: LocalDate.now()
+
+        return WeekTypeInfo(date = parsedDate, isUpperWeek = isUpper)
+    }
+
+    fun parseSchedule(rawJson: String): List<Lesson> {
+        val root = json.parseToJsonElement(rawJson)
+        val array = extractArray(root, listOf("data", "schedule", "result", "items")) ?: return emptyList()
+
+        return array.mapIndexedNotNull { index, element ->
+            val dto = runCatching { json.decodeFromJsonElement<RawScheduleItem>(element) }.getOrNull()
+                ?: return@mapIndexedNotNull null
+            mapDtoToLesson(dto, index)
+        }
+    }
+
+    private fun mapDtoToLesson(dto: RawScheduleItem, index: Int): Lesson? {
+        val day = parseDayOfWeek(dto.dayName) ?: return null
+        val subject = dto.subjects.map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty()
+        val teachers = dto.instructors.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        val room = dto.offices.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(", ")
+        val note = dto.notes.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(" • ")
+
+        if (subject.isEmpty() && note.isEmpty()) return null
+
+        val pairNumber = parsePairNumber(dto.classNumberName)
+        val (startTime, endTime) = parseClassTime(dto.classTime)
+        val formattedTime = when {
+            startTime != null && endTime != null -> "${formatTime(startTime)} – ${formatTime(endTime)}"
+            dto.classTime.isNotBlank() -> dto.classTime.trim()
+            else -> "Время не указано"
+        }
+
+        val explicitDate = dto.date?.let(::parseDate)
+        val parity = when (dto.isUpperWeek) {
+            true -> WeekParity.UPPER
+            false -> WeekParity.LOWER
+            null -> WeekParity.EVERY
+        }
+
+        val lessonType = detectLessonType(note = note, subject = subject)
+        val id = "${day.value}|$pairNumber|$subject|$room|${dto.isUpperWeek}|${dto.isChange}|$explicitDate|$index"
+
+        return Lesson(
+            id = id,
+            dayOfWeek = day,
+            pairNumber = pairNumber,
+            timeRangeText = formattedTime,
+            startTime = startTime,
+            endTime = endTime,
+            subject = subject.ifEmpty { note },
+            teachers = teachers,
+            room = room,
+            note = note,
+            lessonType = lessonType,
+            parity = parity,
+            explicitDate = explicitDate,
+            isChange = dto.isChange,
+        )
+    }
+
+    fun parseDayOfWeek(dayName: String): DayOfWeek? {
+        return when (dayName.trim().lowercase()) {
+            "понедельник", "пн" -> DayOfWeek.MONDAY
+            "вторник", "вт" -> DayOfWeek.TUESDAY
+            "среда", "ср" -> DayOfWeek.WEDNESDAY
+            "четверг", "чт" -> DayOfWeek.THURSDAY
+            "пятница", "пт" -> DayOfWeek.FRIDAY
+            "суббота", "сб" -> DayOfWeek.SATURDAY
+            "воскресенье", "вс" -> DayOfWeek.SUNDAY
+            else -> null
+        }
+    }
+
+    fun parsePairNumber(raw: String): Int {
+        val match = numberRegex.find(raw) ?: return 0
+        return match.groupValues[1].toIntOrNull() ?: 0
+    }
+
+    fun parseClassTime(raw: String): Pair<LocalTime?, LocalTime?> {
+        val matches = timeRegex.findAll(raw).toList()
+        if (matches.size < 2) return null to null
+        val start = toLocalTime(matches[0])
+        val end = toLocalTime(matches[1])
+        return start to end
+    }
+
+    private fun toLocalTime(match: MatchResult): LocalTime? {
+        val h = match.groupValues[1].toIntOrNull() ?: return null
+        val m = match.groupValues[2].toIntOrNull() ?: return null
+        if (h !in 0..23 || m !in 0..59) return null
+        return LocalTime.of(h, m)
+    }
+
+    fun parseDate(raw: String): LocalDate? {
+        val cleaned = raw.trim()
+        if (cleaned.isEmpty()) return null
+
+        // Handle ISO timestamps like "2026-11-22T00:00:00" or "2026-11-22T00:00:00Z"
+        val datePart = if (cleaned.length >= 10 && cleaned[4] == '-' && cleaned[7] == '-') {
+            cleaned.substring(0, 10)
+        } else {
+            cleaned.substringBefore(' ')
+        }
+
+        for (formatter in dateFormatters) {
+            try {
+                return LocalDate.parse(datePart, formatter)
+            } catch (_: DateTimeParseException) {
+            }
+        }
+        return null
+    }
+
+    fun detectLessonType(note: String, subject: String): LessonType {
+        val combined = "$note $subject".lowercase()
+        return when {
+            "мероприят" in combined -> LessonType.EVENT
+            "экз" in combined -> LessonType.EXAM
+            "конс" in combined || "зач" in combined -> LessonType.CONSULTATION
+            "лаб" in combined -> LessonType.LAB
+            "практ" in combined || "семин" in combined -> LessonType.PRACTICE
+            "лекц" in combined -> LessonType.LECTURE
+            else -> LessonType.OTHER
+        }
+    }
+
+    private fun formatTime(time: LocalTime): String {
+        return "%02d:%02d".format(time.hour, time.minute)
+    }
+
+    private fun normalizeGroupName(name: String): String {
+        return name.trim().replace(" ", "").uppercase()
+    }
+
+    private fun extractArray(root: JsonElement, keys: List<String>): JsonArray? {
+        return when (root) {
+            is JsonArray -> root
+            is JsonObject -> keys.firstNotNullOfOrNull { key -> root[key] as? JsonArray }
+            else -> null
+        }
+    }
+
+    private fun findFieldCaseInsensitive(obj: JsonObject, targetKey: String): JsonElement? {
+        return obj.entries.firstOrNull { it.key.equals(targetKey, ignoreCase = true) }?.value
+    }
+
+    private fun parseBooleanElement(element: JsonElement): Boolean? {
+        val primitive = element as? JsonPrimitive ?: return null
+        primitive.booleanOrNull?.let { return it }
+        return when (primitive.contentOrNull?.trim()?.lowercase()) {
+            "true", "1", "yes", "да" -> true
+            "false", "0", "no", "нет" -> false
+            else -> null
+        }
+    }
+}
