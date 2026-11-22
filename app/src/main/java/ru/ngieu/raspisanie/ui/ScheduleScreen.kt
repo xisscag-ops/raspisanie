@@ -2,7 +2,8 @@ package ru.ngieu.raspisanie.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -86,7 +87,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import ru.ngieu.raspisanie.BuildConfig
@@ -121,7 +121,11 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.math.abs
+
+private val SmoothPageSnapSpec = spring<Float>(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = 240f,
+)
 
 private val ruLocale = Locale("ru", "RU")
 private val dayHeaderDateFormatter = DateTimeFormatter.ofPattern("d MMMM", ruLocale)
@@ -917,7 +921,7 @@ private fun DayHorizontalPager(
     val pagerFlingBehavior = PagerDefaults.flingBehavior(
         state = pagerState,
         pagerSnapDistance = PagerSnapDistance.atMost(1),
-        snapAnimationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        snapAnimationSpec = SmoothPageSnapSpec,
     )
     var lastPagerDate by remember { mutableStateOf(state.selectedDate) }
 
@@ -943,12 +947,11 @@ private fun DayHorizontalPager(
     }
 
     HorizontalBiasPagerContainer(
-        canInterruptSettling = {
-            pagerState.isScrollInProgress && abs(pagerState.currentPageOffsetFraction) <= 0.35f
-        },
-        onInterruptSettling = {
-            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                pagerState.scrollToPage(pagerState.targetPage)
+        isPagerScrolling = { pagerState.isScrollInProgress },
+        onQuickStepPage = { step ->
+            val nextPage = (pagerState.targetPage + step).coerceIn(0, ScheduleEngine.TOTAL_DAY_PAGES - 1)
+            coroutineScope.launch {
+                pagerState.animateScrollToPage(nextPage, animationSpec = SmoothPageSnapSpec)
             }
         },
         modifier = Modifier.fillMaxSize(),
@@ -1183,7 +1186,7 @@ private fun WeekHorizontalPager(
     val pagerFlingBehavior = PagerDefaults.flingBehavior(
         state = pagerState,
         pagerSnapDistance = PagerSnapDistance.atMost(1),
-        snapAnimationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+        snapAnimationSpec = SmoothPageSnapSpec,
     )
     var lastPagerMonday by remember { mutableStateOf(state.selectedMonday) }
 
@@ -1211,12 +1214,11 @@ private fun WeekHorizontalPager(
     }
 
     HorizontalBiasPagerContainer(
-        canInterruptSettling = {
-            pagerState.isScrollInProgress && abs(pagerState.currentPageOffsetFraction) <= 0.35f
-        },
-        onInterruptSettling = {
-            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
-                pagerState.scrollToPage(pagerState.targetPage)
+        isPagerScrolling = { pagerState.isScrollInProgress },
+        onQuickStepPage = { step ->
+            val nextPage = (pagerState.targetPage + step).coerceIn(0, ScheduleEngine.TOTAL_WEEK_PAGES - 1)
+            coroutineScope.launch {
+                pagerState.animateScrollToPage(nextPage, animationSpec = SmoothPageSnapSpec)
             }
         },
         modifier = Modifier.fillMaxSize(),

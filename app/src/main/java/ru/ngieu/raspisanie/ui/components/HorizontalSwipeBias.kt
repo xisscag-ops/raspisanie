@@ -72,8 +72,9 @@ class HorizontalSwipeGateState(
     var allowHorizontalScroll by mutableStateOf(true)
         internal set
 
-    // Синхронный флаг для nestedScroll, чтобы гасить вертикальный скролл и PullToRefresh в тот же кадр
+    // Синхронные флаги для pointerInput/nestedScroll без ожидания перекомпозиции
     internal var lockVerticalSync: Boolean = false
+    internal var blockHorizontalThisGesture: Boolean = false
 
     val verticalBlockerNestedScroll: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -88,8 +89,8 @@ class HorizontalSwipeGateState(
 
 @Composable
 fun HorizontalBiasPagerContainer(
-    canInterruptSettling: () -> Boolean,
-    onInterruptSettling: () -> Unit,
+    isPagerScrolling: () -> Boolean,
+    onQuickStepPage: (Int) -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable (
         gateState: HorizontalSwipeGateState,
@@ -110,8 +111,8 @@ fun HorizontalBiasPagerContainer(
     val gateState = remember(verticalViewConfig) {
         HorizontalSwipeGateState(verticalViewConfig)
     }
-    val latestCanInterrupt by rememberUpdatedState(canInterruptSettling)
-    val latestInterrupt by rememberUpdatedState(onInterruptSettling)
+    val latestIsPagerScrolling by rememberUpdatedState(isPagerScrolling)
+    val latestOnQuickStep by rememberUpdatedState(onQuickStepPage)
 
     CompositionLocalProvider(LocalViewConfiguration provides pagerViewConfig) {
         Box(
@@ -120,19 +121,22 @@ fun HorizontalBiasPagerContainer(
                     gateState.lockVerticalSync = false
                     gateState.allowVerticalScroll = true
                     gateState.allowHorizontalScroll = true
+                    gateState.blockHorizontalThisGesture = false
                     try {
                         val down = awaitFirstDown(
                             requireUnconsumed = false,
                             pass = PointerEventPass.Initial,
                         )
-                        // Если предыдущий горизонтальный свайп уже почти доехал до страницы,
-                        // сразу фиксируем страницу при новом касании, чтобы избежать "вибрации" вбок
-                        if (latestCanInterrupt()) {
-                            latestInterrupt()
-                        }
+                        // Если анимация горизонтального свайпа ещё плавно доезжает,
+                        // изолируем её от VerticalListWithHorizontalBias в Main pass:
+                        // вертикальный список/PullToRefresh получит жест сразу без рывка и вибрации,
+                        // а анимация страницы продолжит плавно доезжать до конца.
+                        val wasSettlingOnDown = latestIsPagerScrolling()
+                        gateState.blockHorizontalThisGesture = wasSettlingOnDown
 
                         val startPos = down.position
                         var decision = SwipeAxisDecision.UNDECIDED
+                        var quickStepped = false
 
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Initial)
@@ -142,9 +146,11 @@ fun HorizontalBiasPagerContainer(
                                 break
                             }
                             if (decision == SwipeAxisDecision.UNDECIDED) {
+                                val dx = activeChange.position.x - startPos.x
+                                val dy = activeChange.position.y - startPos.y
                                 decision = SwipeBiasPolicy.decide(
-                                    dx = activeChange.position.x - startPos.x,
-                                    dy = activeChange.position.y - startPos.y,
+                                    dx = dx,
+                                    dy = dy,
                                     horizontalSlopPx = horizontalSlopPx,
                                     verticalSlopPx = verticalSlopPx,
                                 )
@@ -153,14 +159,16 @@ fun HorizontalBiasPagerContainer(
                                         gateState.lockVerticalSync = true
                                         gateState.allowVerticalScroll = false
                                         gateState.allowHorizontalScroll = true
+                                        if (wasSettlingOnDown && !quickStepped) {
+                                            quickStepped = true
+                                            latestOnQuickStep(if (dx < 0f) 1 else -1)
+                                        }
                                     }
                                     SwipeAxisDecision.VERTICAL -> {
                                         gateState.lockVerticalSync = false
                                         gateState.allowVerticalScroll = true
                                         gateState.allowHorizontalScroll = false
-                                        if (latestCanInterrupt()) {
-                                            latestInterrupt()
-                                        }
+                                        gateState.blockHorizontalThisGesture = true
                                     }
                                     SwipeAxisDecision.UNDECIDED -> Unit
                                 }
@@ -170,6 +178,7 @@ fun HorizontalBiasPagerContainer(
                         gateState.lockVerticalSync = false
                         gateState.allowVerticalScroll = true
                         gateState.allowHorizontalScroll = true
+                        gateState.blockHorizontalThisGesture = false
                     }
                 }
             },
@@ -189,7 +198,35 @@ fun VerticalListWithHorizontalBias(
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(LocalViewConfiguration provides gateState.verticalViewConfig) {
-        Box(modifier = Modifier.nestedScroll(gateState.verticalBlockerNestedScroll)) {
+        Box(
+            modifier = Modifier
+                .nestedScroll(gateState.verticalBlockerNestedScroll)
+                .pointerInput(gateState) {
+                    awaitEachGesture {
+                        // Main pass идёт снизу вверх: сначала события видит LazyColumn (child),
+                        // затем этот блок (до HorizontalPager). Если блокируем горизонталь —
+                        // гасим событие здесь, не мешая вертикальному скроллу и PullToRefresh.
+                        val down = awaitFirstDown(
+                            requireUnconsumed = false,
+                            pass = PointerEventPass.Main,
+                        )
+                        if (gateState.blockHorizontalThisGesture && !down.isConsumed) {
+                            down.consume()
+                        }
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val activeChange = event.changes.firstOrNull { it.id == down.id }
+                                ?: event.changes.firstOrNull { it.pressed }
+                            if (activeChange == null || !activeChange.pressed) {
+                                break
+                            }
+                            if (gateState.blockHorizontalThisGesture && !activeChange.isConsumed) {
+                                activeChange.consume()
+                            }
+                        }
+                    }
+                },
+        ) {
             content()
         }
     }
