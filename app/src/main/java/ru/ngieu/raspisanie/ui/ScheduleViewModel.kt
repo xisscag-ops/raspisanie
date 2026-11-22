@@ -501,12 +501,14 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             val result = AppIconManager.applyResolvedIcon(
                 context = app,
                 target = target,
-                killApp = true,
+                killApp = false,
             )
+            val diagnostics = AppIconManager.readSystemDiagnostics(app)
             _uiState.update {
                 it.copy(
                     activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
                     launcherAliases = result.launcherAliases.ifEmpty { it.launcherAliases },
+                    systemIconDiagnostics = diagnostics,
                     iconSyncError = result.errorMessage,
                 )
             }
@@ -523,17 +525,19 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 isSystemDark = latestSystemDark,
             )
             delay(180L)
-            val result = withContext(Dispatchers.IO) {
-                AppIconManager.applyResolvedIcon(
+            val (result, diagnostics) = withContext(Dispatchers.IO) {
+                val res = AppIconManager.applyResolvedIcon(
                     context = app,
                     target = target,
-                    killApp = true,
+                    killApp = false,
                 )
+                res to AppIconManager.readSystemDiagnostics(app)
             }
             _uiState.update {
                 it.copy(
                     activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
                     launcherAliases = result.launcherAliases.ifEmpty { it.launcherAliases },
+                    systemIconDiagnostics = diagnostics,
                     iconSyncError = result.errorMessage,
                 )
             }
@@ -550,16 +554,18 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 isSystemDark = latestSystemDark,
             )
             delay(180L)
-            val result = withContext(Dispatchers.IO) {
-                AppIconManager.forceRefreshIcon(
+            val (result, diagnostics) = withContext(Dispatchers.IO) {
+                val res = AppIconManager.forceRefreshIcon(
                     context = app,
                     target = target,
                 )
+                res to AppIconManager.readSystemDiagnostics(app)
             }
             _uiState.update {
                 it.copy(
                     activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
                     launcherAliases = result.launcherAliases.ifEmpty { it.launcherAliases },
+                    systemIconDiagnostics = diagnostics,
                     iconSyncError = result.errorMessage,
                 )
             }

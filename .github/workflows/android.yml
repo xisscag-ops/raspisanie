@@ -68,10 +68,66 @@ jobs:
           AAPT2=$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -name aapt2 2>/dev/null | sort -V | tail -n 1)
           if [ -n "$AAPT2" ]; then
             echo "=== Manifest activity-alias & application icon ==="
-            "$AAPT2" dump xmltree "${{ env.APK_NAME }}" --file AndroidManifest.xml | grep -E "E: (application|activity|activity-alias)|A: android:(name|icon|roundIcon|enabled|targetActivity)"
+            "$AAPT2" dump xmltree "${{ env.APK_NAME }}" --file AndroidManifest.xml > manifest_tree.txt
+            grep -E "E: (application|activity|activity-alias)|A: .*:(name|icon|roundIcon|enabled|exported|targetActivity)" manifest_tree.txt || true
+            python3 - << 'PY'
+          import re, sys
+
+          try:
+              text = open("manifest_tree.txt", encoding="utf-8").read()
+              blocks = re.split(r'(?=\n\s+E: (?:activity|activity-alias)\b)', text)
+              alias_icons = {}
+              main_exported = None
+              for b in blocks:
+                  m_name = re.search(r'A: [^=]*:name\([^)]+\)="([^"]+)"', b)
+                  if not m_name:
+                      continue
+                  name = m_name.group(1)
+                  if "LauncherAlias" in name:
+                      m_icon = re.search(r'A: [^=]*:icon\([^)]+\)=([^\s]+)', b)
+                      m_en = re.search(r'A: [^=]*:enabled\([^)]+\)=([^\s]+)', b)
+                      alias_icons[name] = (
+                          m_icon.group(1) if m_icon else None,
+                          m_en.group(1) if m_en else None,
+                      )
+                  elif name.endswith(".MainActivity"):
+                      m_exp = re.search(r'A: [^=]*:exported\([^)]+\)=([^\s]+)', b)
+                      main_exported = m_exp.group(1) if m_exp else None
+
+              print("Parsed aliases:", alias_icons, "MainActivity exported:", main_exported)
+              if len(alias_icons) != 5:
+                  raise AssertionError(f"Expected 5 aliases, got {alias_icons}")
+              icons = [v[0] for v in alias_icons.values()]
+              if not all(icons) or len(set(icons)) != 5:
+                  raise AssertionError(f"Alias icons not distinct: {alias_icons}")
+              for name, (_, en) in alias_icons.items():
+                  is_dark = name.endswith("LauncherAliasDark")
+                  ok = (en in ("0xffffffff", "(type 0x12)0xffffffff", "true")) if is_dark else (en in ("0x0", "(type 0x12)0x0", "false"))
+                  if not ok:
+                      raise AssertionError(f"{name} enabled={en}")
+              if main_exported not in ("0x0", "(type 0x12)0x0", "false"):
+                  raise AssertionError(f"MainActivity exported={main_exported}")
+          except Exception as e:
+              print(f"::error::Manifest check failed: {e}")
+              sys.exit(1)
+          PY
           fi
           echo "=== Launcher assets in APK ==="
-          unzip -l "${{ env.APK_NAME }}" | grep -E "ic_launcher|ic_icon_preview" || true
+          unzip -l "${{ env.APK_NAME }}" | grep -E "ic_launcher|ic_icon_preview" | tee apk_assets.txt || true
+          python3 - << 'PY'
+          import sys
+          try:
+              lines = [l for l in open("apk_assets.txt", encoding="utf-8") if l.strip()]
+              for line in lines:
+                  parts = line.split()
+                  if parts and parts[0].isdigit():
+                      size = int(parts[0])
+                      if size <= 80:
+                          raise AssertionError(f"Suspiciously small/shrunk icon asset: {line.strip()}")
+          except Exception as e:
+              print(f"::error::Asset check failed: {e}")
+              sys.exit(1)
+          PY
 
       - name: Upload Release APK artifact
         uses: actions/upload-artifact@v4
