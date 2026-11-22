@@ -45,6 +45,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.EventAvailable
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material3.Button
@@ -102,6 +103,7 @@ import ru.ngieu.raspisanie.ui.components.LessonCard
 import ru.ngieu.raspisanie.ui.components.LiveLessonBanner
 import ru.ngieu.raspisanie.ui.components.NeonAuroraBackground
 import ru.ngieu.raspisanie.ui.components.NeonTopNavBar
+import ru.ngieu.raspisanie.ui.components.TetrisGameDialog
 import ru.ngieu.raspisanie.ui.components.VerticalListWithHorizontalBias
 import ru.ngieu.raspisanie.ui.components.WeekSelectorBar
 import ru.ngieu.raspisanie.ui.components.fullDayName
@@ -138,9 +140,11 @@ fun ScheduleScreen(
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
     onShareSchedule: () -> Unit,
+    onUpdateTetrisBestScore: (Int) -> Unit,
 ) {
     var showWeekPickerSheet by remember { mutableStateOf(false) }
     var showSearchBar by remember { mutableStateOf(false) }
+    var showTetrisGame by remember { mutableStateOf(false) }
 
     val currentLessonId = (state.liveLessonState as? LiveLessonState.InProgress)?.currentLesson?.id
     val hasAppUpdate = state.updateState is UpdateCheckState.Available ||
@@ -172,6 +176,7 @@ fun ScheduleScreen(
                     onClickWeekPicker = { showWeekPickerSheet = true },
                     onClickToday = onGoToday,
                     onClickResetGroup = onResetToDefaultGroup,
+                    onClickOpenGame = { showTetrisGame = true },
                     onClickShare = onShareSchedule,
                     onToggleSearch = {
                         showSearchBar = !showSearchBar
@@ -277,6 +282,7 @@ fun ScheduleScreen(
                                     onSelectWeekMode = onSelectWeekMode,
                                     onGoToday = onGoToday,
                                     onRefresh = onRefresh,
+                                    onOpenGame = { showTetrisGame = true },
                                     onCheckForUpdates = onCheckForUpdates,
                                     onInstallUpdate = onInstallUpdate,
                                 )
@@ -334,6 +340,15 @@ fun ScheduleScreen(
             }
         }
     }
+
+    if (showTetrisGame) {
+        TetrisGameDialog(
+            initialBestScore = state.tetrisBestScore,
+            liveLessonState = state.liveLessonState,
+            onUpdateBestScore = onUpdateTetrisBestScore,
+            onDismiss = { showTetrisGame = false },
+        )
+    }
 }
 
 @Composable
@@ -349,6 +364,7 @@ private fun NeonTopHeader(
     onClickWeekPicker: () -> Unit,
     onClickToday: () -> Unit,
     onClickResetGroup: () -> Unit,
+    onClickOpenGame: () -> Unit,
     onClickShare: () -> Unit,
     onToggleSearch: () -> Unit,
 ) {
@@ -447,8 +463,13 @@ private fun NeonTopHeader(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            HeaderVectorCircleButton(
+                imageVector = Icons.Rounded.SportsEsports,
+                contentDescription = "Тетрис на перемене",
+                onClick = onClickOpenGame,
+            )
             HeaderCircleButton(
                 iconRes = R.drawable.ic_neon_share,
                 contentDescription = "Поделиться расписанием",
@@ -464,6 +485,42 @@ private fun NeonTopHeader(
                 onClick = onToggleSearch,
             )
         }
+    }
+}
+
+@Composable
+private fun HeaderVectorCircleButton(
+    imageVector: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    val style = LocalAppVisualStyle.current
+    val fill = if (style.isNeon) {
+        Brush.verticalGradient(listOf(Color(0xBA242D58), Color(0xB3161E41)))
+    } else {
+        Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface))
+    }
+    val border = if (style.isNeon) {
+        Brush.verticalGradient(listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom))
+    } else {
+        Brush.verticalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant))
+    }
+
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(brush = fill, shape = CircleShape)
+            .border(width = 1.dp, brush = border, shape = CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = if (style.isNeon) Color(0xFFC4B5FD) else MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(19.dp),
+        )
     }
 }
 
@@ -491,7 +548,7 @@ private fun HeaderCircleButton(
 
     Box(
         modifier = Modifier
-            .size(42.dp)
+            .size(38.dp)
             .clip(CircleShape)
             .background(brush = fill, shape = CircleShape)
             .border(width = 1.dp, brush = border, shape = CircleShape)
@@ -502,7 +559,7 @@ private fun HeaderCircleButton(
             CircularProgressIndicator(
                 strokeWidth = 2.dp,
                 color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(17.dp),
             )
         } else {
             Image(
@@ -510,7 +567,7 @@ private fun HeaderCircleButton(
                 contentDescription = contentDescription,
                 colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
                 alpha = if (enabled) 1f else 0.4f,
-                modifier = Modifier.size(21.dp),
+                modifier = Modifier.size(19.dp),
             )
         }
     }
@@ -1567,6 +1624,7 @@ private fun SettingsTab(
     onSelectWeekMode: (WeekFilterMode) -> Unit,
     onGoToday: () -> Unit,
     onRefresh: () -> Unit,
+    onOpenGame: () -> Unit,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
 ) {
@@ -1753,6 +1811,65 @@ private fun SettingsTab(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        item {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 18.dp,
+                glowColor = if (style.isNeon) Color(0xFF8B5CF6) else null,
+                onClick = onOpenGame,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                                ),
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.SportsEsports,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Неоновый Тетрис",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor,
+                        )
+                        Text(
+                            text = if (state.tetrisBestScore > 0) {
+                                "Игра на перемене • Рекорд: ${state.tetrisBestScore}"
+                            } else {
+                                "Мини-игра для перерывов между парами"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subColor,
+                        )
+                    }
+                    Text(
+                        text = "Играть",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }

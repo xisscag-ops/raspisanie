@@ -2,7 +2,6 @@ package ru.ngieu.raspisanie.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -11,7 +10,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,13 +31,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.ngieu.raspisanie.domain.WeekFilterMode
+import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
+import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -59,6 +60,10 @@ fun WeekSelectorBar(
     onSelectWeekMode: (WeekFilterMode) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val style = LocalAppVisualStyle.current
+    val headerTextColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onBackground
+    val inactiveSubColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+
     val saturday = selectedMonday.plusDays(5)
     val rangeText = "${selectedMonday.format(shortDayMonthFormatter)} – ${saturday.format(shortDayMonthFormatter)}"
 
@@ -76,6 +81,7 @@ fun WeekSelectorBar(
                     Icon(
                         imageVector = Icons.Rounded.ChevronLeft,
                         contentDescription = "Предыдущая неделя",
+                        tint = headerTextColor,
                     )
                 }
                 AnimatedContent(
@@ -90,6 +96,7 @@ fun WeekSelectorBar(
                         text = text,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
+                        color = headerTextColor,
                     )
                 }
                 IconButton(
@@ -99,6 +106,7 @@ fun WeekSelectorBar(
                     Icon(
                         imageVector = Icons.Rounded.ChevronRight,
                         contentDescription = "Следующая неделя",
+                        tint = headerTextColor,
                     )
                 }
             }
@@ -110,8 +118,8 @@ fun WeekSelectorBar(
             ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = if (style.isNeon) Color(0x409333EA) else MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = if (style.isNeon) Color(0xFFE9D5FF) else MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .clickable(onClick = onGoToday),
@@ -145,41 +153,47 @@ fun WeekSelectorBar(
             WeekFilterMode.entries.forEach { mode ->
                 val selected = activeWeekFilter == mode
                 val isActualWeek = detectedWeekForSelectedMonday == mode
-                val bgColor by animateColorAsState(
-                    targetValue = if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
-                    animationSpec = tween(durationMillis = 100),
-                    label = "weekTabBg",
-                )
-                val textColor by animateColorAsState(
-                    targetValue = if (selected) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                    animationSpec = tween(durationMillis = 100),
-                    label = "weekTabText",
-                )
+                val fillBrush = when {
+                    selected && style.isNeon -> Brush.verticalGradient(
+                        listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                    )
+                    selected -> Brush.verticalGradient(
+                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                    )
+                    else -> null
+                }
+                val borderBrush = when {
+                    selected && style.isNeon -> Brush.linearGradient(
+                        listOf(Color(0x99E9D5FF), Color(0x667DD3FC)),
+                    )
+                    selected -> Brush.linearGradient(
+                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                    )
+                    style.isNeon -> Brush.linearGradient(
+                        listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom),
+                    )
+                    else -> Brush.linearGradient(
+                        listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
+                    )
+                }
+                val textColor = when {
+                    selected && style.isNeon -> Color.White
+                    selected -> MaterialTheme.colorScheme.onPrimary
+                    else -> inactiveSubColor
+                }
 
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onSelectWeekMode(mode) },
-                    shape = RoundedCornerShape(12.dp),
-                    color = bgColor,
-                    contentColor = textColor,
-                    border = if (selected) {
-                        null
-                    } else {
-                        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    },
+                GlassCard(
+                    modifier = Modifier.weight(1f),
+                    cornerRadius = 12.dp,
+                    fillBrush = fillBrush,
+                    borderBrush = borderBrush,
+                    borderWidth = if (selected) 1.3.dp else 1.dp,
+                    onClick = { onSelectWeekMode(mode) },
                 ) {
                     Row(
-                        modifier = Modifier.padding(vertical = 9.dp, horizontal = 10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 9.dp, horizontal = 10.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -187,6 +201,7 @@ fun WeekSelectorBar(
                             text = "${mode.title} неделя",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            color = textColor,
                         )
                         if (isActualWeek) {
                             Spacer(modifier = Modifier.width(5.dp))
@@ -194,6 +209,7 @@ fun WeekSelectorBar(
                                 text = "•",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.ExtraBold,
+                                color = if (selected) textColor else Color(0xFF38BDF8),
                             )
                         }
                     }

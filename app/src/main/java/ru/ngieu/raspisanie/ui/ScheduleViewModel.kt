@@ -99,6 +99,7 @@ data class ScheduleUiState(
     val selectedDayProgress: DayProgressSummary = DayProgressSummary(),
     val updateState: UpdateCheckState = UpdateCheckState.Idle,
     val isSharingSchedule: Boolean = false,
+    val tetrisBestScore: Int = 0,
 ) {
     val isViewingDefaultGroup: Boolean
         get() = activeActorKind == ActorKind.GROUP &&
@@ -171,6 +172,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             ScheduleUiState(
                 themeMode = repository.loadThemeMode(),
                 subgroupFilter = repository.loadSubgroupFilter(),
+                tetrisBestScore = repository.loadTetrisBestScore(),
             ),
         ),
     )
@@ -443,6 +445,13 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     fun setSubgroupFilter(mode: SubgroupFilterMode) {
         repository.saveSubgroupFilter(mode)
         updateState { it.copy(subgroupFilter = mode) }
+    }
+
+    fun updateTetrisBestScore(score: Int) {
+        if (score > _uiState.value.tetrisBestScore) {
+            repository.saveTetrisBestScore(score)
+            _uiState.update { it.copy(tetrisBestScore = score) }
+        }
     }
 
     fun checkForUpdates(silent: Boolean = false) {

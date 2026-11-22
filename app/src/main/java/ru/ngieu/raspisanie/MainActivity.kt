@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
                     onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
                     onInstallUpdate = viewModel::downloadAndInstallUpdate,
                     onShareSchedule = { viewModel.shareDaySchedule(this) },
+                    onUpdateTetrisBestScore = viewModel::updateTetrisBestScore,
                 )
             }
         }
