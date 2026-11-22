@@ -96,10 +96,12 @@ import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.domain.WeekFilterMode
 import ru.ngieu.raspisanie.ui.components.DaySelectorBottomDock
 import ru.ngieu.raspisanie.ui.components.GlassCard
+import ru.ngieu.raspisanie.ui.components.HorizontalBiasPagerContainer
 import ru.ngieu.raspisanie.ui.components.LessonCard
 import ru.ngieu.raspisanie.ui.components.LiveLessonBanner
 import ru.ngieu.raspisanie.ui.components.NeonAuroraBackground
 import ru.ngieu.raspisanie.ui.components.NeonTopNavBar
+import ru.ngieu.raspisanie.ui.components.VerticalListWithHorizontalBias
 import ru.ngieu.raspisanie.ui.components.WeekSelectorBar
 import ru.ngieu.raspisanie.ui.components.fullDayName
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
@@ -862,74 +864,82 @@ private fun DayHorizontalPager(
         }
     }
 
-    HorizontalPager(
-        state = pagerState,
-        beyondViewportPageCount = 1,
+    HorizontalBiasPagerContainer(
+        isPagerScrolling = pagerState.isScrollInProgress,
         modifier = Modifier.fillMaxSize(),
-    ) { pageIndex ->
-        val pageDate = remember(state.anchorMonday, pageIndex) {
-            ScheduleEngine.dayIndexToDate(state.anchorMonday, pageIndex)
-        }
-        val pageMonday = remember(pageDate) {
-            ScheduleEngine.mondayOf(pageDate)
-        }
-        val pageWeekFilter = state.weekFilterForMonday(pageMonday)
-        val daySlots = remember(
-            state.allLessons,
-            state.lessonsByWeekDay,
-            state.searchQuery,
-            pageDate,
-            pageMonday,
-            state.selectedMonday,
-            pageWeekFilter,
-        ) {
-            val rawLessons = if (pageMonday == state.selectedMonday) {
-                state.lessonsByWeekDay[pageDate].orEmpty()
-            } else {
-                ScheduleEngine.lessonsForDay(
-                    allLessons = state.allLessons,
-                    targetDate = pageDate,
-                    weekFilter = pageWeekFilter,
-                ).filter(state::matchesSearch)
+    ) { gateState, allowVerticalScroll ->
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 1,
+            modifier = Modifier.fillMaxSize(),
+        ) { pageIndex ->
+            val pageDate = remember(state.anchorMonday, pageIndex) {
+                ScheduleEngine.dayIndexToDate(state.anchorMonday, pageIndex)
             }
-            ScheduleEngine.groupLessonsIntoSlots(rawLessons)
-        }
-
-        val isViewingToday = pageDate == state.todayDate &&
-            (state.manualWeekOverride == null || state.manualWeekOverride == state.detectedCurrentWeek)
-
-        val pageProgress = remember(daySlots, isViewingToday, pageDate, state.todayDate, state.nowTime) {
-            if (pageDate == state.selectedDate) {
-                state.selectedDayProgress
-            } else {
-                val total = daySlots.size
-                val active = when {
-                    total == 0 -> 0
-                    pageDate.isBefore(state.todayDate) -> total
-                    pageDate.isAfter(state.todayDate) -> 0
-                    else -> daySlots.count { it.startTime != null && !state.nowTime.isBefore(it.startTime) }
+            val pageMonday = remember(pageDate) {
+                ScheduleEngine.mondayOf(pageDate)
+            }
+            val pageWeekFilter = state.weekFilterForMonday(pageMonday)
+            val daySlots = remember(
+                state.allLessons,
+                state.lessonsByWeekDay,
+                state.searchQuery,
+                pageDate,
+                pageMonday,
+                state.selectedMonday,
+                pageWeekFilter,
+            ) {
+                val rawLessons = if (pageMonday == state.selectedMonday) {
+                    state.lessonsByWeekDay[pageDate].orEmpty()
+                } else {
+                    ScheduleEngine.lessonsForDay(
+                        allLessons = state.allLessons,
+                        targetDate = pageDate,
+                        weekFilter = pageWeekFilter,
+                    ).filter(state::matchesSearch)
                 }
-                DayProgressSummary(
-                    activeCount = active,
-                    totalCount = total,
-                    fraction = if (total == 0) 0f else (active.toFloat() / total.toFloat()).coerceIn(0f, 1f),
+                ScheduleEngine.groupLessonsIntoSlots(rawLessons)
+            }
+
+            val isViewingToday = pageDate == state.todayDate &&
+                (state.manualWeekOverride == null || state.manualWeekOverride == state.detectedCurrentWeek)
+
+            val pageProgress = remember(daySlots, isViewingToday, pageDate, state.todayDate, state.nowTime) {
+                if (pageDate == state.selectedDate) {
+                    state.selectedDayProgress
+                } else {
+                    val total = daySlots.size
+                    val active = when {
+                        total == 0 -> 0
+                        pageDate.isBefore(state.todayDate) -> total
+                        pageDate.isAfter(state.todayDate) -> 0
+                        else -> daySlots.count { it.startTime != null && !state.nowTime.isBefore(it.startTime) }
+                    }
+                    DayProgressSummary(
+                        activeCount = active,
+                        totalCount = total,
+                        fraction = if (total == 0) 0f else (active.toFloat() / total.toFloat()).coerceIn(0f, 1f),
+                    )
+                }
+            }
+
+            VerticalListWithHorizontalBias(gateState = gateState) {
+                DayLessonsList(
+                    pageDate = pageDate,
+                    todayDate = state.todayDate,
+                    daySlots = daySlots,
+                    isViewingToday = isViewingToday,
+                    liveLessonState = state.liveLessonState,
+                    progressSummary = pageProgress,
+                    currentLessonId = currentLessonId,
+                    nowTime = state.nowTime,
+                    themeMode = state.themeMode,
+                    hasSearchQuery = state.searchQuery.isNotBlank(),
+                    showGroupsInsteadOfTeachers = state.activeActorKind == ActorKind.TEACHER,
+                    userScrollEnabled = allowVerticalScroll,
                 )
             }
         }
-
-        DayLessonsList(
-            pageDate = pageDate,
-            todayDate = state.todayDate,
-            daySlots = daySlots,
-            isViewingToday = isViewingToday,
-            liveLessonState = state.liveLessonState,
-            progressSummary = pageProgress,
-            currentLessonId = currentLessonId,
-            nowTime = state.nowTime,
-            themeMode = state.themeMode,
-            hasSearchQuery = state.searchQuery.isNotBlank(),
-            showGroupsInsteadOfTeachers = state.activeActorKind == ActorKind.TEACHER,
-        )
     }
 }
 
@@ -946,6 +956,7 @@ private fun DayLessonsList(
     themeMode: ThemeModeSetting,
     hasSearchQuery: Boolean,
     showGroupsInsteadOfTeachers: Boolean,
+    userScrollEnabled: Boolean,
 ) {
     val style = LocalAppVisualStyle.current
     val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -954,6 +965,7 @@ private fun DayLessonsList(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        userScrollEnabled = userScrollEnabled,
         contentPadding = PaddingValues(
             start = 16.dp,
             end = 16.dp,
@@ -1102,46 +1114,52 @@ private fun WeekHorizontalPager(
         }
     }
 
-    HorizontalPager(
-        state = pagerState,
-        beyondViewportPageCount = 1,
+    HorizontalBiasPagerContainer(
+        isPagerScrolling = pagerState.isScrollInProgress,
         modifier = Modifier.fillMaxSize(),
-    ) { pageIndex ->
-        val pageMonday = remember(state.anchorMonday, pageIndex) {
-            ScheduleEngine.weekIndexToMonday(state.anchorMonday, pageIndex)
-        }
-        val pageWeekDays = remember(pageMonday) {
-            (0L..5L).map { pageMonday.plusDays(it) }
-        }
-        val pageWeekFilter = state.weekFilterForMonday(pageMonday)
-        val slotsByDay = remember(
-            state.allLessons,
-            state.lessonsByWeekDay,
-            state.searchQuery,
-            pageMonday,
-            state.selectedMonday,
-            pageWeekFilter,
-        ) {
-            val map = if (pageMonday == state.selectedMonday) {
-                state.lessonsByWeekDay
-            } else {
-                pageWeekDays.associateWith { date ->
-                    ScheduleEngine.lessonsForDay(
-                        allLessons = state.allLessons,
-                        targetDate = date,
-                        weekFilter = pageWeekFilter,
-                    ).filter(state::matchesSearch)
-                }
-            }
-            map.mapValues { (_, list) -> ScheduleEngine.groupLessonsIntoSlots(list) }
-        }
-
-        val isCurrentWeek = pageMonday == ScheduleEngine.mondayOf(state.todayDate)
-        val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-
-        LazyColumn(
+    ) { gateState, allowVerticalScroll ->
+        HorizontalPager(
+            state = pagerState,
+            beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
+        ) { pageIndex ->
+            val pageMonday = remember(state.anchorMonday, pageIndex) {
+                ScheduleEngine.weekIndexToMonday(state.anchorMonday, pageIndex)
+            }
+            val pageWeekDays = remember(pageMonday) {
+                (0L..5L).map { pageMonday.plusDays(it) }
+            }
+            val pageWeekFilter = state.weekFilterForMonday(pageMonday)
+            val slotsByDay = remember(
+                state.allLessons,
+                state.lessonsByWeekDay,
+                state.searchQuery,
+                pageMonday,
+                state.selectedMonday,
+                pageWeekFilter,
+            ) {
+                val map = if (pageMonday == state.selectedMonday) {
+                    state.lessonsByWeekDay
+                } else {
+                    pageWeekDays.associateWith { date ->
+                        ScheduleEngine.lessonsForDay(
+                            allLessons = state.allLessons,
+                            targetDate = date,
+                            weekFilter = pageWeekFilter,
+                        ).filter(state::matchesSearch)
+                    }
+                }
+                map.mapValues { (_, list) -> ScheduleEngine.groupLessonsIntoSlots(list) }
+            }
+
+            val isCurrentWeek = pageMonday == ScheduleEngine.mondayOf(state.todayDate)
+            val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+            VerticalListWithHorizontalBias(gateState = gateState) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = allowVerticalScroll,
+                    contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
                 top = 4.dp,
@@ -1250,6 +1268,8 @@ private fun WeekHorizontalPager(
                         )
                     }
                 }
+            }
+        }
             }
         }
     }
