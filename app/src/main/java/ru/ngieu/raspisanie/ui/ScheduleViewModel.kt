@@ -112,6 +112,12 @@ data class ScheduleUiState(
     val selectedMonday: LocalDate
         get() = ScheduleEngine.mondayOf(selectedDate)
 
+    val defaultDisplayDate: LocalDate
+        get() = if (todayDate.dayOfWeek == DayOfWeek.SUNDAY) todayDate.plusDays(1) else todayDate
+
+    val isViewingToday: Boolean
+        get() = selectedDate == defaultDisplayDate && manualWeekOverride == null
+
     val detectedWeekForSelectedMonday: WeekFilterMode?
         get() = detectedWeekForMonday(selectedMonday)
 

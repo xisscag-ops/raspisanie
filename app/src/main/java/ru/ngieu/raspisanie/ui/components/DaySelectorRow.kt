@@ -39,6 +39,7 @@ import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
 import java.time.DayOfWeek
 import java.time.LocalDate
 
@@ -292,7 +293,7 @@ fun DaySelectorRow(
                         ) {
                             val dotColor = when {
                                 isSelected -> Color.White
-                                hasChanges -> Color(0xFFFBBF24)
+                                hasChanges -> if (style.isDark) ScheduleAccentColors.changeBadgeDark else Color(0xFFD97706)
                                 style.isGlass -> Color(0xFFFAFAFA)
                                 style.isNeon && date.dayOfWeek.value >= 5 -> Color(0xFF38BDF8)
                                 style.isNeon -> Color(0xFFA78BFA)

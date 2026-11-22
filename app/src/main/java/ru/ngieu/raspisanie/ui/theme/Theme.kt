@@ -241,9 +241,10 @@ object ScheduleAccentColors {
     val changeBorderLight = Color(0xFFF79009)
     val changeBadgeLight = Color(0xFFDC6803)
 
-    val changeBgDark = Color(0x8838220A)
-    val changeBorderDark = Color(0xFFFBBF24)
-    val changeBadgeDark = Color(0xFFFBBF24)
+    val changeBgDark = Color(0x8A261807)
+    val changeBorderDark = Color(0xFF925812)
+    val changeBadgeDark = Color(0xFFB87424)
+    val changeBadgeBgDark = Color(0x523B2409)
 
     val currentLessonBgLight = Color(0xFFE6F9F2)
     val currentLessonBorderLight = Color(0xFF059669)
@@ -251,15 +252,7 @@ object ScheduleAccentColors {
     val currentLessonBorderDark = Color(0xFF34D399)
 
     fun lessonTypeColor(type: LessonType, isDark: Boolean): Color {
-        return when (type) {
-            LessonType.LECTURE -> if (isDark) Color(0xFF3B82F6) else Color(0xFF155EEF)
-            LessonType.PRACTICE -> if (isDark) Color(0xFF10B981) else Color(0xFF0E9384)
-            LessonType.LAB -> if (isDark) Color(0xFFA855F7) else Color(0xFF6938EF)
-            LessonType.EXAM -> if (isDark) Color(0xFFEF4444) else Color(0xFFD92D20)
-            LessonType.CONSULTATION -> if (isDark) Color(0xFFF59E0B) else Color(0xFFDC6803)
-            LessonType.EVENT -> if (isDark) Color(0xFFEC4899) else Color(0xFFC11574)
-            LessonType.OTHER -> if (isDark) Color(0xFF94A3B8) else Color(0xFF475467)
-        }
+        return if (isDark) Color(0xFF94A3B8) else Color(0xFF475467)
     }
 }
 
