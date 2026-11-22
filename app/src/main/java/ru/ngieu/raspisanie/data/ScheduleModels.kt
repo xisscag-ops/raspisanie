@@ -118,6 +118,27 @@ enum class ThemeModeSetting(val label: String) {
     DARK("Тёмная"),
 }
 
+enum class AppIconStyle(val label: String) {
+    AUTO("Авто"),
+    NEON("Неон"),
+    GLASS("Стекло"),
+    LIGHT("Светлая"),
+    DARK("Тёмная"),
+    CLASSIC("Классика"),
+}
+
+enum class ResolvedAppIcon(
+    val label: String,
+    val aliasClassName: String,
+    val defaultEnabledInManifest: Boolean,
+) {
+    NEON("Неон", "ru.ngieu.raspisanie.LauncherAliasNeon", defaultEnabledInManifest = true),
+    GLASS("Стекло", "ru.ngieu.raspisanie.LauncherAliasGlass", defaultEnabledInManifest = false),
+    LIGHT("Светлая", "ru.ngieu.raspisanie.LauncherAliasLight", defaultEnabledInManifest = false),
+    DARK("Тёмная", "ru.ngieu.raspisanie.LauncherAliasDark", defaultEnabledInManifest = false),
+    CLASSIC("Классика", "ru.ngieu.raspisanie.LauncherAliasClassic", defaultEnabledInManifest = false),
+}
+
 enum class SubgroupFilterMode(
     val label: String,
     val shortLabel: String,

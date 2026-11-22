@@ -15,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.EventAvailable
@@ -81,6 +83,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -93,7 +96,9 @@ import kotlinx.coroutines.launch
 import ru.ngieu.raspisanie.BuildConfig
 import ru.ngieu.raspisanie.R
 import ru.ngieu.raspisanie.data.ActorKind
+import ru.ngieu.raspisanie.data.AppIconStyle
 import ru.ngieu.raspisanie.data.AppUpdater
+import ru.ngieu.raspisanie.data.ResolvedAppIcon
 import ru.ngieu.raspisanie.data.ScheduleActor
 import ru.ngieu.raspisanie.data.ScheduleParser
 import ru.ngieu.raspisanie.data.ScheduleRepository
@@ -144,6 +149,7 @@ fun ScheduleScreen(
     onSelectActor: (ScheduleActor) -> Unit,
     onResetToDefaultGroup: () -> Unit,
     onSelectTheme: (ThemeModeSetting) -> Unit,
+    onSelectIconStyle: (AppIconStyle) -> Unit,
     onSelectSubgroup: (SubgroupFilterMode) -> Unit,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
@@ -313,6 +319,7 @@ fun ScheduleScreen(
                                 SettingsTab(
                                     state = state,
                                     onSelectTheme = onSelectTheme,
+                                    onSelectIconStyle = onSelectIconStyle,
                                     onSelectWeekMode = onSelectWeekMode,
                                     onGoToday = onGoToday,
                                     onRefresh = onRefresh,
@@ -1890,6 +1897,7 @@ private fun SubgroupsAndGroupTab(
 private fun SettingsTab(
     state: ScheduleUiState,
     onSelectTheme: (ThemeModeSetting) -> Unit,
+    onSelectIconStyle: (AppIconStyle) -> Unit,
     onSelectWeekMode: (WeekFilterMode) -> Unit,
     onGoToday: () -> Unit,
     onRefresh: () -> Unit,
@@ -1898,6 +1906,14 @@ private fun SettingsTab(
     onInstallUpdate: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
+    val systemDark = isSystemInDarkTheme()
+    val resolvedIcon = remember(state.themeMode, state.iconStyle, systemDark) {
+        AppIconManager.resolveIcon(
+            themeMode = state.themeMode,
+            iconStyle = state.iconStyle,
+            isSystemDark = systemDark,
+        )
+    }
     val titleColor = when {
         style.isNeon -> NeonPalette.textPrimary
         style.isGlass -> GlassPalette.textPrimary
@@ -1984,6 +2000,16 @@ private fun SettingsTab(
                     }
                 }
             }
+        }
+
+        item {
+            AppIconSelectorCard(
+                iconStyle = state.iconStyle,
+                resolvedIcon = resolvedIcon,
+                titleColor = titleColor,
+                subColor = subColor,
+                onSelectIconStyle = onSelectIconStyle,
+            )
         }
 
         item {
@@ -2272,6 +2298,182 @@ private fun SettingsTab(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AppIconSelectorCard(
+    iconStyle: AppIconStyle,
+    resolvedIcon: ResolvedAppIcon,
+    titleColor: Color,
+    subColor: Color,
+    onSelectIconStyle: (AppIconStyle) -> Unit,
+) {
+    val style = LocalAppVisualStyle.current
+    val rows = remember { AppIconStyle.entries.chunked(3) }
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 20.dp,
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Image(
+                    painter = painterResource(id = iconPreviewRes(resolvedIcon)),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(
+                            width = 0.5.dp,
+                            color = Color.White.copy(alpha = 0.24f),
+                            shape = RoundedCornerShape(8.dp),
+                        ),
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Иконка приложения",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = titleColor,
+                    )
+                    Text(
+                        text = if (iconStyle == AppIconStyle.AUTO) {
+                            "Автоматически по теме • сейчас: ${resolvedIcon.label}"
+                        } else {
+                            "Выбрана вручную: ${iconStyle.label}"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subColor,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                rows.forEach { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        rowItems.forEach { option ->
+                            val selected = option == iconStyle
+                            val pillBrush = when {
+                                selected && style.isNeon -> Brush.verticalGradient(
+                                    listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                                )
+                                selected && style.isGlass -> Brush.verticalGradient(
+                                    listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
+                                )
+                                selected -> Brush.verticalGradient(
+                                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                                )
+                                else -> null
+                            }
+                            val previewTarget = when (option) {
+                                AppIconStyle.AUTO -> resolvedIcon
+                                AppIconStyle.NEON -> ResolvedAppIcon.NEON
+                                AppIconStyle.GLASS -> ResolvedAppIcon.GLASS
+                                AppIconStyle.LIGHT -> ResolvedAppIcon.LIGHT
+                                AppIconStyle.DARK -> ResolvedAppIcon.DARK
+                                AppIconStyle.CLASSIC -> ResolvedAppIcon.CLASSIC
+                            }
+
+                            GlassCard(
+                                modifier = Modifier.weight(1f),
+                                cornerRadius = 14.dp,
+                                fillBrush = pillBrush,
+                                onClick = { onSelectIconStyle(option) },
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 10.dp, horizontal = 6.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Box(modifier = Modifier.size(44.dp)) {
+                                        Image(
+                                            painter = painterResource(id = iconPreviewRes(previewTarget)),
+                                            contentDescription = option.label,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(RoundedCornerShape(11.dp))
+                                                .border(
+                                                    width = if (selected) 1.dp else 0.5.dp,
+                                                    color = if (selected) {
+                                                        Color.White.copy(alpha = 0.7f)
+                                                    } else {
+                                                        Color.Gray.copy(alpha = 0.3f)
+                                                    },
+                                                    shape = RoundedCornerShape(11.dp),
+                                                ),
+                                        )
+                                        if (option == AppIconStyle.AUTO) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomEnd)
+                                                    .size(18.dp)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        if (style.isGlass) {
+                                                            Color(0xFF2B2B2B)
+                                                        } else {
+                                                            MaterialTheme.colorScheme.primary
+                                                        },
+                                                    )
+                                                    .border(1.dp, Color.White, CircleShape),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.AutoAwesome,
+                                                    contentDescription = null,
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(10.dp),
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Text(
+                                        text = option.label,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (selected) Color.White else subColor,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "В режиме «Авто» иконка меняется вместе с темой. Лаунчер обновляет ярлык в течение пары секунд.",
+                style = MaterialTheme.typography.bodySmall,
+                color = subColor.copy(alpha = 0.8f),
+            )
+        }
+    }
+}
+
+private fun iconPreviewRes(icon: ResolvedAppIcon): Int {
+    return when (icon) {
+        ResolvedAppIcon.NEON -> R.drawable.ic_icon_preview_neon
+        ResolvedAppIcon.GLASS -> R.drawable.ic_icon_preview_glass
+        ResolvedAppIcon.LIGHT -> R.drawable.ic_icon_preview_light
+        ResolvedAppIcon.DARK -> R.drawable.ic_icon_preview_dark
+        ResolvedAppIcon.CLASSIC -> R.drawable.ic_launcher
     }
 }
 

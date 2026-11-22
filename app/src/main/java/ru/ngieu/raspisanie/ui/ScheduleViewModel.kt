@@ -6,6 +6,8 @@ import android.widget.Toast
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.ngieu.raspisanie.data.ActorKind
+import ru.ngieu.raspisanie.data.AppIconStyle
 import ru.ngieu.raspisanie.data.AppUpdateInfo
 import ru.ngieu.raspisanie.data.AppUpdater
 import ru.ngieu.raspisanie.data.InstallLaunchResult
@@ -91,6 +95,7 @@ data class ScheduleUiState(
     val errorMessage: String? = null,
     val updatedAtEpochMillis: Long? = null,
     val themeMode: ThemeModeSetting = ThemeModeSetting.NEON,
+    val iconStyle: AppIconStyle = AppIconStyle.AUTO,
     val subgroupFilter: SubgroupFilterMode = SubgroupFilterMode.ALL,
     val nowTime: LocalTime = currentKnyagininoTime(),
     val weekDays: List<LocalDate> = emptyList(),
@@ -177,14 +182,17 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         recomputeDerived(
             ScheduleUiState(
                 themeMode = repository.loadThemeMode(),
+                iconStyle = repository.loadIconStyle(),
                 subgroupFilter = repository.loadSubgroupFilter(),
                 tetrisBestScore = repository.loadTetrisBestScore(),
             ),
         ),
     )
     val uiState: StateFlow<ScheduleUiState> = _uiState.asStateFlow()
+    private var iconSyncJob: Job? = null
 
     init {
+        syncLauncherIcon(delayMs = 0L)
         loadInitialData()
         startClockTicker()
         checkForUpdates(silent = true)
@@ -446,6 +454,41 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     fun setThemeMode(mode: ThemeModeSetting) {
         repository.saveThemeMode(mode)
         updateState { it.copy(themeMode = mode) }
+        syncLauncherIcon(delayMs = 250L)
+    }
+
+    fun setIconStyle(style: AppIconStyle) {
+        repository.saveIconStyle(style)
+        updateState { it.copy(iconStyle = style) }
+        syncLauncherIcon(delayMs = 250L)
+    }
+
+    fun onSystemDarkChanged(isSystemDark: Boolean) {
+        val state = _uiState.value
+        if (state.iconStyle == AppIconStyle.AUTO && state.themeMode == ThemeModeSetting.SYSTEM) {
+            syncLauncherIcon(delayMs = 0L, isSystemDarkOverride = isSystemDark)
+        }
+    }
+
+    private fun syncLauncherIcon(
+        delayMs: Long,
+        isSystemDarkOverride: Boolean? = null,
+    ) {
+        iconSyncJob?.cancel()
+        iconSyncJob = viewModelScope.launch {
+            if (delayMs > 0L) delay(delayMs)
+            val snapshot = _uiState.value
+            val app = getApplication<Application>()
+            val systemDark = isSystemDarkOverride ?: AppIconManager.isSystemDark(app)
+            withContext(Dispatchers.IO) {
+                AppIconManager.syncIcon(
+                    context = app,
+                    themeMode = snapshot.themeMode,
+                    iconStyle = snapshot.iconStyle,
+                    isSystemDark = systemDark,
+                )
+            }
+        }
     }
 
     fun setSubgroupFilter(mode: SubgroupFilterMode) {
