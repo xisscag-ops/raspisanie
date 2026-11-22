@@ -157,6 +157,15 @@ class ScheduleEngineTest {
         assertEquals(listOf("p2"), slots[1].lessons.map { it.id })
     }
 
+    @Test
+    fun `extracts subgroup number and strips redundant subgroup prefix`() {
+        assertEquals(1, ScheduleEngine.extractSubgroupNumber(sampleLesson("s1", 1).copy(subject = "(пр. 1) Иностранный язык")))
+        assertEquals(2, ScheduleEngine.extractSubgroupNumber(sampleLesson("s2", 1).copy(subject = "(2 п/г) Базы данных")))
+        assertEquals("Иностранный язык", ScheduleEngine.cleanSubgroupPrefix("(пр. 1) Иностранный язык"))
+        assertEquals("Базы данных", ScheduleEngine.cleanSubgroupPrefix("(2 п/г) Базы данных"))
+        assertEquals("Математика", ScheduleEngine.cleanSubgroupPrefix("Математика"))
+    }
+
     private fun sampleLesson(
         id: String,
         pair: Int,

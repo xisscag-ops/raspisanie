@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.EventAvailable
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,6 +51,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -78,14 +81,11 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import ru.ngieu.raspisanie.BuildConfig
 import ru.ngieu.raspisanie.R
-import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.ThemeModeSetting
-import ru.ngieu.raspisanie.data.WeekParity
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.LiveLessonState
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.domain.WeekFilterMode
-import ru.ngieu.raspisanie.ui.components.BellsAndSettingsBottomSheet
 import ru.ngieu.raspisanie.ui.components.DaySelectorBottomDock
 import ru.ngieu.raspisanie.ui.components.GlassCard
 import ru.ngieu.raspisanie.ui.components.LessonCard
@@ -96,7 +96,6 @@ import ru.ngieu.raspisanie.ui.components.WeekSelectorBar
 import ru.ngieu.raspisanie.ui.components.fullDayName
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
-import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -120,14 +119,16 @@ fun ScheduleScreen(
     onSelectTab: (MainNavTab) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSelectTheme: (ThemeModeSetting) -> Unit,
+    onCheckForUpdates: () -> Unit,
+    onInstallUpdate: () -> Unit,
 ) {
-    val style = LocalAppVisualStyle.current
     var showWeekPickerSheet by remember { mutableStateOf(false) }
-    var showSettingsSheet by remember { mutableStateOf(false) }
     var showSearchBar by remember { mutableStateOf(false) }
-    var inspectedLesson by remember { mutableStateOf<Lesson?>(null) }
 
     val currentLessonId = (state.liveLessonState as? LiveLessonState.InProgress)?.currentLesson?.id
+    val hasAppUpdate = state.updateState is UpdateCheckState.Available ||
+        state.updateState is UpdateCheckState.ReadyToInstall ||
+        state.updateState is UpdateCheckState.NeedsInstallPermission
 
     NeonAuroraBackground {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -150,13 +151,13 @@ fun ScheduleScreen(
                             onSearchQueryChange("")
                         }
                     },
-                    onOpenSettings = { showSettingsSheet = true },
                 )
 
                 // Верхняя панель навигации (Главная, Неделя, Звонки, Настройки)
                 NeonTopNavBar(
                     activeTab = state.activeTab,
                     onSelectTab = onSelectTab,
+                    hasAppUpdate = hasAppUpdate,
                 )
 
                 // Раскрывающийся поиск
@@ -201,7 +202,6 @@ fun ScheduleScreen(
                                     state = state,
                                     currentLessonId = currentLessonId,
                                     onSelectDate = onSelectDate,
-                                    onInspectLesson = { inspectedLesson = it },
                                     onRefresh = onRefresh,
                                 )
                             }
@@ -213,7 +213,6 @@ fun ScheduleScreen(
                                     onSelectDate = onSelectDate,
                                     onShiftWeek = onShiftWeek,
                                     onSelectWeekMode = onSelectWeekMode,
-                                    onInspectLesson = { inspectedLesson = it },
                                     onRefresh = onRefresh,
                                 )
                             }
@@ -232,6 +231,8 @@ fun ScheduleScreen(
                                     onSelectWeekMode = onSelectWeekMode,
                                     onGoToday = onGoToday,
                                     onRefresh = onRefresh,
+                                    onCheckForUpdates = onCheckForUpdates,
+                                    onInstallUpdate = onInstallUpdate,
                                 )
                             }
                         }
@@ -287,24 +288,6 @@ fun ScheduleScreen(
             }
         }
     }
-
-    if (showSettingsSheet) {
-        BellsAndSettingsBottomSheet(
-            groupName = state.groupName,
-            themeMode = state.themeMode,
-            updatedAtEpochMillis = state.updatedAtEpochMillis,
-            onSelectTheme = onSelectTheme,
-            onDismiss = { showSettingsSheet = false },
-        )
-    }
-
-    inspectedLesson?.let { lesson ->
-        LessonDetailsBottomSheet(
-            lesson = lesson,
-            isDark = style.isDark,
-            onDismiss = { inspectedLesson = null },
-        )
-    }
 }
 
 @Composable
@@ -316,7 +299,6 @@ private fun NeonTopHeader(
     onClickWeekPicker: () -> Unit,
     onClickToday: () -> Unit,
     onToggleSearch: () -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
     val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onBackground
@@ -352,9 +334,12 @@ private fun NeonTopHeader(
                     horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
                     Text(
-                        text = "НГИЭУ • $weekSubtitle",
+                        text = weekSubtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = subtitleColor,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Image(
                         painter = painterResource(id = R.drawable.ic_neon_expand),
@@ -372,36 +357,27 @@ private fun NeonTopHeader(
                                 if (style.isNeon) Color(0x409333EA) else MaterialTheme.colorScheme.primaryContainer,
                             )
                             .clickable(onClick = onClickToday)
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                            .padding(horizontal = 10.dp, vertical = 3.dp),
                     ) {
                         Text(
                             text = "Сегодня",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = if (style.isNeon) Color(0xFFE9D5FF) else MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
+                            softWrap = false,
                         )
                     }
                 }
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            HeaderCircleButton(
-                iconRes = R.drawable.ic_neon_search,
-                contentDescription = "Поиск по расписанию",
-                highlighted = isSearchVisible,
-                onClick = onToggleSearch,
-            )
-            HeaderCircleButton(
-                iconRes = R.drawable.ic_neon_settings,
-                contentDescription = "Звонки и настройки",
-                highlighted = false,
-                onClick = onOpenSettings,
-            )
-        }
+        HeaderCircleButton(
+            iconRes = R.drawable.ic_neon_search,
+            contentDescription = "Поиск по расписанию",
+            highlighted = isSearchVisible,
+            onClick = onToggleSearch,
+        )
     }
 }
 
@@ -511,7 +487,6 @@ private fun HomeScheduleTab(
     state: ScheduleUiState,
     currentLessonId: String?,
     onSelectDate: (LocalDate) -> Unit,
-    onInspectLesson: (Lesson) -> Unit,
     onRefresh: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -527,7 +502,6 @@ private fun HomeScheduleTab(
                 state = state,
                 currentLessonId = currentLessonId,
                 onSelectDate = onSelectDate,
-                onInspectLesson = onInspectLesson,
             )
         }
     }
@@ -538,7 +512,6 @@ private fun DayHorizontalPager(
     state: ScheduleUiState,
     currentLessonId: String?,
     onSelectDate: (LocalDate) -> Unit,
-    onInspectLesson: (Lesson) -> Unit,
 ) {
     val latestSelectedDate by rememberUpdatedState(state.selectedDate)
     val initialPage = remember {
@@ -624,6 +597,7 @@ private fun DayHorizontalPager(
 
         DayLessonsList(
             pageDate = pageDate,
+            todayDate = state.todayDate,
             daySlots = daySlots,
             isViewingToday = isViewingToday,
             liveLessonState = state.liveLessonState,
@@ -632,7 +606,6 @@ private fun DayHorizontalPager(
             nowTime = state.nowTime,
             themeMode = state.themeMode,
             hasSearchQuery = state.searchQuery.isNotBlank(),
-            onInspectLesson = onInspectLesson,
         )
     }
 }
@@ -640,6 +613,7 @@ private fun DayHorizontalPager(
 @Composable
 private fun DayLessonsList(
     pageDate: LocalDate,
+    todayDate: LocalDate,
     daySlots: List<LessonSlot>,
     isViewingToday: Boolean,
     liveLessonState: LiveLessonState,
@@ -648,10 +622,11 @@ private fun DayLessonsList(
     nowTime: LocalTime,
     themeMode: ThemeModeSetting,
     hasSearchQuery: Boolean,
-    onInspectLesson: (Lesson) -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
     val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val isPageToday = pageDate == todayDate
+    val isPastDay = pageDate.isBefore(todayDate)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -668,6 +643,7 @@ private fun DayLessonsList(
                     state = liveLessonState,
                     progressSummary = progressSummary,
                     isViewingToday = isViewingToday,
+                    daySlots = daySlots,
                     modifier = Modifier.padding(bottom = 10.dp),
                 )
             }
@@ -709,10 +685,12 @@ private fun DayLessonsList(
                 LessonCard(
                     slot = slot,
                     isCurrentNow = isSlotCurrentNow,
+                    isToday = isPageToday,
+                    isPastDay = isPastDay,
+                    nowTime = nowTime,
                     themeMode = themeMode,
                     isFirst = index == 0,
                     isLast = index == daySlots.lastIndex,
-                    onClickLesson = onInspectLesson,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -727,7 +705,6 @@ private fun WeekScheduleTab(
     onSelectDate: (LocalDate) -> Unit,
     onShiftWeek: (Long) -> Unit,
     onSelectWeekMode: (WeekFilterMode) -> Unit,
-    onInspectLesson: (Lesson) -> Unit,
     onRefresh: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -755,7 +732,6 @@ private fun WeekScheduleTab(
                 state = state,
                 currentLessonId = currentLessonId,
                 onSelectDate = onSelectDate,
-                onInspectLesson = onInspectLesson,
             )
         }
     }
@@ -766,7 +742,6 @@ private fun WeekHorizontalPager(
     state: ScheduleUiState,
     currentLessonId: String?,
     onSelectDate: (LocalDate) -> Unit,
-    onInspectLesson: (Lesson) -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
     val latestSelectedDate by rememberUpdatedState(state.selectedDate)
@@ -850,6 +825,7 @@ private fun WeekHorizontalPager(
                         state = state.liveLessonState,
                         progressSummary = state.selectedDayProgress,
                         isViewingToday = state.selectedDate == state.todayDate,
+                        daySlots = emptyList(),
                         modifier = Modifier.padding(bottom = 10.dp),
                     )
                 }
@@ -858,6 +834,7 @@ private fun WeekHorizontalPager(
             pageWeekDays.forEach { date ->
                 val daySlots = slotsByDay[date].orEmpty()
                 val isToday = date == state.todayDate
+                val isPastDay = date.isBefore(state.todayDate)
 
                 item(key = "header_$date") {
                     Row(
@@ -933,10 +910,12 @@ private fun WeekHorizontalPager(
                         LessonCard(
                             slot = slot,
                             isCurrentNow = isSlotCurrentNow,
+                            isToday = isToday,
+                            isPastDay = isPastDay,
+                            nowTime = state.nowTime,
                             themeMode = state.themeMode,
                             isFirst = index == 0,
                             isLast = index == daySlots.lastIndex,
-                            onClickLesson = onInspectLesson,
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -1107,6 +1086,8 @@ private fun SettingsTab(
     onSelectWeekMode: (WeekFilterMode) -> Unit,
     onGoToday: () -> Unit,
     onRefresh: () -> Unit,
+    onCheckForUpdates: () -> Unit,
+    onInstallUpdate: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
     val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
@@ -1296,6 +1277,14 @@ private fun SettingsTab(
         }
 
         item {
+            AppUpdateCard(
+                updateState = state.updateState,
+                onCheckForUpdates = onCheckForUpdates,
+                onInstallUpdate = onInstallUpdate,
+            )
+        }
+
+        item {
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 cornerRadius = 18.dp,
@@ -1319,92 +1308,200 @@ private fun SettingsTab(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LessonDetailsBottomSheet(
-    lesson: Lesson,
-    isDark: Boolean,
-    onDismiss: () -> Unit,
+private fun AppUpdateCard(
+    updateState: UpdateCheckState,
+    onCheckForUpdates: () -> Unit,
+    onInstallUpdate: () -> Unit,
 ) {
-    val typeColor = ScheduleAccentColors.lessonTypeColor(lesson.lessonType, isDark)
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
+    val style = LocalAppVisualStyle.current
+    val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
+    val subColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+    val accentColor = if (style.isNeon) Color(0xFF2DD4BF) else MaterialTheme.colorScheme.primary
+
+    val isAvailableOrReady = updateState is UpdateCheckState.Available ||
+        updateState is UpdateCheckState.ReadyToInstall ||
+        updateState is UpdateCheckState.NeedsInstallPermission
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 20.dp,
+        glowColor = if (style.isNeon && isAvailableOrReady) Color(0xFF14B8A6) else null,
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = typeColor.copy(alpha = 0.16f),
-                    contentColor = typeColor,
+                Icon(
+                    imageVector = Icons.Rounded.SystemUpdate,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = "Обновление приложения",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor,
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            when (updateState) {
+                UpdateCheckState.Idle -> {
+                    Text(
+                        text = "Установлена версия ${BuildConfig.VERSION_NAME}. Обновления загружаются напрямую из GitHub Releases.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subColor,
+                    )
+                }
+
+                UpdateCheckState.Checking -> {
+                    Text(
+                        text = "Проверяем новые версии на GitHub...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subColor,
+                    )
+                }
+
+                UpdateCheckState.UpToDate -> {
+                    Text(
+                        text = "Установлена актуальная версия ${BuildConfig.VERSION_NAME}.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subColor,
+                    )
+                }
+
+                is UpdateCheckState.Available -> {
+                    val sizeMb = updateState.info.sizeBytes / (1024f * 1024f)
+                    val sizeText = if (sizeMb > 0f) " (${String.format("%.1f", sizeMb)} МБ)" else ""
+                    Text(
+                        text = "Доступна новая версия ${updateState.info.versionName}$sizeText",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = accentColor,
+                    )
+                    if (updateState.info.releaseNotes.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = updateState.info.releaseNotes.take(240),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subColor,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+
+                is UpdateCheckState.Downloading -> {
+                    Text(
+                        text = "Загружаем версию ${updateState.info.versionName} (${(updateState.progress * 100).toInt()}%)...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = titleColor,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (updateState.progress > 0f) {
+                        LinearProgressIndicator(
+                            progress = { updateState.progress.coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(999.dp)),
+                            color = accentColor,
+                            trackColor = if (style.isNeon) Color(0x33FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(999.dp)),
+                            color = accentColor,
+                            trackColor = if (style.isNeon) Color(0x33FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
+                        )
+                    }
+                }
+
+                is UpdateCheckState.ReadyToInstall -> {
+                    Text(
+                        text = "Версия ${updateState.info.versionName} загружена. Нажмите кнопку ниже, чтобы установить обновление поверх текущей версии.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = accentColor,
+                    )
+                }
+
+                is UpdateCheckState.NeedsInstallPermission -> {
+                    Text(
+                        text = "Разрешите установку из этого источника в открывшихся настройках Android, затем нажмите «Установить».",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = accentColor,
+                    )
+                }
+
+                is UpdateCheckState.Error -> {
+                    Text(
+                        text = updateState.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val canCheck = updateState !is UpdateCheckState.Checking && updateState !is UpdateCheckState.Downloading
+                GlassCard(
+                    modifier = Modifier.weight(1f),
+                    cornerRadius = 12.dp,
+                    onClick = if (canCheck) onCheckForUpdates else null,
                 ) {
                     Text(
-                        text = lesson.lessonType.label,
+                        text = if (updateState is UpdateCheckState.Checking) "Проверка..." else "Проверить",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        color = titleColor,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp, horizontal = 8.dp),
                     )
                 }
-                if (lesson.pairNumber > 0) {
-                    Text(
-                        text = "${lesson.pairNumber} пара • ${lesson.timeRangeText}",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    Text(
-                        text = lesson.timeRangeText,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+
+                if (isAvailableOrReady) {
+                    val installBrush = if (style.isNeon) {
+                        Brush.verticalGradient(listOf(Color(0xFF14B8A6), Color(0xFF0F766E)))
+                    } else {
+                        Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
+                    }
+                    GlassCard(
+                        modifier = Modifier.weight(1f),
+                        cornerRadius = 12.dp,
+                        fillBrush = installBrush,
+                        onClick = onInstallUpdate,
+                    ) {
+                        Text(
+                            text = when (updateState) {
+                                is UpdateCheckState.ReadyToInstall,
+                                is UpdateCheckState.NeedsInstallPermission,
+                                -> "Установить"
+                                else -> "Скачать и обновить"
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                        )
+                    }
                 }
-            }
-
-            Text(
-                text = lesson.subject,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-            )
-
-            if (lesson.room.isNotBlank()) {
-                Text(
-                    text = "Аудитория: ${lesson.room}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            if (lesson.teachers.isNotEmpty()) {
-                Text(
-                    text = "Преподаватель: ${lesson.teachers.joinToString(", ")}",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            if (lesson.parity != WeekParity.EVERY) {
-                Text(
-                    text = "Периодичность: ${lesson.parity.label} неделя",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (lesson.note.isNotBlank()) {
-                Text(
-                    text = "Примечание: ${lesson.note}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (lesson.isChange) {
-                Text(
-                    text = "Внимание: это замена в расписании",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.error,
-                )
             }
         }
     }

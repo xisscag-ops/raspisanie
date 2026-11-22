@@ -140,4 +140,35 @@ class ScheduleParserTest {
         assertEquals("113", lessons[1].room)
         assertEquals(listOf("Демидова Е. Е."), lessons[1].teachers)
     }
+
+    @Test
+    fun `applies shared instructor and office to second subgroup when array has single entry`() {
+        val raw = """
+            [
+              {
+                "dayName": "Четверг",
+                "classNumberName": "3 пара",
+                "classTime": "11:20 / 12:50",
+                "groups": ["С-25ИО", "С-25ИО"],
+                "subjects": [
+                  "(пр. 1) Физическая культура и спорт",
+                  "(пр. 2) Физическая культура и спорт"
+                ],
+                "instructors": ["Сидоров С. С."],
+                "offices": ["Спортзал"],
+                "notes": ["Практические занятия"],
+                "isUpperWeek": null,
+                "date": null,
+                "isChange": false
+              }
+            ]
+        """.trimIndent()
+
+        val lessons = ScheduleParser.parseSchedule(raw)
+        assertEquals(2, lessons.size)
+        assertEquals("Спортзал", lessons[0].room)
+        assertEquals(listOf("Сидоров С. С."), lessons[0].teachers)
+        assertEquals("Спортзал", lessons[1].room)
+        assertEquals(listOf("Сидоров С. С."), lessons[1].teachers)
+    }
 }

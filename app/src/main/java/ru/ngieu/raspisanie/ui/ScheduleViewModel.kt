@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import ru.ngieu.raspisanie.data.AppUpdateInfo
+import ru.ngieu.raspisanie.data.AppUpdater
+import ru.ngieu.raspisanie.data.InstallLaunchResult
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.NgieuApiClient
 import ru.ngieu.raspisanie.data.ScheduleCache
@@ -20,6 +23,7 @@ import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LiveLessonState
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.domain.WeekFilterMode
+import java.io.File
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -35,6 +39,17 @@ enum class MainNavTab(val label: String) {
     WEEK("Неделя"),
     GROUP("Группа"),
     SETTINGS("Настройки"),
+}
+
+sealed interface UpdateCheckState {
+    data object Idle : UpdateCheckState
+    data object Checking : UpdateCheckState
+    data object UpToDate : UpdateCheckState
+    data class Available(val info: AppUpdateInfo) : UpdateCheckState
+    data class Downloading(val info: AppUpdateInfo, val progress: Float) : UpdateCheckState
+    data class ReadyToInstall(val info: AppUpdateInfo, val apkPath: String) : UpdateCheckState
+    data class NeedsInstallPermission(val info: AppUpdateInfo, val apkPath: String) : UpdateCheckState
+    data class Error(val message: String) : UpdateCheckState
 }
 
 @Immutable
@@ -68,6 +83,7 @@ data class ScheduleUiState(
     val lessonsByWeekDay: Map<LocalDate, List<Lesson>> = emptyMap(),
     val liveLessonState: LiveLessonState = LiveLessonState.NoLessonsToday,
     val selectedDayProgress: DayProgressSummary = DayProgressSummary(),
+    val updateState: UpdateCheckState = UpdateCheckState.Idle,
 ) {
     val selectedMonday: LocalDate
         get() = ScheduleEngine.mondayOf(selectedDate)
@@ -124,6 +140,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         api = NgieuApiClient(),
         cache = ScheduleCache(application),
     )
+    private val appUpdater = AppUpdater()
 
     private val _uiState = MutableStateFlow(
         recomputeDerived(ScheduleUiState(themeMode = repository.loadThemeMode()))
@@ -133,6 +150,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     init {
         loadInitialData()
         startClockTicker()
+        checkForUpdates(silent = true)
     }
 
     private fun loadInitialData() {
@@ -273,10 +291,117 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         updateState { it.copy(themeMode = mode) }
     }
 
+    fun checkForUpdates(silent: Boolean = false) {
+        viewModelScope.launch {
+            if (!silent) {
+                updateState { it.copy(updateState = UpdateCheckState.Checking) }
+            }
+            val result = appUpdater.checkForUpdate()
+            result.fold(
+                onSuccess = { info ->
+                    updateState { state ->
+                        if (info != null) {
+                            state.copy(updateState = UpdateCheckState.Available(info))
+                        } else if (!silent) {
+                            state.copy(updateState = UpdateCheckState.UpToDate)
+                        } else {
+                            state
+                        }
+                    }
+                },
+                onFailure = { error ->
+                    if (!silent) {
+                        updateState {
+                            it.copy(
+                                updateState = UpdateCheckState.Error(
+                                    error.message ?: "Не удалось проверить обновления",
+                                ),
+                            )
+                        }
+                    }
+                },
+            )
+        }
+    }
+
+    fun downloadAndInstallUpdate() {
+        val info = when (val current = _uiState.value.updateState) {
+            is UpdateCheckState.Available -> current.info
+            is UpdateCheckState.ReadyToInstall -> {
+                launchInstallerForFile(current.info, File(current.apkPath))
+                return
+            }
+            is UpdateCheckState.NeedsInstallPermission -> {
+                launchInstallerForFile(current.info, File(current.apkPath))
+                return
+            }
+            else -> return
+        }
+
+        viewModelScope.launch {
+            updateState { it.copy(updateState = UpdateCheckState.Downloading(info, 0f)) }
+            val downloadResult = appUpdater.downloadApk(
+                context = getApplication(),
+                info = info,
+                onProgress = { progress ->
+                    _uiState.update { current ->
+                        current.copy(updateState = UpdateCheckState.Downloading(info, progress))
+                    }
+                },
+            )
+            downloadResult.fold(
+                onSuccess = { apkFile ->
+                    launchInstallerForFile(info, apkFile)
+                },
+                onFailure = { error ->
+                    updateState {
+                        it.copy(
+                            updateState = UpdateCheckState.Error(
+                                error.message ?: "Не удалось скачать обновление",
+                            ),
+                        )
+                    }
+                },
+            )
+        }
+    }
+
+    private fun launchInstallerForFile(info: AppUpdateInfo, apkFile: File) {
+        if (!apkFile.exists()) {
+            updateState { it.copy(updateState = UpdateCheckState.Available(info)) }
+            return
+        }
+        runCatching {
+            appUpdater.launchInstaller(getApplication(), apkFile)
+        }.fold(
+            onSuccess = { result ->
+                updateState {
+                    it.copy(
+                        updateState = when (result) {
+                            InstallLaunchResult.LAUNCHED ->
+                                UpdateCheckState.ReadyToInstall(info, apkFile.absolutePath)
+                            InstallLaunchResult.PERMISSION_REQUIRED ->
+                                UpdateCheckState.NeedsInstallPermission(info, apkFile.absolutePath)
+                        },
+                    )
+                }
+            },
+            onFailure = { error ->
+                updateState {
+                    it.copy(
+                        updateState = UpdateCheckState.Error(
+                            error.message ?: "Не удалось запустить установку APK",
+                        ),
+                    )
+                }
+            },
+        )
+    }
+
     private fun startClockTicker() {
         viewModelScope.launch {
             while (isActive) {
-                delay(30_000L)
+                delay(15_000L)
                 updateState {
                     it.copy(
                         todayDate = currentKnyagininoDate(),

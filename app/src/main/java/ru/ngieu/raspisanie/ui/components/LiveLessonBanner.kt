@@ -53,16 +53,22 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.ngieu.raspisanie.R
+import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.LiveLessonState
+import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.ui.DayProgressSummary
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import java.time.format.DateTimeFormatter
+
+private val hmFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
 fun LiveLessonBanner(
     state: LiveLessonState,
     progressSummary: DayProgressSummary,
     isViewingToday: Boolean,
+    daySlots: List<LessonSlot> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     if (progressSummary.totalCount == 0 && (!isViewingToday || state is LiveLessonState.NoLessonsToday)) {
@@ -124,6 +130,8 @@ fun LiveLessonBanner(
         )
     }
 
+    val canExpand = (isViewingToday && state !is LiveLessonState.NoLessonsToday) || daySlots.isNotEmpty()
+
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
@@ -132,7 +140,11 @@ fun LiveLessonBanner(
         fillBrush = capsuleBrush,
         borderBrush = borderBrush,
         glowColor = if (style.isNeon) Color(0xFF7C3AED) else null,
-        onClick = { expanded = !expanded },
+        onClick = if (canExpand) {
+            { expanded = !expanded }
+        } else {
+            null
+        },
     ) {
         Column(
             modifier = Modifier
@@ -145,7 +157,8 @@ fun LiveLessonBanner(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    val captionSuffix = if (isViewingToday) "пар сегодня" else "пар в этот день"
+                    val word = pairsWord(progressSummary.totalCount)
+                    val captionSuffix = if (isViewingToday) "$word сегодня" else "$word в этот день"
                     val primaryTextColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSecondaryContainer
                     val secondaryTextColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
 
@@ -253,17 +266,85 @@ fun LiveLessonBanner(
             }
 
             AnimatedVisibility(
-                visible = expanded && isViewingToday && state !is LiveLessonState.NoLessonsToday,
+                visible = expanded && canExpand,
                 enter = expandVertically(tween(120)) + fadeIn(tween(120)),
                 exit = shrinkVertically(tween(100)) + fadeOut(tween(100)),
             ) {
-                AnimatedContent(
-                    targetState = state,
-                    transitionSpec = { fadeIn(tween(110)) togetherWith fadeOut(tween(90)) },
-                    label = "liveDetail",
-                ) { live ->
-                    LiveDetailsStrip(state = live, isNeon = style.isNeon)
+                if (isViewingToday && state !is LiveLessonState.NoLessonsToday) {
+                    AnimatedContent(
+                        targetState = state,
+                        transitionSpec = { fadeIn(tween(110)) togetherWith fadeOut(tween(90)) },
+                        label = "liveDetail",
+                    ) { live ->
+                        LiveDetailsStrip(state = live, isNeon = style.isNeon)
+                    }
+                } else if (daySlots.isNotEmpty()) {
+                    DaySummaryStrip(daySlots = daySlots, isNeon = style.isNeon)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DaySummaryStrip(
+    daySlots: List<LessonSlot>,
+    isNeon: Boolean,
+) {
+    val textColor = if (isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+    val subColor = if (isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+
+    val firstSlot = daySlots.first()
+    val lastSlot = daySlots.last()
+    val firstStart = daySlots.firstNotNullOfOrNull { it.startTime }
+    val lastEnd = daySlots.lastOrNull { it.endTime != null }?.endTime
+    val changesCount = daySlots.count { slot -> slot.lessons.any { it.isChange } }
+
+    val timeSpanText = if (firstStart != null && lastEnd != null) {
+        "Занятия с ${firstStart.format(hmFormatter)} до ${lastEnd.format(hmFormatter)}"
+    } else {
+        "Начало: ${firstSlot.timeRangeText}"
+    }
+    val firstLesson = firstSlot.lessons.firstOrNull()
+    val firstSubject = firstLesson?.let { ScheduleEngine.cleanSubgroupPrefix(it.subject) }.orEmpty()
+    val secondLine = buildString {
+        if (firstSubject.isNotEmpty()) {
+            append("Первая пара: $firstSubject")
+        }
+        if (changesCount > 0) {
+            if (isNotEmpty()) append(" • ")
+            append("Замен: $changesCount")
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Schedule,
+            contentDescription = null,
+            tint = if (isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = timeSpanText,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = textColor,
+            )
+            if (secondLine.isNotEmpty()) {
+                Text(
+                    text = secondLine,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = subColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
@@ -282,20 +363,20 @@ private fun LiveDetailsStrip(
             Icons.Rounded.PlayCircle,
             "Сейчас ${state.currentLesson.pairNumber} пара • осталось ${state.minutesRemaining} мин",
             buildString {
-                append(state.currentLesson.subject)
+                append(ScheduleEngine.cleanSubgroupPrefix(state.currentLesson.subject))
                 if (state.currentLesson.room.isNotBlank()) append(" • ауд. ${state.currentLesson.room}")
             },
         )
         is LiveLessonState.BeforeFirstLesson -> Triple(
             Icons.Rounded.Schedule,
             "До первой пары ${formatMinutes(state.minutesUntilStart)}",
-            "${state.nextLesson.subject} (${state.nextLesson.timeRangeText})",
+            "${ScheduleEngine.cleanSubgroupPrefix(state.nextLesson.subject)} (${state.nextLesson.timeRangeText})",
         )
         is LiveLessonState.OnBreak -> Triple(
             Icons.Rounded.Schedule,
             "Перемена • через ${formatMinutes(state.minutesUntilStart)} ${state.nextLesson.pairNumber} пара",
             buildString {
-                append(state.nextLesson.subject)
+                append(ScheduleEngine.cleanSubgroupPrefix(state.nextLesson.subject))
                 if (state.nextLesson.room.isNotBlank()) append(" • ауд. ${state.nextLesson.room}")
             },
         )
@@ -335,6 +416,14 @@ private fun LiveDetailsStrip(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+private fun pairsWord(count: Int): String {
+    return when {
+        count % 10 == 1 && count % 100 != 11 -> "пара"
+        count % 10 in 2..4 && count % 100 !in 12..14 -> "пары"
+        else -> "пар"
     }
 }
 
