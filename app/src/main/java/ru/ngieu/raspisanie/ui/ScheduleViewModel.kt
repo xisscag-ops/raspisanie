@@ -98,6 +98,7 @@ data class ScheduleUiState(
     val iconStyle: AppIconStyle = AppIconStyle.AUTO,
     val activeLauncherIcon: ResolvedAppIcon? = null,
     val launcherAliases: List<String> = emptyList(),
+    val systemIconDiagnostics: SystemIconDiagnostics = SystemIconDiagnostics(),
     val iconSyncError: String? = null,
     val subgroupFilter: SubgroupFilterMode = SubgroupFilterMode.ALL,
     val nowTime: LocalTime = currentKnyagininoTime(),
@@ -474,13 +475,14 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     fun refreshActiveLauncherIcon() {
         viewModelScope.launch {
             val app = getApplication<Application>()
-            val (active, aliases) = withContext(Dispatchers.IO) {
-                AppIconManager.readActiveIcon(app) to AppIconManager.readLauncherAppsAliases(app)
+            val (active, diagnostics) = withContext(Dispatchers.IO) {
+                AppIconManager.readActiveIcon(app) to AppIconManager.readSystemDiagnostics(app)
             }
             _uiState.update {
                 it.copy(
                     activeLauncherIcon = active,
-                    launcherAliases = aliases,
+                    launcherAliases = diagnostics.aliases,
+                    systemIconDiagnostics = diagnostics,
                 )
             }
         }
