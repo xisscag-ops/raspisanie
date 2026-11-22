@@ -29,10 +29,14 @@ class MainActivity : ComponentActivity() {
                     onSelectWeekMode = viewModel::setWeekOverride,
                     onSelectTab = viewModel::selectTab,
                     onSearchQueryChange = viewModel::setSearchQuery,
+                    onActorSearchFilterChange = viewModel::setActorSearchFilter,
+                    onOpenSearch = viewModel::ensureActorsLoaded,
+                    onSelectActor = viewModel::selectActor,
+                    onResetToDefaultGroup = viewModel::resetToDefaultGroup,
                     onSelectTheme = viewModel::setThemeMode,
                     onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
                     onInstallUpdate = viewModel::downloadAndInstallUpdate,
-                    onShareSchedule = { viewModel.shareWeekSchedule(this) },
+                    onShareSchedule = { viewModel.shareDaySchedule(this) },
                 )
             }
         }

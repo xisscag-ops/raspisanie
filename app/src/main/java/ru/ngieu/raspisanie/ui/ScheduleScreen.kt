@@ -26,12 +26,14 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -82,7 +84,11 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import ru.ngieu.raspisanie.BuildConfig
 import ru.ngieu.raspisanie.R
+import ru.ngieu.raspisanie.data.ActorKind
 import ru.ngieu.raspisanie.data.AppUpdater
+import ru.ngieu.raspisanie.data.ScheduleActor
+import ru.ngieu.raspisanie.data.ScheduleParser
+import ru.ngieu.raspisanie.data.ScheduleRepository
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.LiveLessonState
@@ -120,6 +126,10 @@ fun ScheduleScreen(
     onSelectWeekMode: (WeekFilterMode) -> Unit,
     onSelectTab: (MainNavTab) -> Unit,
     onSearchQueryChange: (String) -> Unit,
+    onActorSearchFilterChange: (ActorKind?) -> Unit,
+    onOpenSearch: () -> Unit,
+    onSelectActor: (ScheduleActor) -> Unit,
+    onResetToDefaultGroup: () -> Unit,
     onSelectTheme: (ThemeModeSetting) -> Unit,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
@@ -143,6 +153,8 @@ fun ScheduleScreen(
                 // Верхний заголовок в стиле Neon Glass
                 NeonTopHeader(
                     groupName = state.groupName,
+                    activeActorKind = state.activeActorKind,
+                    isViewingDefaultGroup = state.isViewingDefaultGroup,
                     weekSubtitle = "${state.activeWeekFilter.title} неделя",
                     showTodayPill = state.selectedDate != state.todayDate || state.manualWeekOverride != null,
                     isSearchVisible = showSearchBar,
@@ -150,10 +162,13 @@ fun ScheduleScreen(
                     canShare = !state.isLoading && state.allLessons.isNotEmpty(),
                     onClickWeekPicker = { showWeekPickerSheet = true },
                     onClickToday = onGoToday,
+                    onClickResetGroup = onResetToDefaultGroup,
                     onClickShare = onShareSchedule,
                     onToggleSearch = {
                         showSearchBar = !showSearchBar
-                        if (!showSearchBar && state.searchQuery.isNotEmpty()) {
+                        if (showSearchBar) {
+                            onOpenSearch()
+                        } else if (state.searchQuery.isNotEmpty()) {
                             onSearchQueryChange("")
                         }
                     },
@@ -166,7 +181,7 @@ fun ScheduleScreen(
                     hasAppUpdate = hasAppUpdate,
                 )
 
-                // Раскрывающийся поиск
+                // Раскрывающийся поиск по предметам, группам и преподавателям
                 AnimatedVisibility(
                     visible = showSearchBar,
                     enter = expandVertically(tween(110)) + fadeIn(tween(110)),
@@ -174,7 +189,21 @@ fun ScheduleScreen(
                 ) {
                     NeonSearchBar(
                         query = state.searchQuery,
+                        actors = state.availableActors,
+                        activeActorId = state.activeActorId,
+                        selectedFilter = state.actorSearchFilter,
+                        isActorsLoading = state.isActorsLoading,
+                        isViewingDefaultGroup = state.isViewingDefaultGroup,
                         onQueryChange = onSearchQueryChange,
+                        onSelectFilter = onActorSearchFilterChange,
+                        onSelectActor = { actor ->
+                            onSelectActor(actor)
+                            showSearchBar = false
+                        },
+                        onResetToDefaultGroup = {
+                            onResetToDefaultGroup()
+                            showSearchBar = false
+                        },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     )
                 }
@@ -227,6 +256,7 @@ fun ScheduleScreen(
                                 GroupAndBellsTab(
                                     state = state,
                                     onRefresh = onRefresh,
+                                    onResetToDefaultGroup = onResetToDefaultGroup,
                                 )
                             }
 
@@ -299,6 +329,8 @@ fun ScheduleScreen(
 @Composable
 private fun NeonTopHeader(
     groupName: String,
+    activeActorKind: ActorKind,
+    isViewingDefaultGroup: Boolean,
     weekSubtitle: String,
     showTodayPill: Boolean,
     isSearchVisible: Boolean,
@@ -306,6 +338,7 @@ private fun NeonTopHeader(
     canShare: Boolean,
     onClickWeekPicker: () -> Unit,
     onClickToday: () -> Unit,
+    onClickResetGroup: () -> Unit,
     onClickShare: () -> Unit,
     onToggleSearch: () -> Unit,
 ) {
@@ -322,7 +355,7 @@ private fun NeonTopHeader(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Группа $groupName",
+                text = if (activeActorKind == ActorKind.TEACHER) groupName else "Группа $groupName",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = titleColor,
@@ -332,7 +365,7 @@ private fun NeonTopHeader(
             Spacer(modifier = Modifier.height(2.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Row(
                     modifier = Modifier
@@ -366,13 +399,34 @@ private fun NeonTopHeader(
                                 if (style.isNeon) Color(0x409333EA) else MaterialTheme.colorScheme.primaryContainer,
                             )
                             .clickable(onClick = onClickToday)
-                            .padding(horizontal = 10.dp, vertical = 3.dp),
+                            .padding(horizontal = 9.dp, vertical = 3.dp),
                     ) {
                         Text(
                             text = "Сегодня",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = if (style.isNeon) Color(0xFFE9D5FF) else MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                }
+
+                AnimatedVisibility(visible = !isViewingDefaultGroup) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (style.isNeon) Color(0x3838BDF8) else MaterialTheme.colorScheme.secondaryContainer,
+                            )
+                            .clickable(onClick = onClickResetGroup)
+                            .padding(horizontal = 9.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = "← ${ScheduleRepository.TARGET_GROUP_NAME}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.onSecondaryContainer,
                             maxLines = 1,
                             softWrap = false,
                         )
@@ -455,63 +509,294 @@ private fun HeaderCircleButton(
 @Composable
 private fun NeonSearchBar(
     query: String,
+    actors: List<ScheduleActor>,
+    activeActorId: String,
+    selectedFilter: ActorKind?,
+    isActorsLoading: Boolean,
+    isViewingDefaultGroup: Boolean,
     onQueryChange: (String) -> Unit,
+    onSelectFilter: (ActorKind?) -> Unit,
+    onSelectActor: (ScheduleActor) -> Unit,
+    onResetToDefaultGroup: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val style = LocalAppVisualStyle.current
     val textColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
     val hintColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
 
-    GlassCard(
+    val groupsCount = remember(actors) { actors.count { it.kind == ActorKind.GROUP } }
+    val teachersCount = remember(actors) { actors.count { it.kind == ActorKind.TEACHER } }
+    val matchingActors = remember(actors, query, selectedFilter) {
+        if (query.isBlank() && selectedFilter == null) {
+            emptyList()
+        } else {
+            ScheduleParser.searchActors(actors, query, selectedFilter).take(40)
+        }
+    }
+    val showActorsPanel = query.isNotBlank() || selectedFilter != null || !isViewingDefaultGroup
+
+    Column(
         modifier = modifier.fillMaxWidth(),
-        cornerRadius = 16.dp,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        GlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            cornerRadius = 16.dp,
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_neon_search),
-                contentDescription = null,
-                colorFilter = if (style.isNeon) null else ColorFilter.tint(hintColor),
-                modifier = Modifier.size(18.dp),
-            )
-            Box(modifier = Modifier.weight(1f)) {
-                if (query.isEmpty()) {
-                    Text(
-                        text = "Поиск по предмету, преподавателю или ауд.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = hintColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_neon_search),
+                    contentDescription = null,
+                    colorFilter = if (style.isNeon) null else ColorFilter.tint(hintColor),
+                    modifier = Modifier.size(18.dp),
+                )
+                Box(modifier = Modifier.weight(1f)) {
+                    if (query.isEmpty()) {
+                        Text(
+                            text = "Группа, преподаватель или предмет...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = hintColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    BasicTextField(
+                        value = query,
+                        onValueChange = onQueryChange,
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
+                        cursorBrush = SolidColor(if (style.isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                BasicTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
-                    cursorBrush = SolidColor(if (style.isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            if (query.isNotEmpty()) {
-                IconButton(
-                    onClick = { onQueryChange("") },
-                    modifier = Modifier.size(22.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = "Очистить поиск",
-                        tint = hintColor,
-                        modifier = Modifier.size(16.dp),
-                    )
+                if (query.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onQueryChange("") },
+                        modifier = Modifier.size(22.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Очистить поиск",
+                            tint = hintColor,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
         }
+
+        // Чипы быстрого переключения: Все / Группы / Преподаватели / Моя группа
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SearchFilterChip(
+                label = "Все",
+                selected = selectedFilter == null,
+                onClick = { onSelectFilter(null) },
+                modifier = Modifier.weight(1f),
+            )
+            SearchFilterChip(
+                label = if (groupsCount > 0) "Группы ($groupsCount)" else "Группы",
+                selected = selectedFilter == ActorKind.GROUP,
+                onClick = {
+                    onSelectFilter(if (selectedFilter == ActorKind.GROUP) null else ActorKind.GROUP)
+                },
+                modifier = Modifier.weight(1f),
+            )
+            SearchFilterChip(
+                label = if (teachersCount > 0) "Препод. ($teachersCount)" else "Преподаватели",
+                selected = selectedFilter == ActorKind.TEACHER,
+                onClick = {
+                    onSelectFilter(if (selectedFilter == ActorKind.TEACHER) null else ActorKind.TEACHER)
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        if (showActorsPanel) {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 16.dp,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                ) {
+                    if (!isViewingDefaultGroup) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onResetToDefaultGroup)
+                                .padding(horizontal = 14.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = "Вернуться к своей группе (${ScheduleRepository.TARGET_GROUP_NAME})",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        if (matchingActors.isNotEmpty() || isActorsLoading) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 14.dp),
+                                color = if (style.isNeon) Color(0x24FFFFFF) else MaterialTheme.colorScheme.outlineVariant,
+                            )
+                        }
+                    }
+
+                    when {
+                        isActorsLoading && actors.isEmpty() -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                CircularProgressIndicator(
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text(
+                                    text = "Загружаем список групп и преподавателей...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = hintColor,
+                                )
+                            }
+                        }
+
+                        matchingActors.isEmpty() && (query.isNotBlank() || selectedFilter != null) -> {
+                            Text(
+                                text = if (query.isNotBlank()) {
+                                    "Группы и преподаватели по запросу не найдены"
+                                } else {
+                                    "Список пока пуст — потяните экран вниз для обновления"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = hintColor,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            )
+                        }
+
+                        matchingActors.isNotEmpty() -> {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 220.dp),
+                            ) {
+                                items(
+                                    items = matchingActors,
+                                    key = { it.id },
+                                ) { actor ->
+                                    val isCurrent = actor.id == activeActorId
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onSelectActor(actor) }
+                                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        Image(
+                                            painter = painterResource(
+                                                id = if (actor.kind == ActorKind.GROUP) {
+                                                    R.drawable.ic_neon_group
+                                                } else {
+                                                    R.drawable.ic_neon_teacher
+                                                },
+                                            ),
+                                            contentDescription = null,
+                                            colorFilter = if (style.isNeon) null else ColorFilter.tint(hintColor),
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = actor.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (isCurrent && style.isNeon) {
+                                                    Color(0xFF7DD3FC)
+                                                } else if (isCurrent) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    textColor
+                                                },
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            Text(
+                                                text = if (actor.kind == ActorKind.GROUP) "Группа" else "Преподаватель",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = hintColor,
+                                            )
+                                        }
+                                        if (isCurrent) {
+                                            Text(
+                                                text = "Открыто",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (style.isNeon) Color(0xFF34D399) else MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchFilterChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val style = LocalAppVisualStyle.current
+    val fillBrush = when {
+        selected && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
+        selected -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
+        else -> null
+    }
+    val labelColor = when {
+        selected -> Color.White
+        style.isNeon -> NeonPalette.textSecondary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    GlassCard(
+        modifier = modifier,
+        cornerRadius = 11.dp,
+        fillBrush = fillBrush,
+        onClick = onClick,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = labelColor,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 7.dp),
+        )
     }
 }
 
@@ -554,12 +839,14 @@ private fun DayHorizontalPager(
         initialPage = initialPage,
         pageCount = { ScheduleEngine.TOTAL_DAY_PAGES },
     )
+    var lastPagerDate by remember { mutableStateOf(state.selectedDate) }
 
     LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }
+        snapshotFlow { pagerState.currentPage }
             .distinctUntilChanged()
-            .collect { settledPage ->
-                val pageDate = ScheduleEngine.dayIndexToDate(state.anchorMonday, settledPage)
+            .collect { page ->
+                val pageDate = ScheduleEngine.dayIndexToDate(state.anchorMonday, page)
+                lastPagerDate = pageDate
                 if (pageDate != latestSelectedDate) {
                     onSelectDate(pageDate)
                 }
@@ -567,6 +854,8 @@ private fun DayHorizontalPager(
     }
 
     LaunchedEffect(state.selectedDate) {
+        if (state.selectedDate == lastPagerDate) return@LaunchedEffect
+        lastPagerDate = state.selectedDate
         val targetPage = ScheduleEngine.dateToDayIndex(state.anchorMonday, state.selectedDate)
         if (pagerState.currentPage != targetPage) {
             pagerState.scrollToPage(targetPage)
@@ -639,6 +928,7 @@ private fun DayHorizontalPager(
             nowTime = state.nowTime,
             themeMode = state.themeMode,
             hasSearchQuery = state.searchQuery.isNotBlank(),
+            showGroupsInsteadOfTeachers = state.activeActorKind == ActorKind.TEACHER,
         )
     }
 }
@@ -655,6 +945,7 @@ private fun DayLessonsList(
     nowTime: LocalTime,
     themeMode: ThemeModeSetting,
     hasSearchQuery: Boolean,
+    showGroupsInsteadOfTeachers: Boolean,
 ) {
     val style = LocalAppVisualStyle.current
     val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -724,6 +1015,7 @@ private fun DayLessonsList(
                     themeMode = themeMode,
                     isFirst = index == 0,
                     isLast = index == daySlots.lastIndex,
+                    showGroupsInsteadOfTeachers = showGroupsInsteadOfTeachers,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -785,12 +1077,14 @@ private fun WeekHorizontalPager(
         initialPage = initialPage,
         pageCount = { ScheduleEngine.TOTAL_WEEK_PAGES },
     )
+    var lastPagerMonday by remember { mutableStateOf(state.selectedMonday) }
 
     LaunchedEffect(pagerState) {
-        snapshotFlow { pagerState.settledPage }
+        snapshotFlow { pagerState.currentPage }
             .distinctUntilChanged()
-            .collect { settledPage ->
-                val pageMonday = ScheduleEngine.weekIndexToMonday(state.anchorMonday, settledPage)
+            .collect { page ->
+                val pageMonday = ScheduleEngine.weekIndexToMonday(state.anchorMonday, page)
+                lastPagerMonday = pageMonday
                 val currentMonday = ScheduleEngine.mondayOf(latestSelectedDate)
                 if (pageMonday != currentMonday) {
                     val dayOffset = (latestSelectedDate.dayOfWeek.value - 1).coerceIn(0, 5).toLong()
@@ -800,6 +1094,8 @@ private fun WeekHorizontalPager(
     }
 
     LaunchedEffect(state.selectedMonday) {
+        if (state.selectedMonday == lastPagerMonday) return@LaunchedEffect
+        lastPagerMonday = state.selectedMonday
         val targetPage = ScheduleEngine.mondayToWeekIndex(state.anchorMonday, state.selectedMonday)
         if (pagerState.currentPage != targetPage) {
             pagerState.scrollToPage(targetPage)
@@ -949,6 +1245,7 @@ private fun WeekHorizontalPager(
                             themeMode = state.themeMode,
                             isFirst = index == 0,
                             isLast = index == daySlots.lastIndex,
+                            showGroupsInsteadOfTeachers = state.activeActorKind == ActorKind.TEACHER,
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -962,6 +1259,7 @@ private fun WeekHorizontalPager(
 private fun GroupAndBellsTab(
     state: ScheduleUiState,
     onRefresh: () -> Unit,
+    onResetToDefaultGroup: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
     val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
@@ -1008,22 +1306,56 @@ private fun GroupAndBellsTab(
                             contentAlignment = Alignment.Center,
                         ) {
                             Image(
-                                painter = painterResource(id = R.drawable.ic_neon_group),
+                                painter = painterResource(
+                                    id = if (state.activeActorKind == ActorKind.TEACHER) {
+                                        R.drawable.ic_neon_teacher
+                                    } else {
+                                        R.drawable.ic_neon_group
+                                    },
+                                ),
                                 contentDescription = null,
                                 modifier = Modifier.size(22.dp),
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Группа ${state.groupName}",
+                                text = if (state.activeActorKind == ActorKind.TEACHER) {
+                                    state.groupName
+                                } else {
+                                    "Группа ${state.groupName}"
+                                },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = titleColor,
                             )
                             Text(
-                                text = "Княгининский университет (НГИЭУ)",
+                                text = if (state.activeActorKind == ActorKind.TEACHER) {
+                                    "Преподаватель • Княгининский университет (НГИЭУ)"
+                                } else {
+                                    "Княгининский университет (НГИЭУ)"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = subColor,
+                            )
+                        }
+                    }
+
+                    if (!state.isViewingDefaultGroup) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        GlassCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            cornerRadius = 12.dp,
+                            onClick = onResetToDefaultGroup,
+                        ) {
+                            Text(
+                                text = "Вернуться к группе ${ScheduleRepository.TARGET_GROUP_NAME}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp, horizontal = 8.dp),
                             )
                         }
                     }

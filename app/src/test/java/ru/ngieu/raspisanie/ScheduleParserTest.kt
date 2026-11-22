@@ -6,7 +6,9 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ru.ngieu.raspisanie.data.ActorKind
 import ru.ngieu.raspisanie.data.LessonType
+import ru.ngieu.raspisanie.data.ScheduleActor
 import ru.ngieu.raspisanie.data.ScheduleParser
 import ru.ngieu.raspisanie.data.WeekParity
 import java.time.DayOfWeek
@@ -170,5 +172,48 @@ class ScheduleParserTest {
         assertEquals(listOf("Сидоров С. С."), lessons[0].teachers)
         assertEquals("Спортзал", lessons[1].room)
         assertEquals(listOf("Сидоров С. С."), lessons[1].teachers)
+    }
+
+    @Test
+    fun `parses typed actors and preserves groups on lessons`() {
+        val rawTeachers = """
+            [
+              {"id":"t1","departmentId":1,"name":"Иванов Иван Иванович"},
+              {"id":"t2","departmentId":1,"name":"Петрова Мария Сергеевна"}
+            ]
+        """.trimIndent()
+        val teachers = ScheduleParser.parseTypedActors(rawTeachers, ActorKind.TEACHER)
+        assertEquals(2, teachers.size)
+        assertEquals(ActorKind.TEACHER, teachers[0].kind)
+
+        val merged = listOf(
+            ScheduleActor("g1", "С-25ИО", ActorKind.GROUP),
+            ScheduleActor("g2", "Б-24ИО", ActorKind.GROUP),
+        ) + teachers
+
+        val teacherMatches = ScheduleParser.searchActors(merged, "иван", null)
+        assertEquals(1, teacherMatches.size)
+        assertEquals("t1", teacherMatches[0].id)
+
+        val onlyGroups = ScheduleParser.searchActors(merged, "", ActorKind.GROUP)
+        assertEquals(2, onlyGroups.size)
+
+        val rawSchedule = """
+            [
+              {
+                "dayName": "Среда",
+                "classNumberName": "2 пара",
+                "classTime": "10:15 / 11:45",
+                "groups": ["С-25ИО", "Б-25ИО"],
+                "subjects": ["Информатика"],
+                "instructors": ["Иванов И. И."],
+                "offices": ["204"],
+                "notes": ["Лекция"]
+              }
+            ]
+        """.trimIndent()
+        val lessons = ScheduleParser.parseSchedule(rawSchedule)
+        assertEquals(1, lessons.size)
+        assertEquals(listOf("С-25ИО", "Б-25ИО"), lessons[0].groups)
     }
 }

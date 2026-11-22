@@ -13,12 +13,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import ru.ngieu.raspisanie.data.ActorKind
 import ru.ngieu.raspisanie.data.AppUpdateInfo
 import ru.ngieu.raspisanie.data.AppUpdater
 import ru.ngieu.raspisanie.data.InstallLaunchResult
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.NgieuApiClient
+import ru.ngieu.raspisanie.data.ScheduleActor
 import ru.ngieu.raspisanie.data.ScheduleCache
+import ru.ngieu.raspisanie.data.ScheduleParser
 import ru.ngieu.raspisanie.data.ScheduleRepository
 import ru.ngieu.raspisanie.data.ScheduleSnapshot
 import ru.ngieu.raspisanie.data.ThemeModeSetting
@@ -66,6 +69,11 @@ data class DayProgressSummary(
 @Immutable
 data class ScheduleUiState(
     val groupName: String = ScheduleRepository.TARGET_GROUP_NAME,
+    val activeActorId: String = ScheduleRepository.FALLBACK_ACTOR_ID,
+    val activeActorKind: ActorKind = ActorKind.GROUP,
+    val availableActors: List<ScheduleActor> = emptyList(),
+    val actorSearchFilter: ActorKind? = null,
+    val isActorsLoading: Boolean = false,
     val anchorMonday: LocalDate = ScheduleEngine.mondayOf(initialDisplayDate()),
     val selectedDate: LocalDate = initialDisplayDate(),
     val todayDate: LocalDate = currentKnyagininoDate(),
@@ -90,6 +98,11 @@ data class ScheduleUiState(
     val updateState: UpdateCheckState = UpdateCheckState.Idle,
     val isSharingSchedule: Boolean = false,
 ) {
+    val isViewingDefaultGroup: Boolean
+        get() = activeActorKind == ActorKind.GROUP &&
+            ScheduleParser.normalizeGroupName(groupName) ==
+            ScheduleParser.normalizeGroupName(ScheduleRepository.TARGET_GROUP_NAME)
+
     val selectedMonday: LocalDate
         get() = ScheduleEngine.mondayOf(selectedDate)
 
@@ -124,6 +137,7 @@ data class ScheduleUiState(
         return lesson.subject.contains(q, ignoreCase = true) ||
             lesson.room.contains(q, ignoreCase = true) ||
             lesson.teachers.any { it.contains(q, ignoreCase = true) } ||
+            lesson.groups.any { it.contains(q, ignoreCase = true) } ||
             lesson.note.contains(q, ignoreCase = true)
     }
 }
@@ -160,6 +174,10 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadInitialData() {
         viewModelScope.launch {
+            val cachedActors = repository.loadCachedActors()
+            if (cachedActors.isNotEmpty()) {
+                _uiState.update { it.copy(availableActors = cachedActors) }
+            }
             val cached = repository.loadCached()
             if (cached != null) {
                 updateState { applySnapshot(it, cached, isOfflineFallback = false).copy(isLoading = false) }
@@ -170,6 +188,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     fun refresh(silent: Boolean = false) {
         viewModelScope.launch {
+            val currentState = _uiState.value
             updateState { state ->
                 state.copy(
                     isLoading = state.allLessons.isEmpty() && !silent,
@@ -180,11 +199,26 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 )
             }
 
-            val result = repository.refreshFromNetwork(currentKnyagininoDate())
+            val result = if (currentState.isViewingDefaultGroup) {
+                repository.refreshFromNetwork(currentKnyagininoDate())
+            } else {
+                repository.loadScheduleForActor(
+                    actor = ScheduleActor(
+                        id = currentState.activeActorId,
+                        name = currentState.groupName,
+                        kind = currentState.activeActorKind,
+                    ),
+                    today = currentKnyagininoDate(),
+                    forceRefresh = true,
+                )
+            }
+            val latestActors = repository.loadCachedActors()
+
             result.fold(
                 onSuccess = { snapshot ->
                     updateState { state ->
                         applySnapshot(state, snapshot, isOfflineFallback = false).copy(
+                            availableActors = if (latestActors.isNotEmpty()) latestActors else state.availableActors,
                             isLoading = false,
                             isRefreshing = false,
                             errorMessage = null,
@@ -195,6 +229,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                     updateState { state ->
                         val hasCached = state.allLessons.isNotEmpty()
                         state.copy(
+                            availableActors = if (latestActors.isNotEmpty()) latestActors else state.availableActors,
                             isLoading = false,
                             isRefreshing = false,
                             isOfflineFallback = hasCached,
@@ -217,6 +252,8 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     ): ScheduleUiState {
         return state.copy(
             groupName = snapshot.groupName,
+            activeActorId = snapshot.actorId,
+            activeActorKind = snapshot.actorKind,
             allLessons = snapshot.lessons,
             weekAnchorDate = snapshot.weekAnchorDate,
             weekAnchorIsUpper = snapshot.weekAnchorIsUpper,
@@ -289,6 +326,103 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     fun setSearchQuery(query: String) {
         updateState { it.copy(searchQuery = query) }
+        if (query.isNotBlank() && _uiState.value.availableActors.isEmpty()) {
+            ensureActorsLoaded()
+        }
+    }
+
+    fun setActorSearchFilter(filter: ActorKind?) {
+        _uiState.update { it.copy(actorSearchFilter = filter) }
+        if (_uiState.value.availableActors.isEmpty()) {
+            ensureActorsLoaded()
+        }
+    }
+
+    fun ensureActorsLoaded() {
+        val current = _uiState.value
+        if (current.isActorsLoading || current.availableActors.isNotEmpty()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isActorsLoading = true) }
+            val result = repository.refreshActorsFromNetwork()
+            result.fold(
+                onSuccess = { actors ->
+                    _uiState.update { it.copy(availableActors = actors, isActorsLoading = false) }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isActorsLoading = false) }
+                },
+            )
+        }
+    }
+
+    fun selectActor(actor: ScheduleActor) {
+        val memoryHit = repository.getMemorySnapshot(actor.id)
+        if (memoryHit != null) {
+            updateState { state ->
+                applySnapshot(state, memoryHit, isOfflineFallback = false).copy(
+                    searchQuery = "",
+                    isLoading = false,
+                    isRefreshing = false,
+                    errorMessage = null,
+                )
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            updateState { state ->
+                state.copy(
+                    groupName = actor.name,
+                    activeActorId = actor.id,
+                    activeActorKind = actor.kind,
+                    searchQuery = "",
+                    isRefreshing = true,
+                    errorMessage = null,
+                )
+            }
+            val result = repository.loadScheduleForActor(
+                actor = actor,
+                today = currentKnyagininoDate(),
+                forceRefresh = false,
+            )
+            result.fold(
+                onSuccess = { snapshot ->
+                    updateState { state ->
+                        applySnapshot(state, snapshot, isOfflineFallback = false).copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            errorMessage = null,
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    updateState { state ->
+                        state.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                        )
+                    }
+                    Toast.makeText(
+                        getApplication(),
+                        error.message ?: "Не удалось загрузить расписание для ${actor.name}",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                },
+            )
+        }
+    }
+
+    fun resetToDefaultGroup() {
+        val defaultActor = _uiState.value.availableActors.firstOrNull {
+            it.kind == ActorKind.GROUP &&
+                ScheduleParser.normalizeGroupName(it.name) ==
+                ScheduleParser.normalizeGroupName(ScheduleRepository.TARGET_GROUP_NAME)
+        } ?: ScheduleActor(
+            id = ScheduleRepository.FALLBACK_ACTOR_ID,
+            name = ScheduleRepository.TARGET_GROUP_NAME,
+            kind = ActorKind.GROUP,
+        )
+        selectActor(defaultActor)
     }
 
     fun setThemeMode(mode: ThemeModeSetting) {
@@ -403,20 +537,21 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         )
     }
 
-    fun shareWeekSchedule(context: Context) {
+    fun shareDaySchedule(context: Context) {
         val snapshotState = _uiState.value
         if (snapshotState.isSharingSchedule || snapshotState.allLessons.isEmpty()) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSharingSchedule = true) }
             try {
-                val shareSnapshot = ScheduleShareBuilder.buildWeekSnapshot(
-                    groupName = snapshotState.groupName,
-                    selectedMonday = snapshotState.selectedMonday,
+                val shareSnapshot = ScheduleShareBuilder.buildDaySnapshot(
+                    actorName = snapshotState.groupName,
+                    actorKind = snapshotState.activeActorKind,
+                    selectedDate = snapshotState.selectedDate,
                     weekFilter = snapshotState.activeWeekFilter,
                     allLessons = snapshotState.allLessons,
                 )
-                ScheduleShareRenderer.renderAndShareWeek(
+                ScheduleShareRenderer.renderAndShareDay(
                     context = context,
                     snapshot = shareSnapshot,
                     todayDate = snapshotState.todayDate,

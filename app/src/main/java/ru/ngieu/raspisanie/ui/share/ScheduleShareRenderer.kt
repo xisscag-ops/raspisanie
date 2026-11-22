@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import ru.ngieu.raspisanie.data.ActorKind
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LessonSlot
@@ -82,16 +83,9 @@ object ScheduleShareRenderer {
         val cardHeight: Float,
     )
 
-    private data class MeasuredDay(
-        val section: ShareDaySection,
-        val slots: List<MeasuredSlot>,
-        val headerHeight: Float,
-        val bodyHeight: Float,
-    )
-
-    suspend fun renderAndShareWeek(
+    suspend fun renderAndShareDay(
         context: Context,
-        snapshot: ShareWeekSnapshot,
+        snapshot: ShareDaySnapshot,
         todayDate: LocalDate,
         themeMode: ThemeModeSetting,
         updatedAtEpochMillis: Long?,
@@ -110,7 +104,7 @@ object ScheduleShareRenderer {
 
     private fun renderToCachePng(
         context: Context,
-        snapshot: ShareWeekSnapshot,
+        snapshot: ShareDaySnapshot,
         todayDate: LocalDate,
         themeMode: ThemeModeSetting,
         updatedAtEpochMillis: Long?,
@@ -119,18 +113,13 @@ object ScheduleShareRenderer {
 
         val headerTitlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = colors.textPrimary
-            textSize = 42f
+            textSize = 40f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val headerSubPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = colors.textSecondary
             textSize = 26f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        }
-        val dayTitlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = colors.textPrimary
-            textSize = 30f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
         val dayCountPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = colors.textSecondary
@@ -167,51 +156,52 @@ object ScheduleShareRenderer {
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         }
 
+        val countPillText = ScheduleShareBuilder.formatPairsCount(snapshot.pairsCount)
+        val countPillW = badgeTextPaint.measureText(countPillText) + 28f
+        val headerTitleMaxW = ((IMAGE_WIDTH - OUTER_PAD * 2) - 56f - countPillW - 18f).toInt().coerceAtLeast(360)
+        val headerTitleLayout = StaticLayout.Builder
+            .obtain(snapshot.actorTitle, 0, snapshot.actorTitle.length, headerTitlePaint, headerTitleMaxW)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
+            .setLineSpacing(2f, 1.0f)
+            .setIncludePad(false)
+            .build()
+
+        val headerCardHeight = (28f + headerTitleLayout.height + 12f + 34f + 26f).coerceAtLeast(144f)
+
         val innerCardWidth = (CARD_WIDTH - CARD_PAD_X * 2).toInt().coerceAtLeast(200)
-        val measuredDays = snapshot.days.map { section ->
-            val measuredSlots = section.slots.map { slot ->
-                val isMultiSubgroup = slot.lessons.size > 1
-                val blocks = slot.lessons.map { lesson ->
-                    measureLessonBlock(
-                        lesson = lesson,
-                        isMultiSubgroup = isMultiSubgroup,
-                        colors = colors,
-                        innerWidth = innerCardWidth,
-                        badgeTextPaint = badgeTextPaint,
-                        subjectPaint = subjectPaint,
-                        metaPaint = metaPaint,
-                    )
-                }
-                val blocksSum = blocks.sumOf { it.totalHeight.toDouble() }.toFloat()
-                val dividersHeight = if (blocks.size > 1) (blocks.size - 1) * 26f else 0f
-                val cardHeight = (CARD_PAD_Y * 2 + blocksSum + dividersHeight).coerceAtLeast(108f)
-                MeasuredSlot(slot = slot, blocks = blocks, cardHeight = cardHeight)
+        val measuredSlots = snapshot.slots.map { slot ->
+            val isMultiSubgroup = slot.lessons.size > 1
+            val blocks = slot.lessons.map { lesson ->
+                measureLessonBlock(
+                    lesson = lesson,
+                    isMultiSubgroup = isMultiSubgroup,
+                    actorKind = snapshot.actorKind,
+                    colors = colors,
+                    innerWidth = innerCardWidth,
+                    badgeTextPaint = badgeTextPaint,
+                    subjectPaint = subjectPaint,
+                    metaPaint = metaPaint,
+                )
             }
-
-            val dayBodyHeight = if (measuredSlots.isEmpty()) {
-                74f
-            } else {
-                measuredSlots.sumOf { (it.cardHeight + 14f).toDouble() }.toFloat() - 14f
-            }
-
-            MeasuredDay(
-                section = section,
-                slots = measuredSlots,
-                headerHeight = 46f,
-                bodyHeight = dayBodyHeight,
-            )
+            val blocksSum = blocks.sumOf { it.totalHeight.toDouble() }.toFloat()
+            val dividersHeight = if (blocks.size > 1) (blocks.size - 1) * 26f else 0f
+            val cardHeight = (CARD_PAD_Y * 2 + blocksSum + dividersHeight).coerceAtLeast(108f)
+            MeasuredSlot(slot = slot, blocks = blocks, cardHeight = cardHeight)
         }
 
-        val headerCardHeight = 148f
-        val topSpace = 44f
-        val betweenHeaderAndDays = 28f
-        val betweenDays = 26f
-        val footerHeight = 64f
-        val bottomPad = 36f
+        val bodyHeight = if (measuredSlots.isEmpty()) {
+            132f
+        } else {
+            measuredSlots.sumOf { (it.cardHeight + 14f).toDouble() }.toFloat() - 14f
+        }
 
-        val daysTotalHeight = measuredDays.sumOf { (it.headerHeight + 10f + it.bodyHeight + betweenDays).toDouble() }.toFloat()
-        val rawTotalHeight = (topSpace + headerCardHeight + betweenHeaderAndDays + daysTotalHeight + footerHeight + bottomPad).toInt()
-        val totalHeight = rawTotalHeight.coerceAtMost(14_000)
+        val topSpace = 44f
+        val betweenHeaderAndBody = 26f
+        val footerHeight = 68f
+        val bottomPad = 34f
+        val totalHeight = (topSpace + headerCardHeight + betweenHeaderAndBody + bodyHeight + footerHeight + bottomPad)
+            .toInt()
+            .coerceAtMost(10_000)
 
         val bitmap = Bitmap.createBitmap(IMAGE_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -220,20 +210,21 @@ object ScheduleShareRenderer {
 
         var y = topSpace
 
-        // Верхняя карточка недели
+        // Верхняя карточка дня
         drawHeaderCard(
             canvas = canvas,
             y = y,
             height = headerCardHeight,
             snapshot = snapshot,
+            isToday = snapshot.date == todayDate,
+            titleLayout = headerTitleLayout,
+            countPillText = countPillText,
             colors = colors,
-            titlePaint = headerTitlePaint,
             subPaint = headerSubPaint,
             badgePaint = badgeTextPaint,
         )
-        y += headerCardHeight + betweenHeaderAndDays
+        y += headerCardHeight + betweenHeaderAndBody
 
-        // Дни недели Пн–Сб
         val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -248,54 +239,25 @@ object ScheduleShareRenderer {
             strokeWidth = 1.6f
         }
 
-        for (day in measuredDays) {
-            if (y + day.headerHeight + day.bodyHeight > totalHeight - bottomPad) break
-
-            val isToday = day.section.date == todayDate
-            dayTitlePaint.color = if (isToday) colors.todayAccent else colors.textPrimary
-
-            val titleBaseline = y + 32f
-            canvas.drawText(day.section.dayTitle, OUTER_PAD, titleBaseline, dayTitlePaint)
-
-            val countText = ScheduleShareBuilder.formatPairsCount(day.section.slots.size)
-            val countWidth = dayCountPaint.measureText(countText)
-            canvas.drawText(countText, IMAGE_WIDTH - OUTER_PAD - countWidth, titleBaseline, dayCountPaint)
-
-            if (isToday) {
-                val titleW = dayTitlePaint.measureText(day.section.dayTitle)
-                drawPill(
-                    canvas = canvas,
-                    left = OUTER_PAD + titleW + 14f,
-                    top = y + 7f,
-                    text = "Сегодня",
-                    bgColor = Color.argb(56, 56, 189, 248),
-                    textColor = colors.todayAccent,
-                    textPaint = badgeTextPaint,
-                )
-            }
-
-            y += day.headerHeight + 10f
-
-            if (day.slots.isEmpty()) {
-                val emptyRect = RectF(OUTER_PAD, y, IMAGE_WIDTH - OUTER_PAD, y + day.bodyHeight)
-                drawGlassBox(canvas, emptyRect, 22f, colors, isChange = false, fillPaint = fillPaint, strokePaint = strokePaint)
-                canvas.drawText(
-                    "Занятий нет",
-                    OUTER_PAD + 24f,
-                    y + day.bodyHeight / 2f + 9f,
-                    dayCountPaint,
-                )
-                y += day.bodyHeight + betweenDays
-                continue
-            }
-
-            day.slots.forEachIndexed { slotIndex, measuredSlot ->
+        if (measuredSlots.isEmpty()) {
+            val emptyRect = RectF(OUTER_PAD, y, IMAGE_WIDTH - OUTER_PAD, y + bodyHeight)
+            drawGlassBox(canvas, emptyRect, 24f, colors, isChange = false, fillPaint = fillPaint, strokePaint = strokePaint)
+            val emptyLabel = "В этот день пар нет"
+            val labelW = dayCountPaint.measureText(emptyLabel)
+            canvas.drawText(
+                emptyLabel,
+                (IMAGE_WIDTH - labelW) / 2f,
+                y + bodyHeight / 2f + 9f,
+                dayCountPaint,
+            )
+            y += bodyHeight
+        } else {
+            measuredSlots.forEachIndexed { slotIndex, measuredSlot ->
                 val slotTop = y
                 val slotCenterY = slotTop + measuredSlot.cardHeight / 2f
                 val isFirst = slotIndex == 0
-                val isLast = slotIndex == day.slots.lastIndex
+                val isLast = slotIndex == measuredSlots.lastIndex
 
-                // Вертикальная ось таймлайна
                 if (!isFirst) {
                     canvas.drawLine(TIMELINE_X, slotTop - 14f, TIMELINE_X, slotCenterY, linePaint)
                 }
@@ -314,7 +276,6 @@ object ScheduleShareRenderer {
                 fillPaint.color = Color.WHITE
                 canvas.drawCircle(TIMELINE_X, slotCenterY, 3.8f, fillPaint)
 
-                // Время пары
                 val timeParts = measuredSlot.slot.timeRangeText.split("–").map { it.trim() }
                 if (timeParts.size == 2) {
                     canvas.drawText(timeParts[0], TIME_COL_X, slotCenterY - 6f, timeStartPaint)
@@ -323,7 +284,6 @@ object ScheduleShareRenderer {
                     canvas.drawText(measuredSlot.slot.timeRangeText, TIME_COL_X, slotCenterY + 8f, timeEndPaint)
                 }
 
-                // Стеклянная карточка пары
                 val cardRect = RectF(CARD_X, slotTop, IMAGE_WIDTH - OUTER_PAD, slotTop + measuredSlot.cardHeight)
                 drawGlassBox(
                     canvas = canvas,
@@ -350,7 +310,6 @@ object ScheduleShareRenderer {
                         innerY += 26f
                     }
 
-                    // Бейджи
                     var badgeX = contentLeft
                     var badgeY = innerY
                     val maxRight = IMAGE_WIDTH - OUTER_PAD - CARD_PAD_X
@@ -392,8 +351,7 @@ object ScheduleShareRenderer {
 
                 y += measuredSlot.cardHeight + 14f
             }
-
-            y += betweenDays - 14f
+            y -= 14f
         }
 
         // Футер
@@ -401,13 +359,14 @@ object ScheduleShareRenderer {
         val timeText = Instant.ofEpochMilli(timestampMillis)
             .atZone(ZoneId.of("Europe/Moscow"))
             .format(DateTimeFormatter.ofPattern("dd.MM.yyyy в HH:mm"))
-        val footerText = "НГИЭУ • Группа ${snapshot.groupName} • Данные от $timeText (МСК)"
+        val footerText = "НГИЭУ • ${snapshot.actorBadgeName} • Данные от $timeText (МСК)"
         val footerW = footerPaint.measureText(footerText)
-        canvas.drawText(footerText, (IMAGE_WIDTH - footerW) / 2f, (y + 30f).coerceAtMost(totalHeight - 24f), footerPaint)
+        canvas.drawText(footerText, (IMAGE_WIDTH - footerW) / 2f, (y + 42f).coerceAtMost(totalHeight - 24f), footerPaint)
 
         val sharesDir = File(context.cacheDir, "shares").apply { mkdirs() }
         sharesDir.listFiles()?.forEach { it.delete() }
-        val file = File(sharesDir, "raspisanie-${snapshot.groupName}-${snapshot.selectedMonday}.png")
+        val safeName = snapshot.actorBadgeName.replace(Regex("""[^\p{L}\p{N}_\-]+"""), "_")
+        val file = File(sharesDir, "raspisanie-${safeName}-${snapshot.date}.png")
         file.outputStream().use { out ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
@@ -418,14 +377,14 @@ object ScheduleShareRenderer {
     private fun launchShareSheet(
         context: Context,
         pngFile: File,
-        snapshot: ShareWeekSnapshot,
+        snapshot: ShareDaySnapshot,
     ) {
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
             pngFile,
         )
-        val label = "Расписание ${snapshot.groupName} (${snapshot.weekFilter.title.lowercase()} неделя, ${snapshot.weekRangeLabel})"
+        val label = "Расписание ${snapshot.actorBadgeName} на ${snapshot.dayTitle}"
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
@@ -442,6 +401,7 @@ object ScheduleShareRenderer {
     private fun measureLessonBlock(
         lesson: Lesson,
         isMultiSubgroup: Boolean,
+        actorKind: ActorKind,
         colors: ThemeColors,
         innerWidth: Int,
         badgeTextPaint: TextPaint,
@@ -494,7 +454,7 @@ object ScheduleShareRenderer {
         }
         val badgeHeight = rows * pillH + (rows - 1) * 8f
 
-        val subjectText = if (isMultiSubgroup) {
+        val subjectText = if (isMultiSubgroup || ScheduleEngine.extractSubgroupNumber(lesson) != null) {
             ScheduleEngine.cleanSubgroupPrefix(lesson.subject)
         } else {
             lesson.subject
@@ -508,7 +468,11 @@ object ScheduleShareRenderer {
 
         val metaParts = buildList {
             if (lesson.room.isNotBlank()) add("ауд. ${lesson.room}")
-            if (lesson.teachers.isNotEmpty()) add(lesson.teachers.joinToString(", "))
+            if (actorKind == ActorKind.TEACHER && lesson.groups.isNotEmpty()) {
+                add("гр. ${lesson.groups.joinToString(", ")}")
+            } else if (lesson.teachers.isNotEmpty()) {
+                add(lesson.teachers.joinToString(", "))
+            }
             val note = lesson.note.trim()
             if (note.isNotEmpty() && !note.equals(lesson.lessonType.label, ignoreCase = true)) {
                 add(note)
@@ -551,51 +515,40 @@ object ScheduleShareRenderer {
 
         if (!colors.isNeon) return
 
-        // Мягкие неоновые отсветы сверху и снизу (без тяжёлых размытий)
         val topVioletPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = RadialGradient(
                 width * 0.12f,
-                280f,
+                260f,
                 width * 0.78f,
                 intArrayOf(Color.argb(66, 147, 51, 234), Color.TRANSPARENT),
                 null,
                 Shader.TileMode.CLAMP,
             )
         }
-        canvas.drawRect(0f, 0f, width, height.coerceAtMost(1200f), topVioletPaint)
+        canvas.drawRect(0f, 0f, width, height, topVioletPaint)
 
-        val midCyanPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val rightCyanPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = RadialGradient(
                 width * 0.92f,
-                height * 0.45f,
+                height * 0.55f,
                 width * 0.72f,
                 intArrayOf(Color.argb(56, 14, 165, 233), Color.TRANSPARENT),
                 null,
                 Shader.TileMode.CLAMP,
             )
         }
-        canvas.drawRect(0f, 0f, width, height, midCyanPaint)
-
-        val bottomPurplePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = RadialGradient(
-                width * 0.2f,
-                height - 320f,
-                width * 0.72f,
-                intArrayOf(Color.argb(56, 124, 58, 237), Color.TRANSPARENT),
-                null,
-                Shader.TileMode.CLAMP,
-            )
-        }
-        canvas.drawRect(0f, (height - 1200f).coerceAtLeast(0f), width, height, bottomPurplePaint)
+        canvas.drawRect(0f, 0f, width, height, rightCyanPaint)
     }
 
     private fun drawHeaderCard(
         canvas: Canvas,
         y: Float,
         height: Float,
-        snapshot: ShareWeekSnapshot,
+        snapshot: ShareDaySnapshot,
+        isToday: Boolean,
+        titleLayout: StaticLayout,
+        countPillText: String,
         colors: ThemeColors,
-        titlePaint: TextPaint,
         subPaint: TextPaint,
         badgePaint: TextPaint,
     ) {
@@ -620,21 +573,34 @@ object ScheduleShareRenderer {
         canvas.drawRoundRect(rect, 30f, 30f, fillPaint)
         canvas.drawRoundRect(rect, 30f, 30f, strokePaint)
 
-        canvas.drawText("Группа ${snapshot.groupName}", rect.left + 28f, rect.top + 66f, titlePaint)
-        canvas.drawText(
-            "${snapshot.weekFilter.title} неделя • ${snapshot.weekRangeLabel}",
-            rect.left + 28f,
-            rect.top + 110f,
-            subPaint,
-        )
+        canvas.save()
+        canvas.translate(rect.left + 28f, rect.top + 28f)
+        titleLayout.draw(canvas)
+        canvas.restore()
 
-        val totalPill = "Всего: ${ScheduleShareBuilder.formatPairsCount(snapshot.totalPairsCount)}"
-        val pillW = badgePaint.measureText(totalPill) + 28f
+        val subtitleText = "${snapshot.dayTitle} • ${snapshot.weekFilter.title} неделя"
+        val subBaseline = rect.top + 28f + titleLayout.height + 34f
+        canvas.drawText(subtitleText, rect.left + 28f, subBaseline, subPaint)
+
+        if (isToday) {
+            val subW = subPaint.measureText(subtitleText)
+            drawPill(
+                canvas = canvas,
+                left = rect.left + 28f + subW + 14f,
+                top = subBaseline - 24f,
+                text = "Сегодня",
+                bgColor = Color.argb(56, 56, 189, 248),
+                textColor = colors.todayAccent,
+                textPaint = badgePaint,
+            )
+        }
+
+        val pillW = badgePaint.measureText(countPillText) + 28f
         drawPill(
             canvas = canvas,
             left = rect.right - 26f - pillW,
-            top = rect.top + 32f,
-            text = totalPill,
+            top = rect.top + 28f,
+            text = countPillText,
             bgColor = colors.pillBg,
             textColor = colors.pillText,
             textPaint = badgePaint,

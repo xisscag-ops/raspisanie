@@ -21,6 +21,8 @@ class NgieuApiClient(
 
     suspend fun fetchStudentGroupsRaw(): String = get("$baseUrl/api/v2/Actors/Get?isStudent=true")
 
+    suspend fun fetchTeachersRaw(): String = get("$baseUrl/api/v2/Actors/Get?isStudent=false")
+
     suspend fun fetchScheduleRaw(actorId: String): String {
         val encoded = URLEncoder.encode(actorId, Charsets.UTF_8.name())
         return get("$baseUrl/api/v2/Schedule/Get?actorId=$encoded")

@@ -2,6 +2,7 @@ package ru.ngieu.raspisanie
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import ru.ngieu.raspisanie.data.ActorKind
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.LessonType
 import ru.ngieu.raspisanie.data.WeekParity
@@ -14,39 +15,62 @@ import java.time.LocalTime
 class ScheduleShareBuilderTest {
 
     @Test
-    fun `builds full Monday-to-Saturday week snapshot with grouped subgroups`() {
+    fun `builds single-day snapshot with grouped subgroups and filters other days`() {
         val monday = LocalDate.of(2026, 11, 23)
+        val tuesday = LocalDate.of(2026, 11, 24)
         val lessons = listOf(
             lesson("m1a", DayOfWeek.MONDAY, 1, "(пр. 1) Иностранный язык", WeekParity.UPPER),
             lesson("m1b", DayOfWeek.MONDAY, 1, "(пр. 2) Иностранный язык", WeekParity.UPPER),
             lesson("m2", DayOfWeek.MONDAY, 2, "Математика", WeekParity.EVERY),
-            lesson("t1", DayOfWeek.TUESDAY, 1, "Физика", WeekParity.LOWER), // skipped for UPPER
-            lesson("w1", DayOfWeek.WEDNESDAY, 1, "Программирование", WeekParity.EVERY),
+            lesson("t1", DayOfWeek.TUESDAY, 1, "Физика", WeekParity.UPPER),
         )
 
-        val snapshot = ScheduleShareBuilder.buildWeekSnapshot(
-            groupName = "С-25ИО",
-            selectedMonday = monday,
+        val mondaySnapshot = ScheduleShareBuilder.buildDaySnapshot(
+            actorName = "С-25ИО",
+            actorKind = ActorKind.GROUP,
+            date = monday,
             weekFilter = WeekFilterMode.UPPER,
             allLessons = lessons,
         )
 
-        assertEquals(6, snapshot.days.size)
-        assertEquals(monday, snapshot.days[0].date)
-        assertEquals(monday.plusDays(5), snapshot.days[5].date)
+        assertEquals("С-25ИО", mondaySnapshot.actorName)
+        assertEquals(ActorKind.GROUP, mondaySnapshot.actorKind)
+        assertEquals(monday, mondaySnapshot.date)
+        assertEquals(2, mondaySnapshot.slots.size)
+        assertEquals(2, mondaySnapshot.slots[0].lessons.size)
+        assertEquals(2, mondaySnapshot.pairsCount)
 
-        // Monday: 2 slots (1st slot combines 2 subgroups, 2nd slot is Math)
-        assertEquals(2, snapshot.days[0].slots.size)
-        assertEquals(2, snapshot.days[0].slots[0].lessons.size)
+        val tuesdaySnapshot = ScheduleShareBuilder.buildDaySnapshot(
+            actorName = "Иванов И. И.",
+            actorKind = ActorKind.TEACHER,
+            date = tuesday,
+            weekFilter = WeekFilterMode.UPPER,
+            allLessons = lessons,
+        )
 
-        // Tuesday: 0 slots for UPPER week
-        assertEquals(0, snapshot.days[1].slots.size)
+        assertEquals(ActorKind.TEACHER, tuesdaySnapshot.actorKind)
+        assertEquals(1, tuesdaySnapshot.slots.size)
+        assertEquals("Физика", tuesdaySnapshot.slots[0].lessons[0].subject)
+        assertEquals(listOf("С-25ИО"), tuesdaySnapshot.slots[0].lessons[0].groups)
+    }
 
-        // Wednesday: 1 slot
-        assertEquals(1, snapshot.days[2].slots.size)
+    @Test
+    fun `returns empty slots when day has no matching lessons for week parity`() {
+        val tuesday = LocalDate.of(2026, 11, 24)
+        val lessons = listOf(
+            lesson("t1", DayOfWeek.TUESDAY, 1, "Физика", WeekParity.LOWER),
+        )
 
-        // Total slots across week = 3
-        assertEquals(3, snapshot.totalPairsCount)
+        val snapshot = ScheduleShareBuilder.buildDaySnapshot(
+            actorName = "С-25ИО",
+            actorKind = ActorKind.GROUP,
+            date = tuesday,
+            weekFilter = WeekFilterMode.UPPER,
+            allLessons = lessons,
+        )
+
+        assertEquals(0, snapshot.slots.size)
+        assertEquals(0, snapshot.pairsCount)
     }
 
     @Test
@@ -75,6 +99,7 @@ class ScheduleShareBuilderTest {
         endTime = LocalTime.of(9, 30),
         subject = subject,
         teachers = listOf("Иванов И. И."),
+        groups = listOf("С-25ИО"),
         room = "101",
         note = "Практика",
         lessonType = LessonType.PRACTICE,

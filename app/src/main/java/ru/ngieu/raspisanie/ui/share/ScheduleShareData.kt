@@ -1,5 +1,6 @@
 package ru.ngieu.raspisanie.ui.share
 
+import ru.ngieu.raspisanie.data.ActorKind
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.ScheduleEngine
@@ -9,58 +10,48 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-data class ShareDaySection(
+data class ShareDaySnapshot(
+    val actorTitle: String,
+    val actorBadgeName: String,
+    val actorKind: ActorKind,
     val date: LocalDate,
     val dayTitle: String,
-    val slots: List<LessonSlot>,
-)
-
-data class ShareWeekSnapshot(
-    val groupName: String,
-    val selectedMonday: LocalDate,
     val weekFilter: WeekFilterMode,
-    val weekRangeLabel: String,
-    val days: List<ShareDaySection>,
-    val totalPairsCount: Int,
+    val slots: List<LessonSlot>,
+    val pairsCount: Int,
 )
 
 object ScheduleShareBuilder {
     private val ruLocale = Locale("ru", "RU")
     private val dayMonthFullFormatter = DateTimeFormatter.ofPattern("d MMMM", ruLocale)
-    private val dayMonthShortFormatter = DateTimeFormatter.ofPattern("d MMM", ruLocale)
 
-    fun buildWeekSnapshot(
-        groupName: String,
-        selectedMonday: LocalDate,
+    fun buildDaySnapshot(
+        actorName: String,
+        actorKind: ActorKind,
+        selectedDate: LocalDate,
         weekFilter: WeekFilterMode,
         allLessons: List<Lesson>,
-    ): ShareWeekSnapshot {
-        val monday = ScheduleEngine.mondayOf(selectedMonday)
-        val saturday = monday.plusDays(5)
-        val rangeLabel = "${monday.format(dayMonthShortFormatter)} – ${saturday.format(dayMonthShortFormatter)}"
-
-        val days = (0L..5L).map { offset ->
-            val date = monday.plusDays(offset)
-            val rawLessons = ScheduleEngine.lessonsForDay(
-                allLessons = allLessons,
-                targetDate = date,
-                weekFilter = weekFilter,
-            )
-            val slots = ScheduleEngine.groupLessonsIntoSlots(rawLessons)
-            ShareDaySection(
-                date = date,
-                dayTitle = "${fullRussianDayName(date.dayOfWeek)}, ${date.format(dayMonthFullFormatter)}",
-                slots = slots,
-            )
+    ): ShareDaySnapshot {
+        val rawLessons = ScheduleEngine.lessonsForDay(
+            allLessons = allLessons,
+            targetDate = selectedDate,
+            weekFilter = weekFilter,
+        )
+        val slots = ScheduleEngine.groupLessonsIntoSlots(rawLessons)
+        val title = when (actorKind) {
+            ActorKind.GROUP -> "Группа $actorName"
+            ActorKind.TEACHER -> actorName
         }
 
-        return ShareWeekSnapshot(
-            groupName = groupName,
-            selectedMonday = monday,
+        return ShareDaySnapshot(
+            actorTitle = title,
+            actorBadgeName = actorName,
+            actorKind = actorKind,
+            date = selectedDate,
+            dayTitle = "${fullRussianDayName(selectedDate.dayOfWeek)}, ${selectedDate.format(dayMonthFullFormatter)}",
             weekFilter = weekFilter,
-            weekRangeLabel = rangeLabel,
-            days = days,
-            totalPairsCount = days.sumOf { it.slots.size },
+            slots = slots,
+            pairsCount = slots.size,
         )
     }
 
