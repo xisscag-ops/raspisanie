@@ -21,11 +21,10 @@
 
 ## Как собрать APK
 
-### Вариант 1: Автосборка на GitHub Actions
-В репозитории настроен workflow `.github/workflows/android.yml`. При пуше в `main` или `arena/**` (или ручном запуске `workflow_dispatch` во вкладке **Actions** на GitHub):
-1. Прогоняются unit-тесты (`./gradlew testDebugUnitTest`).
-2. Собирается APK (`./gradlew assembleDebug`).
-3. Готовый файл `ngieu-c25io-schedule-debug-apk` появляется в разделе **Artifacts** завершённого запуска.
+### Вариант 1: Готовый APK с GitHub (Releases и Actions)
+В репозитории настроен workflow `.github/workflows/android.yml`.
+- При каждом пуше в `main` автоматически создаётся **GitHub Release** (раздел **Releases** → **Latest**) с прямым файлом **`ngieu-c25io-schedule.apk`**, который можно сразу скачать на телефон и установить без распаковки ZIP.
+- На любой ветке (`main`, `arena/**`) и в PR также запускаются тесты (`./gradlew testDebugUnitTest`), сборка `./gradlew assembleDebug` и загрузка артефакта `ngieu-c25io-schedule-debug-apk` в разделе **Actions**.
 
 ### Вариант 2: Локально в Android Studio / через CLI
 Требуется JDK 17 и Android SDK (compileSdk 36):
