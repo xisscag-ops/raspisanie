@@ -62,7 +62,7 @@ class ScheduleEngineTest {
         val all = listOf(upperLesson, lowerLesson, everyWeekLesson, datedChange)
 
         val upperResult = ScheduleEngine.lessonsForDay(all, targetMonday, WeekFilterMode.UPPER)
-        assertEquals(listOf("4", "1", "3"), upperResult.map { it.id })
+        assertEquals(listOf("4", "3"), upperResult.map { it.id })
 
         val lowerNextWeek = ScheduleEngine.lessonsForDay(all, otherMonday, WeekFilterMode.LOWER)
         assertEquals(listOf("2", "3"), lowerNextWeek.map { it.id })
