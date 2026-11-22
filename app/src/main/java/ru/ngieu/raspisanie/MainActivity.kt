@@ -9,7 +9,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.ngieu.raspisanie.ui.ScheduleScreen
 import ru.ngieu.raspisanie.ui.ScheduleViewModel
-import ru.ngieu.raspisanie.ui.ScheduleViewMode
 import ru.ngieu.raspisanie.ui.theme.NgieuTheme
 
 class MainActivity : ComponentActivity() {
@@ -28,14 +27,8 @@ class MainActivity : ComponentActivity() {
                     onShiftWeek = viewModel::shiftWeek,
                     onGoToday = viewModel::goToToday,
                     onSelectWeekMode = viewModel::setWeekOverride,
-                    onToggleViewMode = {
-                        val next = if (state.viewMode == ScheduleViewMode.DAY) {
-                            ScheduleViewMode.WEEK
-                        } else {
-                            ScheduleViewMode.DAY
-                        }
-                        viewModel.setViewMode(next)
-                    },
+                    onSelectTab = viewModel::selectTab,
+                    onSearchQueryChange = viewModel::setSearchQuery,
                     onSelectTheme = viewModel::setThemeMode,
                 )
             }
