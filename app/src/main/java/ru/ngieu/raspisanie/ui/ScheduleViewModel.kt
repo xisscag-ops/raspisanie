@@ -1,6 +1,7 @@
 package ru.ngieu.raspisanie.ui
 
 import android.app.Application
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
@@ -29,8 +30,10 @@ enum class ScheduleViewMode(val label: String) {
     WEEK("Вся неделя"),
 }
 
+@Immutable
 data class ScheduleUiState(
     val groupName: String = ScheduleRepository.TARGET_GROUP_NAME,
+    val anchorMonday: LocalDate = ScheduleEngine.mondayOf(initialDisplayDate()),
     val selectedDate: LocalDate = initialDisplayDate(),
     val todayDate: LocalDate = currentKnyagininoDate(),
     val manualWeekOverride: WeekFilterMode? = null,
@@ -45,55 +48,37 @@ data class ScheduleUiState(
     val updatedAtEpochMillis: Long? = null,
     val themeMode: ThemeModeSetting = ThemeModeSetting.SYSTEM,
     val nowTime: LocalTime = currentKnyagininoTime(),
+    val weekDays: List<LocalDate> = emptyList(),
+    val lessonsByWeekDay: Map<LocalDate, List<Lesson>> = emptyMap(),
+    val liveLessonState: LiveLessonState = LiveLessonState.NoLessonsToday,
 ) {
     val selectedMonday: LocalDate
         get() = ScheduleEngine.mondayOf(selectedDate)
 
     val detectedWeekForSelectedMonday: WeekFilterMode?
-        get() = ScheduleEngine.isWeekUpperForMonday(
-            anchorDate = weekAnchorDate,
-            anchorIsUpper = weekAnchorIsUpper,
-            targetMonday = selectedMonday,
-        )?.let { if (it) WeekFilterMode.UPPER else WeekFilterMode.LOWER }
+        get() = detectedWeekForMonday(selectedMonday)
 
     val detectedCurrentWeek: WeekFilterMode?
-        get() = ScheduleEngine.isWeekUpperForMonday(
-            anchorDate = weekAnchorDate,
-            anchorIsUpper = weekAnchorIsUpper,
-            targetMonday = ScheduleEngine.mondayOf(todayDate),
-        )?.let { if (it) WeekFilterMode.UPPER else WeekFilterMode.LOWER }
+        get() = detectedWeekForMonday(ScheduleEngine.mondayOf(todayDate))
 
     val activeWeekFilter: WeekFilterMode
-        get() = manualWeekOverride ?: detectedWeekForSelectedMonday ?: WeekFilterMode.UPPER
+        get() = weekFilterForMonday(selectedMonday)
 
-    val lessonsForSelectedDay: List<Lesson>
-        get() = ScheduleEngine.lessonsForDay(
-            allLessons = allLessons,
-            targetDate = selectedDate,
-            weekFilter = activeWeekFilter,
-        )
+    fun detectedWeekForMonday(monday: LocalDate): WeekFilterMode? {
+        return ScheduleEngine.isWeekUpperForMonday(
+            anchorDate = weekAnchorDate,
+            anchorIsUpper = weekAnchorIsUpper,
+            targetMonday = monday,
+        )?.let { if (it) WeekFilterMode.UPPER else WeekFilterMode.LOWER }
+    }
 
-    val weekDays: List<LocalDate>
-        get() = (0L..5L).map { selectedMonday.plusDays(it) }
-
-    val lessonsByWeekDay: Map<LocalDate, List<Lesson>>
-        get() = weekDays.associateWith { date ->
-            ScheduleEngine.lessonsForDay(
-                allLessons = allLessons,
-                targetDate = date,
-                weekFilter = activeWeekFilter,
-            )
+    fun weekFilterForMonday(monday: LocalDate): WeekFilterMode {
+        return if (monday == selectedMonday && manualWeekOverride != null) {
+            manualWeekOverride
+        } else {
+            detectedWeekForMonday(monday) ?: WeekFilterMode.UPPER
         }
-
-    val liveLessonState: LiveLessonState
-        get() {
-            val todayLessons = ScheduleEngine.lessonsForDay(
-                allLessons = allLessons,
-                targetDate = todayDate,
-                weekFilter = detectedCurrentWeek ?: activeWeekFilter,
-            )
-            return ScheduleEngine.computeLiveLessonState(todayLessons, nowTime)
-        }
+    }
 }
 
 private val KNYAGININO_ZONE: ZoneId = ZoneId.of("Europe/Moscow")
@@ -115,7 +100,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     )
 
     private val _uiState = MutableStateFlow(
-        ScheduleUiState(themeMode = repository.loadThemeMode())
+        recomputeDerived(ScheduleUiState(themeMode = repository.loadThemeMode()))
     )
     val uiState: StateFlow<ScheduleUiState> = _uiState.asStateFlow()
 
@@ -125,17 +110,18 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun loadInitialData() {
-        val cached = repository.loadCached()
-        if (cached != null) {
-            applySnapshot(cached, isOfflineFallback = false)
-            _uiState.update { it.copy(isLoading = false) }
+        viewModelScope.launch {
+            val cached = repository.loadCached()
+            if (cached != null) {
+                updateState { applySnapshot(it, cached, isOfflineFallback = false).copy(isLoading = false) }
+            }
+            refresh(silent = cached != null)
         }
-        refresh(silent = cached != null)
     }
 
     fun refresh(silent: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { state ->
+            updateState { state ->
                 state.copy(
                     isLoading = state.allLessons.isEmpty() && !silent,
                     isRefreshing = true,
@@ -148,9 +134,8 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             val result = repository.refreshFromNetwork(currentKnyagininoDate())
             result.fold(
                 onSuccess = { snapshot ->
-                    applySnapshot(snapshot, isOfflineFallback = false)
-                    _uiState.update {
-                        it.copy(
+                    updateState { state ->
+                        applySnapshot(state, snapshot, isOfflineFallback = false).copy(
                             isLoading = false,
                             isRefreshing = false,
                             errorMessage = null,
@@ -158,7 +143,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                     }
                 },
                 onFailure = { error ->
-                    _uiState.update { state ->
+                    updateState { state ->
                         val hasCached = state.allLessons.isNotEmpty()
                         state.copy(
                             isLoading = false,
@@ -176,25 +161,33 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun applySnapshot(snapshot: ScheduleSnapshot, isOfflineFallback: Boolean) {
-        _uiState.update { state ->
+    private fun applySnapshot(
+        state: ScheduleUiState,
+        snapshot: ScheduleSnapshot,
+        isOfflineFallback: Boolean,
+    ): ScheduleUiState {
+        return state.copy(
+            groupName = snapshot.groupName,
+            allLessons = snapshot.lessons,
+            weekAnchorDate = snapshot.weekAnchorDate,
+            weekAnchorIsUpper = snapshot.weekAnchorIsUpper,
+            updatedAtEpochMillis = snapshot.updatedAtEpochMillis,
+            isOfflineFallback = isOfflineFallback,
+        )
+    }
+
+    fun selectDate(date: LocalDate) {
+        updateState { state ->
+            val mondayChanged = ScheduleEngine.mondayOf(date) != state.selectedMonday
             state.copy(
-                groupName = snapshot.groupName,
-                allLessons = snapshot.lessons,
-                weekAnchorDate = snapshot.weekAnchorDate,
-                weekAnchorIsUpper = snapshot.weekAnchorIsUpper,
-                updatedAtEpochMillis = snapshot.updatedAtEpochMillis,
-                isOfflineFallback = isOfflineFallback,
+                selectedDate = date,
+                manualWeekOverride = if (mondayChanged) null else state.manualWeekOverride,
             )
         }
     }
 
-    fun selectDate(date: LocalDate) {
-        _uiState.update { it.copy(selectedDate = date) }
-    }
-
     fun shiftWeek(deltaWeeks: Long) {
-        _uiState.update { state ->
+        updateState { state ->
             val shiftedDate = state.selectedDate.plusWeeks(deltaWeeks)
             state.copy(
                 selectedDate = shiftedDate,
@@ -205,7 +198,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     fun goToToday() {
         val target = initialDisplayDate()
-        _uiState.update {
+        updateState {
             it.copy(
                 todayDate = currentKnyagininoDate(),
                 selectedDate = target,
@@ -215,7 +208,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setWeekOverride(mode: WeekFilterMode) {
-        _uiState.update { state ->
+        updateState { state ->
             val detected = state.detectedWeekForSelectedMonday
             val newOverride = if (detected == mode) null else mode
             state.copy(manualWeekOverride = newOverride)
@@ -223,19 +216,19 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setViewMode(mode: ScheduleViewMode) {
-        _uiState.update { it.copy(viewMode = mode) }
+        updateState { it.copy(viewMode = mode) }
     }
 
     fun setThemeMode(mode: ThemeModeSetting) {
         repository.saveThemeMode(mode)
-        _uiState.update { it.copy(themeMode = mode) }
+        updateState { it.copy(themeMode = mode) }
     }
 
     private fun startClockTicker() {
         viewModelScope.launch {
             while (isActive) {
                 delay(30_000L)
-                _uiState.update {
+                updateState {
                     it.copy(
                         todayDate = currentKnyagininoDate(),
                         nowTime = currentKnyagininoTime(),
@@ -243,5 +236,37 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 }
             }
         }
+    }
+
+    private inline fun updateState(transform: (ScheduleUiState) -> ScheduleUiState) {
+        _uiState.update { current ->
+            recomputeDerived(transform(current))
+        }
+    }
+
+    private fun recomputeDerived(state: ScheduleUiState): ScheduleUiState {
+        val monday = state.selectedMonday
+        val weekDays = (0L..5L).map { monday.plusDays(it) }
+        val activeFilter = state.activeWeekFilter
+        val lessonsByDay = weekDays.associateWith { date ->
+            ScheduleEngine.lessonsForDay(
+                allLessons = state.allLessons,
+                targetDate = date,
+                weekFilter = activeFilter,
+            )
+        }
+
+        val todayLessons = ScheduleEngine.lessonsForDay(
+            allLessons = state.allLessons,
+            targetDate = state.todayDate,
+            weekFilter = state.detectedCurrentWeek ?: activeFilter,
+        )
+        val liveState = ScheduleEngine.computeLiveLessonState(todayLessons, state.nowTime)
+
+        return state.copy(
+            weekDays = weekDays,
+            lessonsByWeekDay = lessonsByDay,
+            liveLessonState = liveState,
+        )
     }
 }

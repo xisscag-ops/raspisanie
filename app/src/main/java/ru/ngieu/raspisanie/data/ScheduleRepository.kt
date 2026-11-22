@@ -1,20 +1,22 @@
 package ru.ngieu.raspisanie.data
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 
 class ScheduleRepository(
     private val api: NgieuApiClient,
     private val cache: ScheduleCache,
 ) {
-    fun loadCached(): ScheduleSnapshot? {
-        val bundle = cache.loadBundle() ?: return null
-        val lessons = runCatching { ScheduleParser.parseSchedule(bundle.rawScheduleJson) }
-            .getOrNull()
-            ?: return null
+    suspend fun loadCached(): ScheduleSnapshot? = withContext(Dispatchers.IO) {
+        val bundle = cache.loadBundle() ?: return@withContext null
+        val lessons = withContext(Dispatchers.Default) {
+            runCatching { ScheduleParser.parseSchedule(bundle.rawScheduleJson) }.getOrNull()
+        } ?: return@withContext null
         val anchorDate = bundle.weekAnchorDateIso?.let(ScheduleParser::parseDate)
-        return ScheduleSnapshot(
+        ScheduleSnapshot(
             groupName = bundle.groupName,
             actorId = bundle.actorId,
             lessons = lessons,
@@ -27,27 +29,39 @@ class ScheduleRepository(
 
     suspend fun refreshFromNetwork(today: LocalDate): Result<ScheduleSnapshot> {
         return runCatching {
-            val cached = cache.loadBundle()
-
-            val resolvedActorId = runCatching {
-                val actorsRaw = api.fetchStudentGroupsRaw()
-                val actors = ScheduleParser.parseActors(actorsRaw)
-                ScheduleParser.findGroupActorId(actors, TARGET_GROUP_NAME)
-            }.getOrNull()
-                ?: cached?.actorId
-                ?: FALLBACK_ACTOR_ID
+            val cached = withContext(Dispatchers.IO) { cache.loadBundle() }
+            val initialActorId = cached?.actorId ?: FALLBACK_ACTOR_ID
 
             coroutineScope {
-                val scheduleDeferred = async { api.fetchScheduleRaw(resolvedActorId) }
+                val actorsDeferred = async {
+                    runCatching {
+                        val actorsRaw = api.fetchStudentGroupsRaw()
+                        withContext(Dispatchers.Default) {
+                            val actors = ScheduleParser.parseActors(actorsRaw)
+                            ScheduleParser.findGroupActorId(actors, TARGET_GROUP_NAME)
+                        }
+                    }.getOrNull()
+                }
+                val initialScheduleDeferred = async {
+                    runCatching { api.fetchScheduleRaw(initialActorId) }
+                }
                 val weekTypeDeferred = async {
                     runCatching {
                         val raw = api.fetchWeekTypeRaw(today)
-                        ScheduleParser.parseWeekType(raw)
+                        withContext(Dispatchers.Default) { ScheduleParser.parseWeekType(raw) }
                     }.getOrNull()
                 }
 
-                val scheduleRaw = scheduleDeferred.await()
-                val lessons = ScheduleParser.parseSchedule(scheduleRaw)
+                val resolvedActorId = actorsDeferred.await() ?: initialActorId
+                val scheduleRaw = if (resolvedActorId != initialActorId) {
+                    api.fetchScheduleRaw(resolvedActorId)
+                } else {
+                    initialScheduleDeferred.await().getOrThrow()
+                }
+
+                val lessons = withContext(Dispatchers.Default) {
+                    ScheduleParser.parseSchedule(scheduleRaw)
+                }
                 val weekInfo = weekTypeDeferred.await()
 
                 val anchorDate = weekInfo?.date
@@ -55,16 +69,18 @@ class ScheduleRepository(
                 val anchorIsUpper = weekInfo?.isUpperWeek ?: cached?.weekAnchorIsUpper
 
                 val nowMillis = System.currentTimeMillis()
-                cache.saveBundle(
-                    CachedScheduleBundle(
-                        actorId = resolvedActorId,
-                        groupName = TARGET_GROUP_NAME,
-                        rawScheduleJson = scheduleRaw,
-                        weekAnchorDateIso = anchorDate?.toString(),
-                        weekAnchorIsUpper = anchorIsUpper,
-                        updatedAtEpochMillis = nowMillis,
+                withContext(Dispatchers.IO) {
+                    cache.saveBundle(
+                        CachedScheduleBundle(
+                            actorId = resolvedActorId,
+                            groupName = TARGET_GROUP_NAME,
+                            rawScheduleJson = scheduleRaw,
+                            weekAnchorDateIso = anchorDate?.toString(),
+                            weekAnchorIsUpper = anchorIsUpper,
+                            updatedAtEpochMillis = nowMillis,
+                        )
                     )
-                )
+                }
 
                 ScheduleSnapshot(
                     groupName = TARGET_GROUP_NAME,
