@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
                     onSelectTheme = viewModel::setThemeMode,
                     onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
                     onInstallUpdate = viewModel::downloadAndInstallUpdate,
+                    onShareSchedule = { viewModel.shareWeekSchedule(this) },
                 )
             }
         }

@@ -121,6 +121,7 @@ fun ScheduleScreen(
     onSelectTheme: (ThemeModeSetting) -> Unit,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
+    onShareSchedule: () -> Unit,
 ) {
     var showWeekPickerSheet by remember { mutableStateOf(false) }
     var showSearchBar by remember { mutableStateOf(false) }
@@ -143,8 +144,11 @@ fun ScheduleScreen(
                     weekSubtitle = "${state.activeWeekFilter.title} неделя",
                     showTodayPill = state.selectedDate != state.todayDate || state.manualWeekOverride != null,
                     isSearchVisible = showSearchBar,
+                    isSharing = state.isSharingSchedule,
+                    canShare = !state.isLoading && state.allLessons.isNotEmpty(),
                     onClickWeekPicker = { showWeekPickerSheet = true },
                     onClickToday = onGoToday,
+                    onClickShare = onShareSchedule,
                     onToggleSearch = {
                         showSearchBar = !showSearchBar
                         if (!showSearchBar && state.searchQuery.isNotEmpty()) {
@@ -296,8 +300,11 @@ private fun NeonTopHeader(
     weekSubtitle: String,
     showTodayPill: Boolean,
     isSearchVisible: Boolean,
+    isSharing: Boolean,
+    canShare: Boolean,
     onClickWeekPicker: () -> Unit,
     onClickToday: () -> Unit,
+    onClickShare: () -> Unit,
     onToggleSearch: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
@@ -309,7 +316,7 @@ private fun NeonTopHeader(
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -372,12 +379,25 @@ private fun NeonTopHeader(
             }
         }
 
-        HeaderCircleButton(
-            iconRes = R.drawable.ic_neon_search,
-            contentDescription = "Поиск по расписанию",
-            highlighted = isSearchVisible,
-            onClick = onToggleSearch,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            HeaderCircleButton(
+                iconRes = R.drawable.ic_neon_share,
+                contentDescription = "Поделиться расписанием",
+                highlighted = false,
+                enabled = canShare && !isSharing,
+                isLoading = isSharing,
+                onClick = onClickShare,
+            )
+            HeaderCircleButton(
+                iconRes = R.drawable.ic_neon_search,
+                contentDescription = "Поиск по расписанию",
+                highlighted = isSearchVisible,
+                onClick = onToggleSearch,
+            )
+        }
     }
 }
 
@@ -386,6 +406,8 @@ private fun HeaderCircleButton(
     iconRes: Int,
     contentDescription: String,
     highlighted: Boolean,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
     onClick: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
@@ -407,15 +429,24 @@ private fun HeaderCircleButton(
             .clip(CircleShape)
             .background(brush = fill, shape = CircleShape)
             .border(width = 1.dp, brush = border, shape = CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Image(
-            painter = painterResource(id = iconRes),
-            contentDescription = contentDescription,
-            colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
-            modifier = Modifier.size(21.dp),
-        )
+        if (isLoading) {
+            CircularProgressIndicator(
+                strokeWidth = 2.dp,
+                color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+        } else {
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = contentDescription,
+                colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
+                alpha = if (enabled) 1f else 0.4f,
+                modifier = Modifier.size(21.dp),
+            )
+        }
     }
 }
 

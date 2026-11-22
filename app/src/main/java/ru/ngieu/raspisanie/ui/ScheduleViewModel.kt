@@ -1,6 +1,8 @@
 package ru.ngieu.raspisanie.ui
 
 import android.app.Application
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,6 +25,8 @@ import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LiveLessonState
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.domain.WeekFilterMode
+import ru.ngieu.raspisanie.ui.share.ScheduleShareBuilder
+import ru.ngieu.raspisanie.ui.share.ScheduleShareRenderer
 import java.io.File
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -84,6 +88,7 @@ data class ScheduleUiState(
     val liveLessonState: LiveLessonState = LiveLessonState.NoLessonsToday,
     val selectedDayProgress: DayProgressSummary = DayProgressSummary(),
     val updateState: UpdateCheckState = UpdateCheckState.Idle,
+    val isSharingSchedule: Boolean = false,
 ) {
     val selectedMonday: LocalDate
         get() = ScheduleEngine.mondayOf(selectedDate)
@@ -396,6 +401,38 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 }
             },
         )
+    }
+
+    fun shareWeekSchedule(context: Context) {
+        val snapshotState = _uiState.value
+        if (snapshotState.isSharingSchedule || snapshotState.allLessons.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSharingSchedule = true) }
+            try {
+                val shareSnapshot = ScheduleShareBuilder.buildWeekSnapshot(
+                    groupName = snapshotState.groupName,
+                    selectedMonday = snapshotState.selectedMonday,
+                    weekFilter = snapshotState.activeWeekFilter,
+                    allLessons = snapshotState.allLessons,
+                )
+                ScheduleShareRenderer.renderAndShareWeek(
+                    context = context,
+                    snapshot = shareSnapshot,
+                    todayDate = snapshotState.todayDate,
+                    themeMode = snapshotState.themeMode,
+                    updatedAtEpochMillis = snapshotState.updatedAtEpochMillis,
+                )
+            } catch (e: Throwable) {
+                Toast.makeText(
+                    context,
+                    "Не удалось подготовить скриншот: ${e.message ?: "ошибка"}",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } finally {
+                _uiState.update { it.copy(isSharingSchedule = false) }
+            }
+        }
     }
 
     private fun startClockTicker() {
