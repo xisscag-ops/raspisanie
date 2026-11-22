@@ -261,6 +261,10 @@ class ScheduleRepository(
 
     fun saveThemeMode(mode: ThemeModeSetting) = cache.saveThemeMode(mode)
 
+    fun loadIconStyle(): AppIconStyle = cache.loadIconStyle()
+
+    fun saveIconStyle(style: AppIconStyle) = cache.saveIconStyle(style)
+
     fun loadSubgroupFilter(): SubgroupFilterMode = cache.loadSubgroupFilter()
 
     fun saveSubgroupFilter(mode: SubgroupFilterMode) = cache.saveSubgroupFilter(mode)

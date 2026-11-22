@@ -53,6 +53,16 @@ class ScheduleCache(context: Context) {
             .getOrDefault(ThemeModeSetting.NEON)
     }
 
+    fun saveIconStyle(style: AppIconStyle) {
+        prefs.edit().putString(KEY_ICON_STYLE, style.name).apply()
+    }
+
+    fun loadIconStyle(): AppIconStyle {
+        val raw = prefs.getString(KEY_ICON_STYLE, AppIconStyle.AUTO.name)
+        return runCatching { AppIconStyle.valueOf(raw ?: AppIconStyle.AUTO.name) }
+            .getOrDefault(AppIconStyle.AUTO)
+    }
+
     fun saveSubgroupFilter(mode: SubgroupFilterMode) {
         prefs.edit().putString(KEY_SUBGROUP_FILTER, mode.name).apply()
     }
@@ -79,6 +89,7 @@ class ScheduleCache(context: Context) {
         const val ACTORS_CACHE_FILE_NAME = "actors_cache_v1.json"
         const val PREFS_NAME = "ngieu_raspisanie_prefs"
         const val KEY_THEME_MODE = "theme_mode_v2"
+        const val KEY_ICON_STYLE = "app_icon_style_v1"
         const val KEY_SUBGROUP_FILTER = "subgroup_filter_v1"
         const val KEY_TETRIS_BEST_SCORE = "tetris_best_score_v1"
     }

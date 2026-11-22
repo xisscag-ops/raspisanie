@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_bg_neon">#000000</color>
+    <color name="ic_launcher_bg_light">#FFFFFF</color>
+    <color name="ic_launcher_bg_dark">#191919</color>
+    <color name="ic_launcher_bg_classic">#155EEF</color>
+</resources>

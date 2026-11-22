@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -18,6 +20,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: ScheduleViewModel = viewModel()
             val state by viewModel.uiState.collectAsStateWithLifecycle()
+            val systemDark = isSystemInDarkTheme()
+
+            LaunchedEffect(systemDark) {
+                viewModel.onSystemDarkChanged(systemDark)
+            }
 
             NgieuTheme(themeMode = state.themeMode) {
                 ScheduleScreen(
@@ -34,6 +41,7 @@ class MainActivity : ComponentActivity() {
                     onSelectActor = viewModel::selectActor,
                     onResetToDefaultGroup = viewModel::resetToDefaultGroup,
                     onSelectTheme = viewModel::setThemeMode,
+                    onSelectIconStyle = viewModel::setIconStyle,
                     onSelectSubgroup = viewModel::setSubgroupFilter,
                     onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
                     onInstallUpdate = viewModel::downloadAndInstallUpdate,
