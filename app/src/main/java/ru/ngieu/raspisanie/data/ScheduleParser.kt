@@ -92,8 +92,11 @@ object ScheduleParser {
             return rawSubjects.mapIndexedNotNull { subIndex, subTitle ->
                 if (subTitle.isEmpty()) return@mapIndexedNotNull null
                 val teacher = dto.instructors.getOrNull(subIndex)?.trim()?.takeIf { it.isNotEmpty() }
-                val room = dto.offices.getOrNull(subIndex)?.trim().orEmpty()
-                val note = dto.notes.getOrNull(subIndex)?.trim().orEmpty()
+                    ?: dto.instructors.singleOrNull()?.trim()?.takeIf { it.isNotEmpty() }
+                val room = dto.offices.getOrNull(subIndex)?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: dto.offices.singleOrNull()?.trim().orEmpty()
+                val note = dto.notes.getOrNull(subIndex)?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: dto.notes.singleOrNull()?.trim().orEmpty()
                 buildLesson(
                     dto = dto,
                     day = day,

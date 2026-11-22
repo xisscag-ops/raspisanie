@@ -30,6 +30,8 @@ class MainActivity : ComponentActivity() {
                     onSelectTab = viewModel::selectTab,
                     onSearchQueryChange = viewModel::setSearchQuery,
                     onSelectTheme = viewModel::setThemeMode,
+                    onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
+                    onInstallUpdate = viewModel::downloadAndInstallUpdate,
                 )
             }
         }

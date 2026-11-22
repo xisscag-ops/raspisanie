@@ -57,6 +57,11 @@ object ScheduleEngine {
         RegexOption.IGNORE_CASE,
     )
 
+    private val inlineSubgroupTagRegex = Regex(
+        """\(\s*пр\.?\s*\d+\s*\)|\(\s*\d+\s*п/?г\s*\)|^\s*\d+\s*п/?г\.?:?\s*""",
+        RegexOption.IGNORE_CASE,
+    )
+
     const val MAX_WEEK_OFFSET = 52
     const val DAYS_PER_STUDY_WEEK = 6
     const val TOTAL_WEEK_PAGES = MAX_WEEK_OFFSET * 2 + 1
@@ -186,6 +191,13 @@ object ScheduleEngine {
             if (num != null) return num
         }
         return null
+    }
+
+    fun cleanSubgroupPrefix(subject: String): String {
+        val cleaned = inlineSubgroupTagRegex.replace(subject, " ")
+            .replace(Regex("""\s{2,}"""), " ")
+            .trim()
+        return cleaned.ifEmpty { subject.trim() }
     }
 
     /**

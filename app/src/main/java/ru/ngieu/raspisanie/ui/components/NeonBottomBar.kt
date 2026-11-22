@@ -58,6 +58,7 @@ private val navItems = listOf(
 fun NeonTopNavBar(
     activeTab: MainNavTab,
     onSelectTab: (MainNavTab) -> Unit,
+    hasAppUpdate: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val style = LocalAppVisualStyle.current
@@ -172,17 +173,28 @@ fun NeonTopNavBar(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
                         ) {
-                            Image(
-                                painter = painterResource(id = item.iconRes),
-                                contentDescription = item.label,
-                                colorFilter = when {
-                                    selected && style.isNeon -> null
-                                    selected -> ColorFilter.tint(MaterialTheme.colorScheme.onPrimary)
-                                    style.isNeon -> ColorFilter.tint(NeonPalette.textSecondary)
-                                    else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
-                                },
-                                modifier = Modifier.size(19.dp),
-                            )
+                            Box {
+                                Image(
+                                    painter = painterResource(id = item.iconRes),
+                                    contentDescription = item.label,
+                                    colorFilter = when {
+                                        selected && style.isNeon -> null
+                                        selected -> ColorFilter.tint(MaterialTheme.colorScheme.onPrimary)
+                                        style.isNeon -> ColorFilter.tint(NeonPalette.textSecondary)
+                                        else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
+                                    },
+                                    modifier = Modifier.size(19.dp),
+                                )
+                                if (hasAppUpdate && item.tab == MainNavTab.SETTINGS) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .size(7.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                            .background(NeonPalette.timelineActiveNow),
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = item.label,
