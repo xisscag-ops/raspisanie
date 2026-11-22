@@ -236,8 +236,8 @@ fun LessonCard(
             )
             hasAnyChange && !style.isTranslucent -> Brush.horizontalGradient(
                 colors = listOf(
-                    if (isDark) ScheduleAccentColors.changeBgDark else ScheduleAccentColors.changeBgLight,
-                    if (isDark) ScheduleAccentColors.changeBgDark else ScheduleAccentColors.changeBgLight,
+                    if (isDark) MaterialTheme.colorScheme.surface else ScheduleAccentColors.changeBgLight,
+                    if (isDark) MaterialTheme.colorScheme.surface else ScheduleAccentColors.changeBgLight,
                 ),
             )
             hasAnyChange && style.isNeon -> Brush.horizontalGradient(

@@ -241,7 +241,7 @@ object ScheduleAccentColors {
     val changeBorderLight = Color(0xFFF79009)
     val changeBadgeLight = Color(0xFFDC6803)
 
-    val changeBgDark = Color(0x8A261807)
+    val changeBgDark = Color(0xFF151B26)
     val changeBorderDark = Color(0xFF925812)
     val changeBadgeDark = Color(0xFFB87424)
     val changeBadgeBgDark = Color(0x523B2409)
