@@ -196,7 +196,7 @@ fun DaySelectorRow(
                         modifier = Modifier.height(6.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        AnimatedVisibility(
+                        androidx.compose.animation.AnimatedVisibility(
                             visible = dayLessons.isNotEmpty(),
                             enter = scaleIn(tween(180)) + fadeIn(tween(180)),
                             exit = scaleOut(tween(150)) + fadeOut(tween(150)),
