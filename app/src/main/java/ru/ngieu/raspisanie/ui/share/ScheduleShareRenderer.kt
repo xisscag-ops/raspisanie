@@ -5,11 +5,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RadialGradient
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -20,11 +22,13 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import ru.ngieu.raspisanie.R
 import ru.ngieu.raspisanie.data.ActorKind
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.ScheduleEngine
+import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
 import java.io.File
@@ -45,6 +49,7 @@ object ScheduleShareRenderer {
 
     private data class ThemeColors(
         val isNeon: Boolean,
+        val isGlass: Boolean,
         val isDark: Boolean,
         val bgBase: Int,
         val cardTop: Int,
@@ -206,7 +211,7 @@ object ScheduleShareRenderer {
         val bitmap = Bitmap.createBitmap(IMAGE_WIDTH, totalHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        drawBackground(canvas, IMAGE_WIDTH.toFloat(), totalHeight.toFloat(), colors)
+        drawBackground(context, canvas, IMAGE_WIDTH.toFloat(), totalHeight.toFloat(), colors)
 
         var y = topSpace
 
@@ -415,8 +420,16 @@ object ScheduleShareRenderer {
                 add(
                     BadgeSpec(
                         text = subLabel,
-                        bgColor = if (colors.isNeon) Color.argb(72, 139, 92, 246) else colors.pillBg,
-                        textColor = if (colors.isNeon) Color.parseColor("#E9D5FF") else colors.pillText,
+                        bgColor = when {
+                            colors.isNeon -> Color.argb(72, 139, 92, 246)
+                            colors.isGlass -> Color.argb(97, 149, 149, 149)
+                            else -> colors.pillBg
+                        },
+                        textColor = when {
+                            colors.isNeon -> Color.parseColor("#E9D5FF")
+                            colors.isGlass -> Color.parseColor("#CDCDCD")
+                            else -> colors.pillText
+                        },
                     ),
                 )
             }
@@ -425,8 +438,12 @@ object ScheduleShareRenderer {
             add(
                 BadgeSpec(
                     text = lesson.lessonType.label,
-                    bgColor = Color.argb(48, Color.red(typeColor), Color.green(typeColor), Color.blue(typeColor)),
-                    textColor = typeColor,
+                    bgColor = if (colors.isGlass) {
+                        Color.argb(133, 191, 191, 191)
+                    } else {
+                        Color.argb(48, Color.red(typeColor), Color.green(typeColor), Color.blue(typeColor))
+                    },
+                    textColor = if (colors.isGlass) Color.parseColor("#F8F8F8") else typeColor,
                 ),
             )
 
@@ -503,6 +520,7 @@ object ScheduleShareRenderer {
     }
 
     private fun drawBackground(
+        context: Context,
         canvas: Canvas,
         width: Float,
         height: Float,
@@ -512,6 +530,25 @@ object ScheduleShareRenderer {
             color = colors.bgBase
         }
         canvas.drawRect(0f, 0f, width, height, bgPaint)
+
+        if (colors.isGlass) {
+            val wall = BitmapFactory.decodeResource(context.resources, R.drawable.bg_glass_waves)
+            if (wall != null) {
+                val scale = maxOf(width / wall.width.toFloat(), height / wall.height.toFloat())
+                val drawnW = wall.width * scale
+                val drawnH = wall.height * scale
+                val left = (width - drawnW) / 2f
+                val top = (height - drawnH) / 2f
+                canvas.drawBitmap(
+                    wall,
+                    Rect(0, 0, wall.width, wall.height),
+                    RectF(left, top, left + drawnW, top + drawnH),
+                    Paint(Paint.FILTER_BITMAP_FLAG),
+                )
+                wall.recycle()
+            }
+            return
+        }
 
         if (!colors.isNeon) return
 
@@ -559,8 +596,11 @@ object ScheduleShareRenderer {
                 rect.top,
                 rect.right,
                 rect.bottom,
-                if (colors.isNeon) intArrayOf(Color.parseColor("#C7242D58"), Color.parseColor("#BA141B38"))
-                else intArrayOf(colors.cardTop, colors.cardBottom),
+                when {
+                    colors.isNeon -> intArrayOf(Color.parseColor("#C7242D58"), Color.parseColor("#BA141B38"))
+                    colors.isGlass -> intArrayOf(Color.parseColor("#8C737373"), Color.parseColor("#782C2C2C"))
+                    else -> intArrayOf(colors.cardTop, colors.cardBottom)
+                },
                 null,
                 Shader.TileMode.CLAMP,
             )
@@ -589,7 +629,7 @@ object ScheduleShareRenderer {
                 left = rect.left + 28f + subW + 14f,
                 top = subBaseline - 24f,
                 text = "Сегодня",
-                bgColor = Color.argb(56, 56, 189, 248),
+                bgColor = if (colors.isGlass) Color.argb(133, 191, 191, 191) else Color.argb(56, 56, 189, 248),
                 textColor = colors.todayAccent,
                 textPaint = badgePaint,
             )
@@ -653,8 +693,9 @@ object ScheduleShareRenderer {
         val systemDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
             Configuration.UI_MODE_NIGHT_YES
         val isNeon = themeMode == ThemeModeSetting.NEON
+        val isGlass = themeMode == ThemeModeSetting.GLASS
         val isDark = when (themeMode) {
-            ThemeModeSetting.NEON, ThemeModeSetting.DARK -> true
+            ThemeModeSetting.NEON, ThemeModeSetting.GLASS, ThemeModeSetting.DARK -> true
             ThemeModeSetting.LIGHT -> false
             ThemeModeSetting.SYSTEM -> systemDark
         }
@@ -662,6 +703,7 @@ object ScheduleShareRenderer {
         return when {
             isNeon -> ThemeColors(
                 isNeon = true,
+                isGlass = false,
                 isDark = true,
                 bgBase = NeonPalette.backgroundBase.toArgb(),
                 cardTop = Color.parseColor("#B51D254B"),
@@ -679,8 +721,29 @@ object ScheduleShareRenderer {
                 pillBg = Color.argb(86, 147, 51, 234),
                 pillText = Color.parseColor("#E9D5FF"),
             )
+            isGlass -> ThemeColors(
+                isNeon = false,
+                isGlass = true,
+                isDark = true,
+                bgBase = GlassPalette.backgroundBase.toArgb(),
+                cardTop = Color.parseColor("#858A8A8A"),
+                cardBottom = Color.parseColor("#6E272727"),
+                cardBorder = Color.argb(135, 244, 244, 244),
+                changeCardTop = Color.parseColor("#A64E3818"),
+                changeCardBottom = Color.parseColor("#94291D0C"),
+                changeBorder = Color.parseColor("#FBBF24"),
+                textPrimary = GlassPalette.textPrimary.toArgb(),
+                textSecondary = GlassPalette.textSecondary.toArgb(),
+                divider = Color.argb(56, 244, 244, 244),
+                timelineLine = Color.argb(179, 157, 157, 157),
+                timelineDot = GlassPalette.timelineDot.toArgb(),
+                todayAccent = Color.parseColor("#FAFAFA"),
+                pillBg = Color.argb(133, 191, 191, 191),
+                pillText = Color.parseColor("#F8F8F8"),
+            )
             isDark -> ThemeColors(
                 isNeon = false,
+                isGlass = false,
                 isDark = true,
                 bgBase = Color.parseColor("#0D111A"),
                 cardTop = Color.parseColor("#151B26"),
@@ -700,6 +763,7 @@ object ScheduleShareRenderer {
             )
             else -> ThemeColors(
                 isNeon = false,
+                isGlass = false,
                 isDark = false,
                 bgBase = Color.parseColor("#F6F8FC"),
                 cardTop = Color.parseColor("#FFFFFF"),

@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.ngieu.raspisanie.data.Lesson
+import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import java.time.DayOfWeek
@@ -60,40 +60,54 @@ fun DaySelectorBottomDock(
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         GlassCard(
-            cornerRadius = 24.dp,
-            fillBrush = if (style.isNeon) {
-                Brush.horizontalGradient(
+            cornerRadius = if (style.isGlass) 26.dp else 24.dp,
+            fillBrush = when {
+                style.isNeon -> Brush.horizontalGradient(
                     colors = listOf(
                         Color(0xE01A1F44),
                         Color(0xD9131936),
                         Color(0xE015224B),
                     ),
                 )
-            } else {
-                Brush.horizontalGradient(
+                style.isGlass -> Brush.verticalGradient(
+                    colors = listOf(
+                        GlassPalette.dockFillTop,
+                        GlassPalette.dockFillBottom,
+                    ),
+                )
+                else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface,
                         MaterialTheme.colorScheme.surface,
                     ),
                 )
             },
-            borderBrush = if (style.isNeon) {
-                Brush.horizontalGradient(
+            borderBrush = when {
+                style.isNeon -> Brush.horizontalGradient(
                     colors = listOf(
                         Color(0x66A855F7),
                         Color(0x33FFFFFF),
                         Color(0x6638BDF8),
                     ),
                 )
-            } else {
-                Brush.horizontalGradient(
+                style.isGlass -> Brush.verticalGradient(
+                    colors = listOf(
+                        GlassPalette.dockBorderTop,
+                        GlassPalette.dockBorderBottom,
+                    ),
+                )
+                else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.outlineVariant,
                         MaterialTheme.colorScheme.outlineVariant,
                     ),
                 )
             },
-            glowColor = if (style.isNeon) Color(0xFF7C3AED) else null,
+            glowColor = when {
+                style.isNeon -> Color(0xFF7C3AED)
+                style.isGlass -> Color.White
+                else -> null
+            },
         ) {
             DaySelectorRow(
                 weekDays = weekDays,
@@ -133,14 +147,17 @@ fun DaySelectorRow(
             val labelColor = when {
                 isSelected -> Color.White
                 style.isNeon -> NeonPalette.textSecondary
+                style.isGlass -> GlassPalette.textMuted
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
 
             val numberColor = when {
-                isSelected -> Color.White
+                isSelected -> if (style.isGlass) Color(0xFFF5F5F5) else Color.White
                 isToday && style.isNeon -> Color(0xFF38BDF8)
+                isToday && style.isGlass -> Color.White
                 isToday -> MaterialTheme.colorScheme.primary
                 style.isNeon -> NeonPalette.textPrimary
+                style.isGlass -> Color(0xFFF5F5F5)
                 else -> MaterialTheme.colorScheme.onSurface
             }
 
@@ -148,6 +165,9 @@ fun DaySelectorRow(
             val fillBrush = when {
                 isSelected && style.isNeon -> Brush.verticalGradient(
                     colors = listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                )
+                isSelected && style.isGlass -> Brush.linearGradient(
+                    colors = listOf(GlassPalette.daySelectedFillTop, GlassPalette.daySelectedFillBottom),
                 )
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
@@ -158,6 +178,12 @@ fun DaySelectorRow(
                 style.isNeon -> Brush.verticalGradient(
                     colors = listOf(Color(0x88192044), Color(0x80111632)),
                 )
+                style.isGlass && isToday -> Brush.linearGradient(
+                    colors = listOf(Color(0xB3686868), Color(0xA6363636)),
+                )
+                style.isGlass -> Brush.linearGradient(
+                    colors = listOf(GlassPalette.dayTileFillTop, GlassPalette.dayTileFillBottom),
+                )
                 isToday -> Brush.verticalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
@@ -165,7 +191,10 @@ fun DaySelectorRow(
                     ),
                 )
                 else -> Brush.verticalGradient(
-                    colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    ),
                 )
             }
 
@@ -173,11 +202,20 @@ fun DaySelectorRow(
                 isSelected && style.isNeon -> Brush.verticalGradient(
                     colors = listOf(NeonPalette.activeDayBorder, Color(0xFFA855F7)),
                 )
+                isSelected && style.isGlass -> Brush.linearGradient(
+                    colors = listOf(GlassPalette.daySelectedBorderTop, GlassPalette.daySelectedBorderBottom),
+                )
                 isToday && style.isNeon -> Brush.verticalGradient(
                     colors = listOf(Color(0x8038BDF8), Color(0x40818CF8)),
                 )
+                isToday && style.isGlass -> Brush.linearGradient(
+                    colors = listOf(Color(0x99F4F4F4), Color(0x408C8C8C)),
+                )
                 style.isNeon -> Brush.verticalGradient(
                     colors = listOf(Color(0x28FFFFFF), Color(0x14818CF8)),
+                )
+                style.isGlass -> Brush.linearGradient(
+                    colors = listOf(GlassPalette.dayTileBorderTop, GlassPalette.dayTileBorderBottom),
                 )
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
@@ -201,10 +239,15 @@ fun DaySelectorRow(
                         scaleY = scale
                     }
                     .drawBehind {
-                        if (isSelected && style.isNeon) {
+                        if (isSelected && style.isTranslucent) {
                             val r = 16.dp.toPx()
+                            val glow = if (style.isGlass) {
+                                Color.White.copy(alpha = 0.28f)
+                            } else {
+                                Color(0xFF9333EA).copy(alpha = 0.35f)
+                            }
                             drawRoundRect(
-                                color = Color(0xFF9333EA).copy(alpha = 0.35f),
+                                color = glow,
                                 topLeft = Offset(-2.dp.toPx(), -2.dp.toPx()),
                                 size = Size(
                                     width = size.width + 4.dp.toPx(),
@@ -250,6 +293,7 @@ fun DaySelectorRow(
                             val dotColor = when {
                                 isSelected -> Color.White
                                 hasChanges -> Color(0xFFFBBF24)
+                                style.isGlass -> Color(0xFFFAFAFA)
                                 style.isNeon && date.dayOfWeek.value >= 5 -> Color(0xFF38BDF8)
                                 style.isNeon -> Color(0xFFA78BFA)
                                 else -> MaterialTheme.colorScheme.primary

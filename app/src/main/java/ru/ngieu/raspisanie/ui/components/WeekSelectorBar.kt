@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.ngieu.raspisanie.domain.WeekFilterMode
+import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import java.time.LocalDate
@@ -61,8 +62,16 @@ fun WeekSelectorBar(
     modifier: Modifier = Modifier,
 ) {
     val style = LocalAppVisualStyle.current
-    val headerTextColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onBackground
-    val inactiveSubColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+    val headerTextColor = when {
+        style.isNeon -> NeonPalette.textPrimary
+        style.isGlass -> GlassPalette.textPrimary
+        else -> MaterialTheme.colorScheme.onBackground
+    }
+    val inactiveSubColor = when {
+        style.isNeon -> NeonPalette.textSecondary
+        style.isGlass -> GlassPalette.textSecondary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     val saturday = selectedMonday.plusDays(5)
     val rangeText = "${selectedMonday.format(shortDayMonthFormatter)} – ${saturday.format(shortDayMonthFormatter)}"
@@ -118,8 +127,16 @@ fun WeekSelectorBar(
             ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = if (style.isNeon) Color(0x409333EA) else MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = if (style.isNeon) Color(0xFFE9D5FF) else MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = when {
+                        style.isNeon -> Color(0x409333EA)
+                        style.isGlass -> GlassPalette.typePillBg
+                        else -> MaterialTheme.colorScheme.primaryContainer
+                    },
+                    contentColor = when {
+                        style.isNeon -> Color(0xFFE9D5FF)
+                        style.isGlass -> Color.White
+                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                    },
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .clickable(onClick = onGoToday),
@@ -157,6 +174,9 @@ fun WeekSelectorBar(
                     selected && style.isNeon -> Brush.verticalGradient(
                         listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
                     )
+                    selected && style.isGlass -> Brush.linearGradient(
+                        listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
+                    )
                     selected -> Brush.verticalGradient(
                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
@@ -166,18 +186,24 @@ fun WeekSelectorBar(
                     selected && style.isNeon -> Brush.linearGradient(
                         listOf(Color(0x99E9D5FF), Color(0x667DD3FC)),
                     )
+                    selected && style.isGlass -> Brush.linearGradient(
+                        listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom),
+                    )
                     selected -> Brush.linearGradient(
                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
                     style.isNeon -> Brush.linearGradient(
                         listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom),
                     )
+                    style.isGlass -> Brush.linearGradient(
+                        listOf(GlassPalette.cardBorderTop, GlassPalette.cardBorderBottom),
+                    )
                     else -> Brush.linearGradient(
                         listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
                     )
                 }
                 val textColor = when {
-                    selected && style.isNeon -> Color.White
+                    selected && style.isTranslucent -> Color.White
                     selected -> MaterialTheme.colorScheme.onPrimary
                     else -> inactiveSubColor
                 }
@@ -209,7 +235,11 @@ fun WeekSelectorBar(
                                 text = "•",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = if (selected) textColor else Color(0xFF38BDF8),
+                                color = when {
+                                    selected -> textColor
+                                    style.isGlass -> Color.White
+                                    else -> Color(0xFF38BDF8)
+                                },
                             )
                         }
                     }
