@@ -65,6 +65,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -83,6 +84,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import ru.ngieu.raspisanie.BuildConfig
 import ru.ngieu.raspisanie.R
 import ru.ngieu.raspisanie.data.ActorKind
@@ -906,6 +908,7 @@ private fun DayHorizontalPager(
         initialPage = initialPage,
         pageCount = { ScheduleEngine.TOTAL_DAY_PAGES },
     )
+    val coroutineScope = rememberCoroutineScope()
     var lastPagerDate by remember { mutableStateOf(state.selectedDate) }
 
     LaunchedEffect(pagerState) {
@@ -930,7 +933,14 @@ private fun DayHorizontalPager(
     }
 
     HorizontalBiasPagerContainer(
-        isPagerScrolling = pagerState.isScrollInProgress,
+        isPagerScrolling = { pagerState.isScrollInProgress },
+        onEnsureSettled = {
+            coroutineScope.launch {
+                if (!pagerState.isScrollInProgress && pagerState.currentPageOffsetFraction != 0f) {
+                    pagerState.animateScrollToPage(pagerState.targetPage)
+                }
+            }
+        },
         modifier = Modifier.fillMaxSize(),
     ) { gateState, allowVerticalScroll ->
         HorizontalPager(
@@ -1157,6 +1167,7 @@ private fun WeekHorizontalPager(
         initialPage = initialPage,
         pageCount = { ScheduleEngine.TOTAL_WEEK_PAGES },
     )
+    val coroutineScope = rememberCoroutineScope()
     var lastPagerMonday by remember { mutableStateOf(state.selectedMonday) }
 
     LaunchedEffect(pagerState) {
@@ -1183,7 +1194,14 @@ private fun WeekHorizontalPager(
     }
 
     HorizontalBiasPagerContainer(
-        isPagerScrolling = pagerState.isScrollInProgress,
+        isPagerScrolling = { pagerState.isScrollInProgress },
+        onEnsureSettled = {
+            coroutineScope.launch {
+                if (!pagerState.isScrollInProgress && pagerState.currentPageOffsetFraction != 0f) {
+                    pagerState.animateScrollToPage(pagerState.targetPage)
+                }
+            }
+        },
         modifier = Modifier.fillMaxSize(),
     ) { gateState, allowVerticalScroll ->
         HorizontalPager(

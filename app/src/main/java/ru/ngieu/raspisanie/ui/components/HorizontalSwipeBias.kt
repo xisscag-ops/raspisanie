@@ -9,6 +9,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -29,14 +30,14 @@ enum class SwipeAxisDecision {
 
 object SwipeBiasPolicy {
     /**
-     * Диапазон углов горизонтального свайпа намеренно шире вертикального:
+     * Диапазон углов горизонтального свайпа шире вертикального:
      * боковой свайп засчитывается при |dx| >= |dy| * 0.65 (~±57° от горизонтали),
-     * поэтому даже диагональный свайп пальцем уводит экран вбок, а не скроллит список вверх-вниз.
+     * поэтому диагональный свайп пальцем уводит экран вбок, а чистый вертикальный сразу скроллит список.
      */
     const val HORIZONTAL_OVER_VERTICAL_RATIO = 0.65f
     const val VERTICAL_OVER_HORIZONTAL_RATIO = 1.50f
-    const val PAGER_TOUCH_SLOP_MULTIPLIER = 0.65f
-    const val VERTICAL_TOUCH_SLOP_MULTIPLIER = 2.25f
+    const val PAGER_TOUCH_SLOP_MULTIPLIER = 0.70f
+    const val VERTICAL_TOUCH_SLOP_MULTIPLIER = 1.25f
 
     fun decide(
         dx: Float,
@@ -68,8 +69,11 @@ class HorizontalSwipeGateState(
     var allowVerticalScroll by mutableStateOf(true)
         internal set
 
-    // Синхронный флаг для nestedScroll, чтобы гасить вертикальный скролл и PullToRefresh в тот же кадр
+    // Синхронные флаги для pointerInput/nestedScroll в пределах одного кадра
     internal var lockVerticalSync: Boolean = false
+    internal var blockHorizontalMovesThisGesture: Boolean = false
+    internal var suppressHorizontalJitterWhileSettling: Boolean = false
+    internal var gestureStartPos: Offset = Offset.Zero
 
     val verticalBlockerNestedScroll: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -84,7 +88,8 @@ class HorizontalSwipeGateState(
 
 @Composable
 fun HorizontalBiasPagerContainer(
-    isPagerScrolling: Boolean,
+    isPagerScrolling: () -> Boolean,
+    onEnsureSettled: () -> Unit = {},
     modifier: Modifier = Modifier,
     content: @Composable (gateState: HorizontalSwipeGateState, allowVerticalScroll: Boolean) -> Unit,
 ) {
@@ -101,6 +106,8 @@ fun HorizontalBiasPagerContainer(
     val gateState = remember(verticalViewConfig) {
         HorizontalSwipeGateState(verticalViewConfig)
     }
+    val latestIsPagerScrolling by rememberUpdatedState(isPagerScrolling)
+    val latestOnEnsureSettled by rememberUpdatedState(onEnsureSettled)
 
     CompositionLocalProvider(LocalViewConfiguration provides pagerViewConfig) {
         Box(
@@ -108,12 +115,16 @@ fun HorizontalBiasPagerContainer(
                 awaitEachGesture {
                     gateState.lockVerticalSync = false
                     gateState.allowVerticalScroll = true
+                    gateState.blockHorizontalMovesThisGesture = false
+                    gateState.suppressHorizontalJitterWhileSettling = false
                     try {
                         val down = awaitFirstDown(
                             requireUnconsumed = false,
                             pass = PointerEventPass.Initial,
                         )
                         val startPos = down.position
+                        gateState.gestureStartPos = startPos
+                        gateState.suppressHorizontalJitterWhileSettling = latestIsPagerScrolling()
                         var decision = SwipeAxisDecision.UNDECIDED
 
                         while (true) {
@@ -134,10 +145,15 @@ fun HorizontalBiasPagerContainer(
                                     SwipeAxisDecision.HORIZONTAL -> {
                                         gateState.lockVerticalSync = true
                                         gateState.allowVerticalScroll = false
+                                        gateState.blockHorizontalMovesThisGesture = false
+                                        gateState.suppressHorizontalJitterWhileSettling = false
                                     }
                                     SwipeAxisDecision.VERTICAL -> {
                                         gateState.lockVerticalSync = false
                                         gateState.allowVerticalScroll = true
+                                        gateState.blockHorizontalMovesThisGesture = true
+                                        gateState.suppressHorizontalJitterWhileSettling = false
+                                        latestOnEnsureSettled()
                                     }
                                     SwipeAxisDecision.UNDECIDED -> Unit
                                 }
@@ -146,11 +162,13 @@ fun HorizontalBiasPagerContainer(
                     } finally {
                         gateState.lockVerticalSync = false
                         gateState.allowVerticalScroll = true
+                        gateState.blockHorizontalMovesThisGesture = false
+                        gateState.suppressHorizontalJitterWhileSettling = false
                     }
                 }
             },
         ) {
-            content(gateState, gateState.allowVerticalScroll && !isPagerScrolling)
+            content(gateState, gateState.allowVerticalScroll)
         }
     }
 }
@@ -161,7 +179,38 @@ fun VerticalListWithHorizontalBias(
     content: @Composable () -> Unit,
 ) {
     CompositionLocalProvider(LocalViewConfiguration provides gateState.verticalViewConfig) {
-        Box(modifier = Modifier.nestedScroll(gateState.verticalBlockerNestedScroll)) {
+        Box(
+            modifier = Modifier
+                .nestedScroll(gateState.verticalBlockerNestedScroll)
+                .pointerInput(gateState) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(
+                            requireUnconsumed = false,
+                            pass = PointerEventPass.Main,
+                        )
+                        // DOWN не потребляем, чтобы последовательные горизонтальные свайпы шли 1:1 без задержки.
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            val activeChange = event.changes.firstOrNull { it.id == down.id }
+                                ?: event.changes.firstOrNull { it.pressed }
+                            if (activeChange == null || !activeChange.pressed) {
+                                break
+                            }
+                            val dx = abs(activeChange.position.x - gateState.gestureStartPos.x)
+                            val dy = abs(activeChange.position.y - gateState.gestureStartPos.y)
+                            val isVerticalEarlyMove = gateState.suppressHorizontalJitterWhileSettling &&
+                                dy > dx * 1.15f
+                            if ((gateState.blockHorizontalMovesThisGesture || isVerticalEarlyMove) &&
+                                !activeChange.isConsumed
+                            ) {
+                                // Main pass идёт снизу вверх: LazyColumn уже получил MOVE неиспользованным,
+                                // а HorizontalPager не сможет перехватить вертикальный жест вбок.
+                                activeChange.consume()
+                            }
+                        }
+                    }
+                },
+        ) {
             content()
         }
     }
