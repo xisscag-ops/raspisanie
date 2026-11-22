@@ -1179,6 +1179,12 @@ private fun WeekHorizontalPager(
         initialPage = initialPage,
         pageCount = { ScheduleEngine.TOTAL_WEEK_PAGES },
     )
+    val coroutineScope = rememberCoroutineScope()
+    val pagerFlingBehavior = PagerDefaults.flingBehavior(
+        state = pagerState,
+        pagerSnapDistance = PagerSnapDistance.atMost(1),
+        snapAnimationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+    )
     var lastPagerMonday by remember { mutableStateOf(state.selectedMonday) }
 
     LaunchedEffect(pagerState) {
@@ -1205,11 +1211,20 @@ private fun WeekHorizontalPager(
     }
 
     HorizontalBiasPagerContainer(
-        isPagerScrolling = pagerState.isScrollInProgress,
+        canInterruptSettling = {
+            pagerState.isScrollInProgress && abs(pagerState.currentPageOffsetFraction) <= 0.35f
+        },
+        onInterruptSettling = {
+            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                pagerState.scrollToPage(pagerState.targetPage)
+            }
+        },
         modifier = Modifier.fillMaxSize(),
-    ) { gateState, allowVerticalScroll ->
+    ) { gateState, allowHorizontalScroll, allowVerticalScroll ->
         HorizontalPager(
             state = pagerState,
+            flingBehavior = pagerFlingBehavior,
+            userScrollEnabled = allowHorizontalScroll,
             beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxSize(),
         ) { pageIndex ->
