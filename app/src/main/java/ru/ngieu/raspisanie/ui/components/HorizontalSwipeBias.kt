@@ -30,14 +30,14 @@ enum class SwipeAxisDecision {
 
 object SwipeBiasPolicy {
     /**
-     * Диапазон углов горизонтального свайпа шире вертикального:
-     * боковой свайп засчитывается при |dx| >= |dy| * 0.65 (~±57° от горизонтали),
-     * поэтому диагональный свайп пальцем уводит экран вбок, а чистый вертикальный сразу скроллит список.
+     * Умеренно широкий диапазон углов для горизонтального свайпа:
+     * боковой свайп засчитывается при |dx| >= |dy| * 0.85 (~±50° от горизонтали),
+     * а свайпы вверх/вниз уверенно распознаются при |dy| >= |dx| * 1.20 (~±40° от вертикали).
      */
-    const val HORIZONTAL_OVER_VERTICAL_RATIO = 0.65f
-    const val VERTICAL_OVER_HORIZONTAL_RATIO = 1.50f
-    const val PAGER_TOUCH_SLOP_MULTIPLIER = 0.70f
-    const val VERTICAL_TOUCH_SLOP_MULTIPLIER = 1.25f
+    const val HORIZONTAL_OVER_VERTICAL_RATIO = 0.85f
+    const val VERTICAL_OVER_HORIZONTAL_RATIO = 1.20f
+    const val PAGER_TOUCH_SLOP_MULTIPLIER = 0.85f
+    const val VERTICAL_TOUCH_SLOP_MULTIPLIER = 1.05f
 
     fun decide(
         dx: Float,
@@ -199,7 +199,7 @@ fun VerticalListWithHorizontalBias(
                             val dx = abs(activeChange.position.x - gateState.gestureStartPos.x)
                             val dy = abs(activeChange.position.y - gateState.gestureStartPos.y)
                             val isVerticalEarlyMove = gateState.suppressHorizontalJitterWhileSettling &&
-                                dy > dx * 1.15f
+                                dy > dx * 1.10f
                             if ((gateState.blockHorizontalMovesThisGesture || isVerticalEarlyMove) &&
                                 !activeChange.isConsumed
                             ) {
