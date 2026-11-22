@@ -530,7 +530,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             }
             _uiState.update {
                 it.copy(
-                    activeLauncherIcon = result.activeIcon ?: it.activeIcon,
+                    activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
                     launcherAliases = result.launcherAliases.ifEmpty { it.launcherAliases },
                     iconSyncError = result.errorMessage,
                 )
@@ -556,7 +556,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             }
             _uiState.update {
                 it.copy(
-                    activeLauncherIcon = result.activeIcon ?: it.activeIcon,
+                    activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
                     launcherAliases = result.launcherAliases.ifEmpty { it.launcherAliases },
                     iconSyncError = result.errorMessage,
                 )
