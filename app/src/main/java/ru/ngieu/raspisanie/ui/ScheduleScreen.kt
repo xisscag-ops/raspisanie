@@ -412,14 +412,17 @@ private fun NeonTopHeader(
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Text(
                 text = if (activeActorKind == ActorKind.TEACHER) groupName else "Группа $groupName",
                 fontSize = 22.sp,
@@ -427,132 +430,167 @@ private fun NeonTopHeader(
                 color = titleColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
-            Spacer(modifier = Modifier.height(2.dp))
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onClickWeekPicker)
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    Text(
-                        text = weekSubtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = subtitleColor,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
+                if (style.isGlass) {
+                    HeaderCircleButton(
+                        iconRes = R.drawable.ic_glass_game,
+                        contentDescription = "Тетрис на перемене",
+                        highlighted = false,
+                        onClick = onClickOpenGame,
                     )
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_neon_expand),
-                        contentDescription = "Выбрать неделю",
-                        colorFilter = when {
-                            style.isNeon -> null
-                            style.isGlass -> ColorFilter.tint(GlassPalette.textSecondary)
-                            else -> ColorFilter.tint(subtitleColor)
-                        },
-                        modifier = Modifier.size(13.dp),
+                } else {
+                    HeaderVectorCircleButton(
+                        imageVector = Icons.Rounded.SportsEsports,
+                        contentDescription = "Тетрис на перемене",
+                        onClick = onClickOpenGame,
                     )
                 }
-
-                AnimatedVisibility(visible = showTodayPill) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                when {
-                                    style.isNeon -> Color(0x409333EA)
-                                    style.isGlass -> GlassPalette.typePillBg
-                                    else -> MaterialTheme.colorScheme.primaryContainer
-                                },
-                            )
-                            .clickable(onClick = onClickToday)
-                            .padding(horizontal = 9.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            text = "Сегодня",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = when {
-                                style.isNeon -> Color(0xFFE9D5FF)
-                                style.isGlass -> GlassPalette.typePillText
-                                else -> MaterialTheme.colorScheme.onPrimaryContainer
-                            },
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
-                }
-
-                AnimatedVisibility(visible = !isViewingDefaultGroup) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                when {
-                                    style.isNeon -> Color(0x3838BDF8)
-                                    style.isGlass -> GlassPalette.secondaryPillBg
-                                    else -> MaterialTheme.colorScheme.secondaryContainer
-                                },
-                            )
-                            .clickable(onClick = onClickResetGroup)
-                            .padding(horizontal = 9.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            text = "← ${ScheduleRepository.TARGET_GROUP_NAME}",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = when {
-                                style.isNeon -> Color(0xFF7DD3FC)
-                                style.isGlass -> GlassPalette.textPrimary
-                                else -> MaterialTheme.colorScheme.onSecondaryContainer
-                            },
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    }
-                }
+                HeaderCircleButton(
+                    iconRes = R.drawable.ic_neon_share,
+                    contentDescription = "Поделиться расписанием",
+                    highlighted = false,
+                    enabled = canShare && !isSharing,
+                    isLoading = isSharing,
+                    onClick = onClickShare,
+                )
+                HeaderCircleButton(
+                    iconRes = R.drawable.ic_neon_search,
+                    contentDescription = "Поиск по расписанию",
+                    highlighted = isSearchVisible,
+                    onClick = onToggleSearch,
+                )
             }
         }
 
         Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 32.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (style.isGlass) {
-                HeaderCircleButton(
-                    iconRes = R.drawable.ic_glass_game,
-                    contentDescription = "Тетрис на перемене",
-                    highlighted = false,
-                    onClick = onClickOpenGame,
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable(onClick = onClickWeekPicker)
+                    .padding(vertical = 4.dp, horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text(
+                    text = weekSubtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = subtitleColor,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            } else {
-                HeaderVectorCircleButton(
-                    imageVector = Icons.Rounded.SportsEsports,
-                    contentDescription = "Тетрис на перемене",
-                    onClick = onClickOpenGame,
+                Image(
+                    painter = painterResource(id = R.drawable.ic_neon_expand),
+                    contentDescription = "Выбрать неделю",
+                    colorFilter = when {
+                        style.isNeon -> null
+                        style.isGlass -> ColorFilter.tint(GlassPalette.textSecondary)
+                        else -> ColorFilter.tint(subtitleColor)
+                    },
+                    modifier = Modifier.size(13.dp),
                 )
             }
-            HeaderCircleButton(
-                iconRes = R.drawable.ic_neon_share,
-                contentDescription = "Поделиться расписанием",
-                highlighted = false,
-                enabled = canShare && !isSharing,
-                isLoading = isSharing,
-                onClick = onClickShare,
-            )
-            HeaderCircleButton(
-                iconRes = R.drawable.ic_neon_search,
-                contentDescription = "Поиск по расписанию",
-                highlighted = isSearchVisible,
-                onClick = onToggleSearch,
-            )
+
+            if (showTodayPill) {
+                val todayBtnBrush = when {
+                    style.isNeon -> Brush.horizontalGradient(
+                        colors = listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                    )
+                    style.isGlass -> Brush.verticalGradient(
+                        colors = listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
+                    )
+                    else -> Brush.horizontalGradient(
+                        colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                    )
+                }
+                val todayBtnBorder = when {
+                    style.isNeon -> NeonPalette.activeDayBorder.copy(alpha = 0.72f)
+                    style.isGlass -> GlassPalette.panelBorderTop
+                    else -> MaterialTheme.colorScheme.primary
+                }
+                val todayBtnContent = when {
+                    style.isNeon || style.isGlass -> Color.White
+                    else -> MaterialTheme.colorScheme.onPrimary
+                }
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(brush = todayBtnBrush, shape = RoundedCornerShape(12.dp))
+                        .border(width = 1.dp, color = todayBtnBorder, shape = RoundedCornerShape(12.dp))
+                        .clickable(onClick = onClickToday)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Today,
+                        contentDescription = null,
+                        tint = todayBtnContent,
+                        modifier = Modifier.size(15.dp),
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isViewingDefaultGroup) "Открыть сегодня" else "Сегодня",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = todayBtnContent,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            if (!isViewingDefaultGroup) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            when {
+                                style.isNeon -> Color(0x3838BDF8)
+                                style.isGlass -> GlassPalette.secondaryPillBg
+                                else -> MaterialTheme.colorScheme.secondaryContainer
+                            },
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = when {
+                                style.isNeon -> Color(0x667DD3FC)
+                                style.isGlass -> Color(0x4DF4F4F4)
+                                else -> MaterialTheme.colorScheme.outlineVariant
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                        )
+                        .clickable(onClick = onClickResetGroup)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        text = "← ${ScheduleRepository.TARGET_GROUP_NAME}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = when {
+                            style.isNeon -> Color(0xFF7DD3FC)
+                            style.isGlass -> GlassPalette.textPrimary
+                            else -> MaterialTheme.colorScheme.onSecondaryContainer
+                        },
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
         }
     }
 }
