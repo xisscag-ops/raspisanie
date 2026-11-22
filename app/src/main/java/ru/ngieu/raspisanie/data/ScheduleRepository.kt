@@ -265,6 +265,10 @@ class ScheduleRepository(
 
     fun saveSubgroupFilter(mode: SubgroupFilterMode) = cache.saveSubgroupFilter(mode)
 
+    fun loadTetrisBestScore(): Int = cache.loadTetrisBestScore()
+
+    fun saveTetrisBestScore(score: Int) = cache.saveTetrisBestScore(score)
+
     companion object {
         const val TARGET_GROUP_NAME = "С-25ИО"
         const val FALLBACK_ACTOR_ID = "a11ce001-0000-0001-0000-00a200000000"
