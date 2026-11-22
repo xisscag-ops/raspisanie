@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
@@ -65,6 +66,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -1151,6 +1153,18 @@ private fun DayHorizontalPager(
                 }
             }
 
+            val listState = remember(pageDate) { LazyListState() }
+            val isOffscreen by remember(pagerState, pageIndex) {
+                derivedStateOf {
+                    !pagerState.isScrollInProgress && pagerState.currentPage != pageIndex
+                }
+            }
+            LaunchedEffect(isOffscreen) {
+                if (isOffscreen && (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0)) {
+                    listState.scrollToItem(0)
+                }
+            }
+
             VerticalListWithHorizontalBias(gateState = gateState) {
                 DayLessonsList(
                     pageDate = pageDate,
@@ -1165,6 +1179,7 @@ private fun DayHorizontalPager(
                     hasSearchQuery = state.searchQuery.isNotBlank(),
                     showGroupsInsteadOfTeachers = state.activeActorKind == ActorKind.TEACHER,
                     userScrollEnabled = allowVerticalScroll,
+                    listState = listState,
                 )
             }
         }
@@ -1185,6 +1200,7 @@ private fun DayLessonsList(
     hasSearchQuery: Boolean,
     showGroupsInsteadOfTeachers: Boolean,
     userScrollEnabled: Boolean,
+    listState: LazyListState,
 ) {
     val style = LocalAppVisualStyle.current
     val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -1192,6 +1208,7 @@ private fun DayLessonsList(
     val isPastDay = pageDate.isBefore(todayDate)
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         userScrollEnabled = userScrollEnabled,
         contentPadding = PaddingValues(
@@ -1401,9 +1418,21 @@ private fun WeekHorizontalPager(
 
             val isCurrentWeek = pageMonday == ScheduleEngine.mondayOf(state.todayDate)
             val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+            val listState = remember(pageMonday) { LazyListState() }
+            val isOffscreen by remember(pagerState, pageIndex) {
+                derivedStateOf {
+                    !pagerState.isScrollInProgress && pagerState.currentPage != pageIndex
+                }
+            }
+            LaunchedEffect(isOffscreen) {
+                if (isOffscreen && (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0)) {
+                    listState.scrollToItem(0)
+                }
+            }
 
             VerticalListWithHorizontalBias(gateState = gateState) {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     userScrollEnabled = allowVerticalScroll,
                     contentPadding = PaddingValues(
