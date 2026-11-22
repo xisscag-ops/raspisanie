@@ -255,7 +255,7 @@ object ScheduleEngine {
         nowTime: LocalTime,
     ): LiveLessonState {
         val timedLessons = lessonsToday
-            .filter { it.startTime != null && it.endTime != null }
+            .filter { !it.isCancelled && it.startTime != null && it.endTime != null }
             .sortedBy { it.startTime }
 
         if (timedLessons.isEmpty()) return LiveLessonState.NoLessonsToday

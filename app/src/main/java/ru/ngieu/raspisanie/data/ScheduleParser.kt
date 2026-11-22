@@ -205,7 +205,8 @@ object ScheduleParser {
         }
 
         val lessonType = detectLessonType(note = note, subject = subject)
-        val id = "${day.value}|$pairNumber|$subject|$room|${dto.isUpperWeek}|${dto.isChange}|$explicitDate|$uniqueSuffix"
+        val isCancelled = detectCancellation(subject = subject, note = note, dto = dto)
+        val id = "${day.value}|$pairNumber|$subject|$room|${dto.isUpperWeek}|${dto.isChange}|$isCancelled|$explicitDate|$uniqueSuffix"
 
         return Lesson(
             id = id,
@@ -223,6 +224,7 @@ object ScheduleParser {
             explicitDate = explicitDate,
             isChange = dto.isChange,
             groups = groups,
+            isCancelled = isCancelled,
         )
     }
 
@@ -277,6 +279,21 @@ object ScheduleParser {
             }
         }
         return null
+    }
+
+    private val cancellationRegex = Regex(
+        """(?<![\p{L}\p{N}])отмен(?:а|ен|ена|ено|ены|ён)?(?![\p{L}\p{N}])|заняти[ея]\s+отмен|пар[аы]\s+отмен|занятия?\s+нет|пары?\s+нет|не\s+состоится""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    fun detectCancellation(
+        subject: String,
+        note: String,
+        dto: RawScheduleItem = RawScheduleItem(),
+    ): Boolean {
+        if (dto.isCanceled || dto.isCancelled) return true
+        val combined = "$subject $note".trim()
+        return combined.isNotEmpty() && cancellationRegex.containsMatchIn(combined)
     }
 
     fun detectLessonType(note: String, subject: String): LessonType {

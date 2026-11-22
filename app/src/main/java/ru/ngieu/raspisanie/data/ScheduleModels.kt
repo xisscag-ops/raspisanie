@@ -45,6 +45,8 @@ data class RawScheduleItem(
     val date: String? = null,
     val isUpperWeek: Boolean? = null,
     val isChange: Boolean = false,
+    val isCanceled: Boolean = false,
+    val isCancelled: Boolean = false,
 )
 
 data class WeekTypeInfo(
@@ -84,6 +86,7 @@ data class Lesson(
     val explicitDate: LocalDate?,
     val isChange: Boolean,
     val groups: List<String> = emptyList(),
+    val isCancelled: Boolean = false,
 )
 
 @Serializable

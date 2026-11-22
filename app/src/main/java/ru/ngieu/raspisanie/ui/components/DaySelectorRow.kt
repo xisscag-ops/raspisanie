@@ -142,6 +142,8 @@ fun DaySelectorRow(
             val isToday = date == todayDate
             val dayLessons = lessonsByDay[date].orEmpty()
             val hasChanges = dayLessons.any { it.isChange }
+            val hasCancelled = dayLessons.any { it.isCancelled }
+            val isStandardDark = !style.isTranslucent && style.isDark
 
             val scale = if (isSelected) 1.02f else 1f
 
@@ -293,7 +295,8 @@ fun DaySelectorRow(
                         ) {
                             val dotColor = when {
                                 isSelected -> Color.White
-                                hasChanges -> if (style.isDark) ScheduleAccentColors.changeBadgeDark else Color(0xFFD97706)
+                                hasCancelled -> if (isStandardDark) ScheduleAccentColors.cancelBadgeDark else Color(0xFFF87171)
+                                hasChanges -> if (isStandardDark) ScheduleAccentColors.changeBadgeDark else Color(0xFFFBBF24)
                                 style.isGlass -> Color(0xFFFAFAFA)
                                 style.isNeon && date.dayOfWeek.value >= 5 -> Color(0xFF38BDF8)
                                 style.isNeon -> Color(0xFFA78BFA)
