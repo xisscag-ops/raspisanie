@@ -7,6 +7,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,9 +20,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -76,16 +81,17 @@ import ru.ngieu.raspisanie.R
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.data.WeekParity
+import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.LiveLessonState
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.domain.WeekFilterMode
 import ru.ngieu.raspisanie.ui.components.BellsAndSettingsBottomSheet
-import ru.ngieu.raspisanie.ui.components.DaySelectorRow
+import ru.ngieu.raspisanie.ui.components.DaySelectorBottomDock
 import ru.ngieu.raspisanie.ui.components.GlassCard
 import ru.ngieu.raspisanie.ui.components.LessonCard
 import ru.ngieu.raspisanie.ui.components.LiveLessonBanner
 import ru.ngieu.raspisanie.ui.components.NeonAuroraBackground
-import ru.ngieu.raspisanie.ui.components.NeonBottomBar
+import ru.ngieu.raspisanie.ui.components.NeonTopNavBar
 import ru.ngieu.raspisanie.ui.components.WeekSelectorBar
 import ru.ngieu.raspisanie.ui.components.fullDayName
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
@@ -93,10 +99,10 @@ import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.math.abs
 
 private val ruLocale = Locale("ru", "RU")
 private val dayHeaderDateFormatter = DateTimeFormatter.ofPattern("d MMMM", ruLocale)
@@ -147,11 +153,17 @@ fun ScheduleScreen(
                     onOpenSettings = { showSettingsSheet = true },
                 )
 
+                // Верхняя панель навигации (Главная, Неделя, Звонки, Настройки)
+                NeonTopNavBar(
+                    activeTab = state.activeTab,
+                    onSelectTab = onSelectTab,
+                )
+
                 // Раскрывающийся поиск
                 AnimatedVisibility(
                     visible = showSearchBar,
-                    enter = expandVertically(tween(200)) + fadeIn(tween(200)),
-                    exit = shrinkVertically(tween(170)) + fadeOut(tween(170)),
+                    enter = expandVertically(tween(110)) + fadeIn(tween(110)),
+                    exit = shrinkVertically(tween(90)) + fadeOut(tween(90)),
                 ) {
                     NeonSearchBar(
                         query = state.searchQuery,
@@ -163,8 +175,8 @@ fun ScheduleScreen(
                 // Оффлайн-уведомление
                 AnimatedVisibility(
                     visible = state.isOfflineFallback,
-                    enter = expandVertically(tween(200)) + fadeIn(tween(200)),
-                    exit = shrinkVertically(tween(180)) + fadeOut(tween(180)),
+                    enter = expandVertically(tween(110)) + fadeIn(tween(110)),
+                    exit = shrinkVertically(tween(90)) + fadeOut(tween(90)),
                 ) {
                     OfflineNoticeBanner(
                         updatedAtEpochMillis = state.updatedAtEpochMillis,
@@ -180,7 +192,7 @@ fun ScheduleScreen(
                 ) {
                     AnimatedContent(
                         targetState = state.activeTab,
-                        transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(160)) },
+                        transitionSpec = { fadeIn(tween(100)) togetherWith fadeOut(tween(80)) },
                         label = "tabTransition",
                     ) { tab ->
                         when (tab) {
@@ -227,12 +239,21 @@ fun ScheduleScreen(
                 }
             }
 
-            // Парящая нижняя навигация
-            NeonBottomBar(
-                activeTab = state.activeTab,
-                onSelectTab = onSelectTab,
+            // Нижняя панель выбора дней недели (под большим пальцем)
+            AnimatedVisibility(
+                visible = state.activeTab == MainNavTab.HOME,
+                enter = fadeIn(tween(90)) + slideInVertically(tween(110)) { it / 2 },
+                exit = fadeOut(tween(80)) + slideOutVertically(tween(90)) { it / 2 },
                 modifier = Modifier.align(Alignment.BottomCenter),
-            )
+            ) {
+                DaySelectorBottomDock(
+                    weekDays = state.weekDays,
+                    selectedDate = state.selectedDate,
+                    todayDate = state.todayDate,
+                    lessonsByDay = state.lessonsByWeekDay,
+                    onSelectDate = onSelectDate,
+                )
+            }
         }
     }
 
@@ -494,16 +515,7 @@ private fun HomeScheduleTab(
     onRefresh: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        DaySelectorRow(
-            weekDays = state.weekDays,
-            selectedDate = state.selectedDate,
-            todayDate = state.todayDate,
-            lessonsByDay = state.lessonsByWeekDay,
-            onSelectDate = onSelectDate,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         when {
             state.isLoading -> LoadingView(groupName = state.groupName)
@@ -551,11 +563,7 @@ private fun DayHorizontalPager(
     LaunchedEffect(state.selectedDate) {
         val targetPage = ScheduleEngine.dateToDayIndex(state.anchorMonday, state.selectedDate)
         if (pagerState.currentPage != targetPage) {
-            if (abs(pagerState.currentPage - targetPage) <= 6) {
-                pagerState.animateScrollToPage(targetPage)
-            } else {
-                pagerState.scrollToPage(targetPage)
-            }
+            pagerState.scrollToPage(targetPage)
         }
     }
 
@@ -571,7 +579,7 @@ private fun DayHorizontalPager(
             ScheduleEngine.mondayOf(pageDate)
         }
         val pageWeekFilter = state.weekFilterForMonday(pageMonday)
-        val dayLessons = remember(
+        val daySlots = remember(
             state.allLessons,
             state.lessonsByWeekDay,
             state.searchQuery,
@@ -580,7 +588,7 @@ private fun DayHorizontalPager(
             state.selectedMonday,
             pageWeekFilter,
         ) {
-            if (pageMonday == state.selectedMonday) {
+            val rawLessons = if (pageMonday == state.selectedMonday) {
                 state.lessonsByWeekDay[pageDate].orEmpty()
             } else {
                 ScheduleEngine.lessonsForDay(
@@ -589,21 +597,22 @@ private fun DayHorizontalPager(
                     weekFilter = pageWeekFilter,
                 ).filter(state::matchesSearch)
             }
+            ScheduleEngine.groupLessonsIntoSlots(rawLessons)
         }
 
         val isViewingToday = pageDate == state.todayDate &&
             (state.manualWeekOverride == null || state.manualWeekOverride == state.detectedCurrentWeek)
 
-        val pageProgress = remember(dayLessons, isViewingToday, pageDate, state.todayDate, state.nowTime) {
+        val pageProgress = remember(daySlots, isViewingToday, pageDate, state.todayDate, state.nowTime) {
             if (pageDate == state.selectedDate) {
                 state.selectedDayProgress
             } else {
-                val total = dayLessons.size
+                val total = daySlots.size
                 val active = when {
                     total == 0 -> 0
                     pageDate.isBefore(state.todayDate) -> total
                     pageDate.isAfter(state.todayDate) -> 0
-                    else -> dayLessons.count { it.startTime != null && !state.nowTime.isBefore(it.startTime) }
+                    else -> daySlots.count { it.startTime != null && !state.nowTime.isBefore(it.startTime) }
                 }
                 DayProgressSummary(
                     activeCount = active,
@@ -615,11 +624,12 @@ private fun DayHorizontalPager(
 
         DayLessonsList(
             pageDate = pageDate,
-            dayLessons = dayLessons,
+            daySlots = daySlots,
             isViewingToday = isViewingToday,
             liveLessonState = state.liveLessonState,
             progressSummary = pageProgress,
             currentLessonId = currentLessonId,
+            nowTime = state.nowTime,
             themeMode = state.themeMode,
             hasSearchQuery = state.searchQuery.isNotBlank(),
             onInspectLesson = onInspectLesson,
@@ -630,16 +640,18 @@ private fun DayHorizontalPager(
 @Composable
 private fun DayLessonsList(
     pageDate: LocalDate,
-    dayLessons: List<Lesson>,
+    daySlots: List<LessonSlot>,
     isViewingToday: Boolean,
     liveLessonState: LiveLessonState,
     progressSummary: DayProgressSummary,
     currentLessonId: String?,
+    nowTime: LocalTime,
     themeMode: ThemeModeSetting,
     hasSearchQuery: Boolean,
     onInspectLesson: (Lesson) -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
+    val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -647,7 +659,7 @@ private fun DayLessonsList(
             start = 16.dp,
             end = 16.dp,
             top = 4.dp,
-            bottom = 104.dp,
+            bottom = navBottomPadding + 104.dp,
         ),
     ) {
         if (progressSummary.totalCount > 0 || (isViewingToday && liveLessonState !is LiveLessonState.NoLessonsToday)) {
@@ -677,29 +689,30 @@ private fun DayLessonsList(
                     color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = pairsCountLabel(dayLessons.size),
+                    text = pairsCountLabel(daySlots.size),
                     style = MaterialTheme.typography.labelMedium,
                     color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
 
-        if (dayLessons.isEmpty()) {
+        if (daySlots.isEmpty()) {
             item(key = "empty_day_$pageDate") {
                 EmptyDayCard(hasSearchQuery = hasSearchQuery)
             }
         } else {
             itemsIndexed(
-                items = dayLessons,
-                key = { _, lesson -> lesson.id },
-            ) { index, lesson ->
+                items = daySlots,
+                key = { _, slot -> slot.id },
+            ) { index, slot ->
+                val isSlotCurrentNow = isViewingToday && isSlotRunningNow(slot, currentLessonId, nowTime)
                 LessonCard(
-                    lesson = lesson,
-                    isCurrentNow = isViewingToday && currentLessonId == lesson.id,
+                    slot = slot,
+                    isCurrentNow = isSlotCurrentNow,
                     themeMode = themeMode,
                     isFirst = index == 0,
-                    isLast = index == dayLessons.lastIndex,
-                    onClick = { onInspectLesson(lesson) },
+                    isLast = index == daySlots.lastIndex,
+                    onClickLesson = onInspectLesson,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -781,11 +794,7 @@ private fun WeekHorizontalPager(
     LaunchedEffect(state.selectedMonday) {
         val targetPage = ScheduleEngine.mondayToWeekIndex(state.anchorMonday, state.selectedMonday)
         if (pagerState.currentPage != targetPage) {
-            if (abs(pagerState.currentPage - targetPage) <= 3) {
-                pagerState.animateScrollToPage(targetPage)
-            } else {
-                pagerState.scrollToPage(targetPage)
-            }
+            pagerState.scrollToPage(targetPage)
         }
     }
 
@@ -801,7 +810,7 @@ private fun WeekHorizontalPager(
             (0L..5L).map { pageMonday.plusDays(it) }
         }
         val pageWeekFilter = state.weekFilterForMonday(pageMonday)
-        val lessonsByDay = remember(
+        val slotsByDay = remember(
             state.allLessons,
             state.lessonsByWeekDay,
             state.searchQuery,
@@ -809,7 +818,7 @@ private fun WeekHorizontalPager(
             state.selectedMonday,
             pageWeekFilter,
         ) {
-            if (pageMonday == state.selectedMonday) {
+            val map = if (pageMonday == state.selectedMonday) {
                 state.lessonsByWeekDay
             } else {
                 pageWeekDays.associateWith { date ->
@@ -820,9 +829,11 @@ private fun WeekHorizontalPager(
                     ).filter(state::matchesSearch)
                 }
             }
+            map.mapValues { (_, list) -> ScheduleEngine.groupLessonsIntoSlots(list) }
         }
 
         val isCurrentWeek = pageMonday == ScheduleEngine.mondayOf(state.todayDate)
+        val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -830,7 +841,7 @@ private fun WeekHorizontalPager(
                 start = 16.dp,
                 end = 16.dp,
                 top = 4.dp,
-                bottom = 104.dp,
+                bottom = navBottomPadding + 24.dp,
             ),
         ) {
             if (isCurrentWeek && state.selectedDayProgress.totalCount > 0) {
@@ -845,7 +856,7 @@ private fun WeekHorizontalPager(
             }
 
             pageWeekDays.forEach { date ->
-                val dayLessons = lessonsByDay[date].orEmpty()
+                val daySlots = slotsByDay[date].orEmpty()
                 val isToday = date == state.todayDate
 
                 item(key = "header_$date") {
@@ -890,14 +901,14 @@ private fun WeekHorizontalPager(
                             }
                         }
                         Text(
-                            text = pairsCountLabel(dayLessons.size),
+                            text = pairsCountLabel(daySlots.size),
                             style = MaterialTheme.typography.labelMedium,
                             color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
 
-                if (dayLessons.isEmpty()) {
+                if (daySlots.isEmpty()) {
                     item(key = "empty_$date") {
                         GlassCard(
                             modifier = Modifier
@@ -915,16 +926,17 @@ private fun WeekHorizontalPager(
                     }
                 } else {
                     itemsIndexed(
-                        items = dayLessons,
-                        key = { _, lesson -> "${date}_${lesson.id}" },
-                    ) { index, lesson ->
+                        items = daySlots,
+                        key = { _, slot -> "${date}_${slot.id}" },
+                    ) { index, slot ->
+                        val isSlotCurrentNow = isToday && isSlotRunningNow(slot, currentLessonId, state.nowTime)
                         LessonCard(
-                            lesson = lesson,
-                            isCurrentNow = isToday && currentLessonId == lesson.id,
+                            slot = slot,
+                            isCurrentNow = isSlotCurrentNow,
                             themeMode = state.themeMode,
                             isFirst = index == 0,
-                            isLast = index == dayLessons.lastIndex,
-                            onClick = { onInspectLesson(lesson) },
+                            isLast = index == daySlots.lastIndex,
+                            onClickLesson = onInspectLesson,
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -949,6 +961,7 @@ private fun GroupAndBellsTab(
             .format(DateTimeFormatter.ofPattern("dd.MM.yyyy в HH:mm"))
         "Синхронизация: $formatted (МСК)"
     } ?: "Ожидается синхронизация"
+    val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -956,7 +969,7 @@ private fun GroupAndBellsTab(
             start = 16.dp,
             end = 16.dp,
             top = 6.dp,
-            bottom = 104.dp,
+            bottom = navBottomPadding + 24.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -1098,6 +1111,7 @@ private fun SettingsTab(
     val style = LocalAppVisualStyle.current
     val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
     val subColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+    val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1105,7 +1119,7 @@ private fun SettingsTab(
             start = 16.dp,
             end = 16.dp,
             top = 6.dp,
-            bottom = 104.dp,
+            bottom = navBottomPadding + 24.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -1541,6 +1555,21 @@ private fun EmptyDayCard(hasSearchQuery: Boolean) {
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+private fun isSlotRunningNow(
+    slot: LessonSlot,
+    currentLessonId: String?,
+    nowTime: LocalTime,
+): Boolean {
+    if (currentLessonId != null && slot.lessons.any { it.id == currentLessonId }) {
+        return true
+    }
+    return slot.lessons.any { lesson ->
+        val start = lesson.startTime
+        val end = lesson.endTime
+        start != null && end != null && !nowTime.isBefore(start) && nowTime.isBefore(end)
     }
 }
 

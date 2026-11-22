@@ -1,6 +1,5 @@
 package ru.ngieu.raspisanie.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -47,6 +47,71 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 
 @Composable
+fun DaySelectorBottomDock(
+    weekDays: List<LocalDate>,
+    selectedDate: LocalDate,
+    todayDate: LocalDate,
+    lessonsByDay: Map<LocalDate, List<Lesson>>,
+    onSelectDate: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val style = LocalAppVisualStyle.current
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        GlassCard(
+            cornerRadius = 24.dp,
+            fillBrush = if (style.isNeon) {
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0xE01A1F44),
+                        Color(0xD9131936),
+                        Color(0xE015224B),
+                    ),
+                )
+            } else {
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surface,
+                        MaterialTheme.colorScheme.surface,
+                    ),
+                )
+            },
+            borderBrush = if (style.isNeon) {
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0x66A855F7),
+                        Color(0x33FFFFFF),
+                        Color(0x6638BDF8),
+                    ),
+                )
+            } else {
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.outlineVariant,
+                        MaterialTheme.colorScheme.outlineVariant,
+                    ),
+                )
+            },
+            glowColor = if (style.isNeon) Color(0xFF7C3AED) else null,
+        ) {
+            DaySelectorRow(
+                weekDays = weekDays,
+                selectedDate = selectedDate,
+                todayDate = todayDate,
+                lessonsByDay = lessonsByDay,
+                onSelectDate = onSelectDate,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
 fun DaySelectorRow(
     weekDays: List<LocalDate>,
     selectedDate: LocalDate,
@@ -59,7 +124,7 @@ fun DaySelectorRow(
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         weekDays.forEach { date ->
             val isSelected = date == selectedDate
@@ -68,10 +133,10 @@ fun DaySelectorRow(
             val hasChanges = dayLessons.any { it.isChange }
 
             val scale by animateFloatAsState(
-                targetValue = if (isSelected) 1.03f else 1f,
+                targetValue = if (isSelected) 1.02f else 1f,
                 animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessMedium,
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessHigh,
                 ),
                 label = "dayScale",
             )
@@ -82,7 +147,7 @@ fun DaySelectorRow(
                     style.isNeon -> NeonPalette.textSecondary
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
-                animationSpec = tween(200),
+                animationSpec = tween(80),
                 label = "dayLabelColor",
             )
 
@@ -94,7 +159,7 @@ fun DaySelectorRow(
                     style.isNeon -> NeonPalette.textPrimary
                     else -> MaterialTheme.colorScheme.onSurface
                 },
-                animationSpec = tween(200),
+                animationSpec = tween(80),
                 label = "dayNumberColor",
             )
 
@@ -110,7 +175,7 @@ fun DaySelectorRow(
                     colors = listOf(Color(0xB8212A56), Color(0xA6141B3A)),
                 )
                 style.isNeon -> Brush.verticalGradient(
-                    colors = listOf(Color(0x9E192044), Color(0x99111632)),
+                    colors = listOf(Color(0x88192044), Color(0x80111632)),
                 )
                 isToday -> Brush.verticalGradient(
                     colors = listOf(
@@ -119,7 +184,7 @@ fun DaySelectorRow(
                     ),
                 )
                 else -> Brush.verticalGradient(
-                    colors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface),
+                    colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 )
             }
 
@@ -131,7 +196,7 @@ fun DaySelectorRow(
                     colors = listOf(Color(0x8038BDF8), Color(0x40818CF8)),
                 )
                 style.isNeon -> Brush.verticalGradient(
-                    colors = listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom),
+                    colors = listOf(Color(0x28FFFFFF), Color(0x14818CF8)),
                 )
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
@@ -159,12 +224,12 @@ fun DaySelectorRow(
                             val r = 16.dp.toPx()
                             drawRoundRect(
                                 color = Color(0xFF9333EA).copy(alpha = 0.35f),
-                                topLeft = Offset(-3.dp.toPx(), -2.dp.toPx()),
+                                topLeft = Offset(-2.dp.toPx(), -2.dp.toPx()),
                                 size = Size(
-                                    width = size.width + 6.dp.toPx(),
-                                    height = size.height + 6.dp.toPx(),
+                                    width = size.width + 4.dp.toPx(),
+                                    height = size.height + 4.dp.toPx(),
                                 ),
-                                cornerRadius = CornerRadius(r + 3.dp.toPx(), r + 3.dp.toPx()),
+                                cornerRadius = CornerRadius(r + 2.dp.toPx(), r + 2.dp.toPx()),
                             )
                         }
                     }
@@ -175,7 +240,7 @@ fun DaySelectorRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(
-                    modifier = Modifier.padding(vertical = 9.dp),
+                    modifier = Modifier.padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
@@ -191,15 +256,15 @@ fun DaySelectorRow(
                         fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.SemiBold,
                         color = numberColor,
                     )
-                    Spacer(modifier = Modifier.height(5.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Box(
-                        modifier = Modifier.height(6.dp),
+                        modifier = Modifier.height(5.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         androidx.compose.animation.AnimatedVisibility(
                             visible = dayLessons.isNotEmpty(),
-                            enter = scaleIn(tween(180)) + fadeIn(tween(180)),
-                            exit = scaleOut(tween(150)) + fadeOut(tween(150)),
+                            enter = scaleIn(tween(90)) + fadeIn(tween(90)),
+                            exit = scaleOut(tween(75)) + fadeOut(tween(75)),
                         ) {
                             val dotColor = when {
                                 isSelected -> Color.White

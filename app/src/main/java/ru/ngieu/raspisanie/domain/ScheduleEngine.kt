@@ -41,7 +41,21 @@ data class BellSlot(
     val end: String,
 )
 
+data class LessonSlot(
+    val id: String,
+    val pairNumber: Int,
+    val timeRangeText: String,
+    val startTime: LocalTime?,
+    val endTime: LocalTime?,
+    val lessons: List<Lesson>,
+)
+
 object ScheduleEngine {
+
+    private val subgroupOrderRegex = Regex(
+        """(?:\(?\s*пр\.?\s*(\d+)\s*\)?|(\d+)\s*п/?г|подгрупп[аы]?\s*(\d+))""",
+        RegexOption.IGNORE_CASE,
+    )
 
     const val MAX_WEEK_OFFSET = 52
     const val DAYS_PER_STUDY_WEEK = 6
@@ -157,9 +171,59 @@ object ScheduleEngine {
                 { if (it.pairNumber > 0) it.pairNumber else Int.MAX_VALUE },
                 { it.startTime ?: LocalTime.MAX },
                 { !it.isChange },
+                { extractSubgroupNumber(it) ?: Int.MAX_VALUE },
                 { it.subject },
             )
         )
+    }
+
+    fun extractSubgroupNumber(lesson: Lesson): Int? {
+        val sources = listOf(lesson.subject, lesson.note)
+        for (src in sources) {
+            val match = subgroupOrderRegex.find(src) ?: continue
+            val numStr = match.groupValues.drop(1).firstOrNull { it.isNotEmpty() }
+            val num = numStr?.toIntOrNull()
+            if (num != null) return num
+        }
+        return null
+    }
+
+    /**
+     * Объединяет пары одного временного слота (например, две подгруппы на одной паре)
+     * в единый слот для отображения в одной карточке с разделителем.
+     */
+    fun groupLessonsIntoSlots(lessons: List<Lesson>): List<LessonSlot> {
+        if (lessons.isEmpty()) return emptyList()
+
+        val grouped = LinkedHashMap<String, MutableList<Lesson>>()
+        for (lesson in lessons) {
+            val slotKey = when {
+                lesson.pairNumber > 0 -> "pair_${lesson.pairNumber}"
+                lesson.startTime != null && lesson.endTime != null ->
+                    "time_${lesson.startTime}_${lesson.endTime}"
+                else -> "single_${lesson.id}"
+            }
+            grouped.getOrPut(slotKey) { mutableListOf() }.add(lesson)
+        }
+
+        return grouped.entries.map { (slotKey, items) ->
+            val ordered = items.sortedWith(
+                compareBy<Lesson>(
+                    { !it.isChange },
+                    { extractSubgroupNumber(it) ?: Int.MAX_VALUE },
+                    { it.subject },
+                )
+            )
+            val first = ordered.first()
+            LessonSlot(
+                id = "${slotKey}_${ordered.joinToString("|") { it.id }}",
+                pairNumber = first.pairNumber,
+                timeRangeText = first.timeRangeText,
+                startTime = ordered.firstNotNullOfOrNull { it.startTime },
+                endTime = ordered.firstNotNullOfOrNull { it.endTime },
+                lessons = ordered,
+            )
+        }
     }
 
     fun computeLiveLessonState(

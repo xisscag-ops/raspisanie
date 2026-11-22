@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -43,6 +46,8 @@ import ru.ngieu.raspisanie.R
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.data.WeekParity
+import ru.ngieu.raspisanie.domain.LessonSlot
+import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
@@ -50,26 +55,32 @@ import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LessonCard(
-    lesson: Lesson,
+    slot: LessonSlot,
     isCurrentNow: Boolean,
     themeMode: ThemeModeSetting,
     modifier: Modifier = Modifier,
     isFirst: Boolean = false,
     isLast: Boolean = false,
-    onClick: (() -> Unit)? = null,
+    onClickLesson: ((Lesson) -> Unit)? = null,
 ) {
     val style = LocalAppVisualStyle.current
     val isDark = style.isDark
-    val typeColor = ScheduleAccentColors.lessonTypeColor(lesson.lessonType, isDark)
+    val hasAnyChange = slot.lessons.any { it.isChange }
+    val allChanges = slot.lessons.all { it.isChange }
+
+    val activeNowAccent = when {
+        style.isNeon || isDark -> NeonPalette.timelineActiveNow
+        else -> ScheduleAccentColors.currentLessonBorderLight
+    }
 
     val timelineDotColor by animateColorAsState(
         targetValue = when {
-            lesson.isChange -> Color(0xFFFBBF24)
-            isCurrentNow -> NeonPalette.timelineCyan
+            isCurrentNow -> activeNowAccent
+            hasAnyChange -> Color(0xFFFBBF24)
             style.isNeon -> NeonPalette.timelinePurple
             else -> MaterialTheme.colorScheme.primary
         },
-        animationSpec = tween(220),
+        animationSpec = tween(110),
         label = "timelineDot",
     )
 
@@ -110,19 +121,19 @@ fun LessonCard(
                 )
             }
 
-            // Мягкое свечение точки на таймлайне
+            // Мягкое свечение и сама точка (цвет синхронизирован с текущей/изменённой парой)
             drawCircle(
-                color = timelineDotColor.copy(alpha = if (isCurrentNow) 0.48f else 0.28f),
-                radius = if (isCurrentNow) 9.dp.toPx() else 7.dp.toPx(),
+                color = timelineDotColor.copy(alpha = if (isCurrentNow) 0.56f else 0.28f),
+                radius = if (isCurrentNow) 10.dp.toPx() else 7.dp.toPx(),
                 center = Offset(centerX, centerY),
             )
             drawCircle(
                 color = timelineDotColor,
-                radius = 5.dp.toPx(),
+                radius = if (isCurrentNow) 6.dp.toPx() else 5.dp.toPx(),
                 center = Offset(centerX, centerY),
             )
             drawCircle(
-                color = Color.White,
+                color = if (isCurrentNow) timelineDotColor else Color.White,
                 radius = 2.5.dp.toPx(),
                 center = Offset(centerX, centerY),
             )
@@ -131,7 +142,7 @@ fun LessonCard(
         Spacer(modifier = Modifier.width(4.dp))
 
         // Колонка времени начала и конца пары
-        val timeParts = lesson.timeRangeText.split("–").map { it.trim() }
+        val timeParts = slot.timeRangeText.split("–").map { it.trim() }
         Column(
             modifier = Modifier
                 .width(50.dp)
@@ -143,44 +154,59 @@ fun LessonCard(
                     text = timeParts[0],
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface,
+                    color = when {
+                        isCurrentNow -> activeNowAccent
+                        style.isNeon -> NeonPalette.textPrimary
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = timeParts[1],
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = when {
+                        isCurrentNow -> activeNowAccent.copy(alpha = 0.85f)
+                        style.isNeon -> NeonPalette.textSecondary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             } else {
                 Text(
-                    text = lesson.timeRangeText,
+                    text = slot.timeRangeText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface,
+                    color = when {
+                        isCurrentNow -> activeNowAccent
+                        style.isNeon -> NeonPalette.textPrimary
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
                 )
             }
         }
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Правая стеклянная карточка пары
+        // Правая стеклянная карточка пары (единая иконка даже при нескольких подгруппах)
         val cardFillBrush = when {
-            lesson.isChange && style.isNeon -> Brush.horizontalGradient(
-                colors = listOf(Color(0xBD3D260A), Color(0xB3271907)),
-            )
-            lesson.isChange -> Brush.horizontalGradient(
-                colors = listOf(
-                    if (isDark) ScheduleAccentColors.changeBgDark else ScheduleAccentColors.changeBgLight,
-                    if (isDark) ScheduleAccentColors.changeBgDark else ScheduleAccentColors.changeBgLight,
-                ),
-            )
             isCurrentNow && style.isNeon -> Brush.horizontalGradient(
                 colors = listOf(NeonPalette.activeLessonStart, NeonPalette.activeLessonEnd),
             )
             isCurrentNow -> Brush.horizontalGradient(
                 colors = listOf(
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
+                    if (isDark) ScheduleAccentColors.currentLessonBgDark else ScheduleAccentColors.currentLessonBgLight,
+                    if (isDark) ScheduleAccentColors.currentLessonBgDark else ScheduleAccentColors.currentLessonBgLight,
                 ),
+            )
+            allChanges && style.isNeon -> Brush.horizontalGradient(
+                colors = listOf(Color(0xBD3D260A), Color(0xB3271907)),
+            )
+            hasAnyChange && !style.isNeon -> Brush.horizontalGradient(
+                colors = listOf(
+                    if (isDark) ScheduleAccentColors.changeBgDark else ScheduleAccentColors.changeBgLight,
+                    if (isDark) ScheduleAccentColors.changeBgDark else ScheduleAccentColors.changeBgLight,
+                ),
+            )
+            hasAnyChange && style.isNeon -> Brush.horizontalGradient(
+                colors = listOf(Color(0xB52E2318), Color(0xA6191B38)),
             )
             style.isNeon -> Brush.verticalGradient(
                 colors = listOf(Color(0xAE1D254B), Color(0x9E131935)),
@@ -191,14 +217,11 @@ fun LessonCard(
         }
 
         val cardBorderBrush = when {
-            lesson.isChange -> Brush.horizontalGradient(
-                colors = listOf(Color(0xFFFBBF24), Color(0xFFF59E0B)),
-            )
-            isCurrentNow && style.isNeon -> Brush.horizontalGradient(
-                colors = listOf(Color(0xFF60A5FA), NeonPalette.activeLessonBorder),
-            )
             isCurrentNow -> Brush.horizontalGradient(
-                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                colors = listOf(activeNowAccent, if (style.isNeon) NeonPalette.activeLessonAccent else activeNowAccent),
+            )
+            hasAnyChange -> Brush.horizontalGradient(
+                colors = listOf(Color(0xFFFBBF24), Color(0xFFF59E0B)),
             )
             style.isNeon -> Brush.linearGradient(
                 colors = listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom),
@@ -210,8 +233,8 @@ fun LessonCard(
 
         val glowColor = when {
             !style.isNeon -> null
-            lesson.isChange -> Color(0xFFF59E0B)
             isCurrentNow -> NeonPalette.activeLessonBorder
+            hasAnyChange -> Color(0xFFF59E0B)
             else -> null
         }
 
@@ -222,151 +245,237 @@ fun LessonCard(
             cornerRadius = 18.dp,
             fillBrush = cardFillBrush,
             borderBrush = cardBorderBrush,
-            borderWidth = if (isCurrentNow || lesson.isChange) 1.5.dp else 1.dp,
+            borderWidth = if (isCurrentNow || hasAnyChange) 1.6.dp else 1.dp,
             glowColor = glowColor,
-            onClick = onClick,
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (style.isNeon) typeColor else typeColor.copy(alpha = 0.14f),
-                                )
-                                .padding(horizontal = 9.dp, vertical = 3.dp),
-                        ) {
-                            Text(
-                                text = lesson.lessonType.label,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (style.isNeon) Color.White else typeColor,
-                            )
-                        }
-
-                        if (lesson.isChange) {
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFFF59E0B).copy(alpha = if (style.isNeon) 0.25f else 0.16f),
-                                contentColor = Color(0xFFFBBF24),
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Warning,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(11.dp),
-                                    )
-                                    Text(
-                                        text = "ЗАМЕНА",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                }
-                            }
-                        }
-
-                        if (isCurrentNow) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF0EA5E9).copy(alpha = 0.26f))
-                                    .padding(horizontal = 7.dp, vertical = 3.dp),
-                            ) {
-                                Text(
-                                    text = "СЕЙЧАС",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF7DD3FC),
-                                )
-                            }
-                        }
-
-                        if (lesson.parity != WeekParity.EVERY) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (style.isNeon) Color(0x22FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
-                                    )
-                                    .padding(horizontal = 7.dp, vertical = 3.dp),
-                            ) {
-                                Text(
-                                    text = lesson.parity.label,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
+            val isMultiSubgroup = slot.lessons.size > 1
+            Column(modifier = Modifier.fillMaxWidth()) {
+                slot.lessons.forEachIndexed { index, lesson ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 14.dp),
+                            thickness = 1.dp,
+                            color = when {
+                                isCurrentNow -> activeNowAccent.copy(alpha = 0.35f)
+                                style.isNeon -> Color(0x33FFFFFF)
+                                else -> MaterialTheme.colorScheme.outlineVariant
+                            },
+                        )
                     }
 
-                    Spacer(modifier = Modifier.height(7.dp))
-
-                    Text(
-                        text = lesson.subject,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                    SubgroupLessonRow(
+                        lesson = lesson,
+                        subgroupIndex = index,
+                        isMultiSubgroup = isMultiSubgroup,
+                        isCurrentNow = isCurrentNow,
+                        showNowBadge = isCurrentNow && index == 0,
+                        activeNowAccent = activeNowAccent,
+                        onClick = onClickLesson?.let { cb -> { cb(lesson) } },
                     )
+                }
+            }
+        }
+    }
+}
 
-                    val metaParts = buildList {
-                        if (lesson.room.isNotBlank()) add("Ауд. ${lesson.room}")
-                        if (lesson.teachers.isNotEmpty()) add(lesson.teachers.joinToString(", "))
-                    }
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SubgroupLessonRow(
+    lesson: Lesson,
+    subgroupIndex: Int,
+    isMultiSubgroup: Boolean,
+    isCurrentNow: Boolean,
+    showNowBadge: Boolean,
+    activeNowAccent: Color,
+    onClick: (() -> Unit)?,
+) {
+    val style = LocalAppVisualStyle.current
+    val isDark = style.isDark
+    val typeColor = ScheduleAccentColors.lessonTypeColor(lesson.lessonType, isDark)
+    val subgroupNumber = ScheduleEngine.extractSubgroupNumber(lesson)
 
-                    if (metaParts.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        ) {
-                            val iconRes = if (lesson.room.isNotBlank() && lesson.teachers.isEmpty()) {
-                                R.drawable.ic_neon_room
-                            } else if (lesson.room.isNotBlank()) {
-                                R.drawable.ic_neon_room
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .let { mod -> if (onClick != null) mod.clickable(onClick = onClick) else mod }
+            .padding(horizontal = 14.dp, vertical = if (isMultiSubgroup) 10.dp else 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (style.isNeon) typeColor else typeColor.copy(alpha = 0.14f),
+                        )
+                        .then(
+                            if (isCurrentNow && style.isNeon) {
+                                Modifier.border(
+                                    width = 0.75.dp,
+                                    color = Color.White.copy(alpha = 0.35f),
+                                    shape = RoundedCornerShape(10.dp),
+                                )
                             } else {
-                                R.drawable.ic_neon_teacher
-                            }
-                            Image(
-                                painter = painterResource(id = iconRes),
+                                Modifier
+                            },
+                        )
+                        .padding(horizontal = 9.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        text = lesson.lessonType.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (style.isNeon) Color.White else typeColor,
+                    )
+                }
+
+                if (isMultiSubgroup) {
+                    val subLabel = if (subgroupNumber != null) {
+                        "$subgroupNumber подгр."
+                    } else {
+                        "Подгр. ${subgroupIndex + 1}"
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (style.isNeon) Color(0x33A78BFA) else MaterialTheme.colorScheme.secondaryContainer,
+                            )
+                            .border(
+                                width = 0.75.dp,
+                                color = if (style.isNeon) Color(0x66C4B5FD) else MaterialTheme.colorScheme.outlineVariant,
+                                shape = RoundedCornerShape(10.dp),
+                            )
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = subLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (style.isNeon) Color(0xFFE9D5FF) else MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+                }
+
+                if (lesson.isChange) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFFF59E0B).copy(alpha = if (style.isNeon) 0.28f else 0.16f),
+                        contentColor = if (style.isNeon || isDark) Color(0xFFFBBF24) else ScheduleAccentColors.changeBadgeLight,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Warning,
                                 contentDescription = null,
-                                colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(11.dp),
                             )
                             Text(
-                                text = metaParts.joinToString(" • "),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                text = "ЗАМЕНА",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.width(6.dp))
+                if (showNowBadge) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(activeNowAccent.copy(alpha = if (style.isNeon) 0.28f else 0.16f))
+                            .border(
+                                width = 0.75.dp,
+                                color = activeNowAccent.copy(alpha = 0.7f),
+                                shape = RoundedCornerShape(10.dp),
+                            )
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = "СЕЙЧАС",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (style.isNeon || isDark) activeNowAccent else ScheduleAccentColors.currentLessonBorderLight,
+                        )
+                    }
+                }
 
-                Image(
-                    painter = painterResource(id = R.drawable.ic_neon_chevron_right),
-                    contentDescription = "Подробнее",
-                    colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                    modifier = Modifier.size(16.dp),
-                )
+                if (lesson.parity != WeekParity.EVERY) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (style.isNeon) Color(0x22FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
+                            )
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = lesson.parity.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = lesson.subject,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            val metaParts = buildList {
+                if (lesson.room.isNotBlank()) add("Ауд. ${lesson.room}")
+                if (lesson.teachers.isNotEmpty()) add(lesson.teachers.joinToString(", "))
+            }
+
+            if (metaParts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(5.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    val iconRes = if (lesson.room.isNotBlank()) {
+                        R.drawable.ic_neon_room
+                    } else {
+                        R.drawable.ic_neon_teacher
+                    }
+                    Image(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = null,
+                        colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = metaParts.joinToString(" • "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
+
+        Spacer(modifier = Modifier.width(6.dp))
+
+        Image(
+            painter = painterResource(id = R.drawable.ic_neon_chevron_right),
+            contentDescription = "Подробнее",
+            colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+            modifier = Modifier.size(16.dp),
+        )
     }
 }

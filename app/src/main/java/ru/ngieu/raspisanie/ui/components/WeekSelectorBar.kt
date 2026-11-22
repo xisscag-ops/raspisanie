@@ -81,8 +81,8 @@ fun WeekSelectorBar(
                 AnimatedContent(
                     targetState = rangeText,
                     transitionSpec = {
-                        (slideInVertically(tween(180)) { it / 3 } + fadeIn(tween(180)))
-                            .togetherWith(slideOutVertically(tween(140)) { -it / 3 } + fadeOut(tween(140)))
+                        (slideInVertically(tween(110)) { it / 3 } + fadeIn(tween(110)))
+                            .togetherWith(slideOutVertically(tween(90)) { -it / 3 } + fadeOut(tween(90)))
                     },
                     label = "weekRangeText",
                 ) { text ->
@@ -105,8 +105,8 @@ fun WeekSelectorBar(
 
             AnimatedVisibility(
                 visible = showTodayButton,
-                enter = scaleIn(tween(180)) + fadeIn(tween(180)),
-                exit = scaleOut(tween(140)) + fadeOut(tween(140)),
+                enter = scaleIn(tween(110)) + fadeIn(tween(110)),
+                exit = scaleOut(tween(90)) + fadeOut(tween(90)),
             ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
@@ -151,7 +151,7 @@ fun WeekSelectorBar(
                     } else {
                         MaterialTheme.colorScheme.surface
                     },
-                    animationSpec = tween(durationMillis = 200),
+                    animationSpec = tween(durationMillis = 100),
                     label = "weekTabBg",
                 )
                 val textColor by animateColorAsState(
@@ -160,7 +160,7 @@ fun WeekSelectorBar(
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },
-                    animationSpec = tween(durationMillis = 200),
+                    animationSpec = tween(durationMillis = 100),
                     label = "weekTabText",
                 )
 

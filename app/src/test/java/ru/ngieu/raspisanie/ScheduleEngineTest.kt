@@ -128,6 +128,35 @@ class ScheduleEngineTest {
         assertEquals(anchorMonday.plusWeeks(3), ScheduleEngine.weekIndexToMonday(anchorMonday, weekIdx))
     }
 
+    @Test
+    fun `groups subgroup lessons in the same pair slot into one slot ordered by subgroup`() {
+        val sub2 = sampleLesson(
+            id = "sub2",
+            pair = 1,
+            start = LocalTime.of(8, 0),
+            end = LocalTime.of(9, 30),
+        ).copy(subject = "(пр. 2) Иностранный язык")
+        val sub1 = sampleLesson(
+            id = "sub1",
+            pair = 1,
+            start = LocalTime.of(8, 0),
+            end = LocalTime.of(9, 30),
+        ).copy(subject = "(пр. 1) Иностранный язык")
+        val pair2 = sampleLesson(
+            id = "p2",
+            pair = 2,
+            start = LocalTime.of(9, 40),
+            end = LocalTime.of(11, 10),
+        ).copy(subject = "Математика")
+
+        val slots = ScheduleEngine.groupLessonsIntoSlots(listOf(sub2, sub1, pair2))
+        assertEquals(2, slots.size)
+        assertEquals(1, slots[0].pairNumber)
+        assertEquals(listOf("sub1", "sub2"), slots[0].lessons.map { it.id })
+        assertEquals(2, slots[1].pairNumber)
+        assertEquals(listOf("p2"), slots[1].lessons.map { it.id })
+    }
+
     private fun sampleLesson(
         id: String,
         pair: Int,
