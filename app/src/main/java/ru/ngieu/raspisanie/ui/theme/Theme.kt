@@ -246,6 +246,25 @@ object ScheduleAccentColors {
     val changeBadgeDark = Color(0xFFB87424)
     val changeBadgeBgDark = Color(0x523B2409)
 
+    val cancelBgLight = Color(0xFFFEF2F2)
+    val cancelBorderLight = Color(0xFFEF4444)
+    val cancelBadgeBgLight = Color(0xFFFEE2E2)
+    val cancelBadgeLight = Color(0xFFDC2626)
+
+    val cancelBgDark = Color(0x85261013)
+    val cancelBorderDark = Color(0xFF8C2D36)
+    val cancelBadgeBgDark = Color(0x5245151B)
+    val cancelBadgeDark = Color(0xFFD46A72)
+
+    val cancelBgNeonStart = Color(0xBD3B1221)
+    val cancelBgNeonEnd = Color(0xB3240C1A)
+    val cancelBorderNeon = Color(0xFFF87171)
+    val cancelBadgeBgNeon = Color(0x47EF4444)
+    val cancelBadgeNeon = Color(0xFFFCA5A5)
+
+    val cancelBgGlassStart = Color(0xA64B1B22)
+    val cancelBgGlassEnd = Color(0x94291014)
+
     val currentLessonBgLight = Color(0xFFE6F9F2)
     val currentLessonBorderLight = Color(0xFF059669)
     val currentLessonBgDark = Color(0x800B3B2E)

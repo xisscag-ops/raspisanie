@@ -271,7 +271,17 @@ object ScheduleShareRenderer {
                 }
 
                 val hasAnyChange = measuredSlot.slot.lessons.any { it.isChange }
-                val dotColor = if (hasAnyChange) Color.parseColor("#FBBF24") else colors.timelineDot
+                val hasAnyCancelled = measuredSlot.slot.lessons.any { it.isCancelled }
+                val isStandardDark = !colors.isNeon && !colors.isGlass && colors.isDark
+                val dotColor = when {
+                    hasAnyCancelled -> when {
+                        isStandardDark -> ScheduleAccentColors.cancelBadgeDark.toArgb()
+                        colors.isDark -> ScheduleAccentColors.cancelBorderNeon.toArgb()
+                        else -> ScheduleAccentColors.cancelBorderLight.toArgb()
+                    }
+                    hasAnyChange -> if (isStandardDark) ScheduleAccentColors.changeBadgeDark.toArgb() else Color.parseColor("#FBBF24")
+                    else -> colors.timelineDot
+                }
 
                 fillPaint.shader = null
                 fillPaint.color = Color.argb(72, Color.red(dotColor), Color.green(dotColor), Color.blue(dotColor))
@@ -454,18 +464,38 @@ object ScheduleShareRenderer {
             )
 
             if (lesson.isChange) {
+                val isStandardDark = !colors.isNeon && !colors.isGlass && colors.isDark
                 add(
                     BadgeSpec(
                         text = "Замена",
-                        bgColor = if (colors.isDark) {
+                        bgColor = if (isStandardDark) {
                             ScheduleAccentColors.changeBadgeBgDark.toArgb()
                         } else {
                             Color.argb(56, 251, 191, 36)
                         },
-                        textColor = if (colors.isDark) {
-                            ScheduleAccentColors.changeBadgeDark.toArgb()
-                        } else {
-                            Color.parseColor("#B45309")
+                        textColor = when {
+                            isStandardDark -> ScheduleAccentColors.changeBadgeDark.toArgb()
+                            colors.isDark -> Color.parseColor("#FBBF24")
+                            else -> Color.parseColor("#B45309")
+                        },
+                    ),
+                )
+            }
+
+            if (lesson.isCancelled) {
+                val isStandardDark = !colors.isNeon && !colors.isGlass && colors.isDark
+                add(
+                    BadgeSpec(
+                        text = "Отмена",
+                        bgColor = when {
+                            isStandardDark -> ScheduleAccentColors.cancelBadgeBgDark.toArgb()
+                            colors.isDark -> ScheduleAccentColors.cancelBadgeBgNeon.toArgb()
+                            else -> ScheduleAccentColors.cancelBadgeBgLight.toArgb()
+                        },
+                        textColor = when {
+                            isStandardDark -> ScheduleAccentColors.cancelBadgeDark.toArgb()
+                            colors.isDark -> ScheduleAccentColors.cancelBadgeNeon.toArgb()
+                            else -> ScheduleAccentColors.cancelBadgeLight.toArgb()
                         },
                     ),
                 )
@@ -723,9 +753,9 @@ object ScheduleShareRenderer {
                 cardTop = Color.parseColor("#B51D254B"),
                 cardBottom = Color.parseColor("#A6131935"),
                 cardBorder = Color.argb(68, 165, 180, 252),
-                changeCardTop = Color.parseColor("#BD2A1B08"),
-                changeCardBottom = Color.parseColor("#B31C1206"),
-                changeBorder = ScheduleAccentColors.changeBorderDark.toArgb(),
+                changeCardTop = Color.parseColor("#BD3D260A"),
+                changeCardBottom = Color.parseColor("#B3271907"),
+                changeBorder = Color.parseColor("#FBBF24"),
                 textPrimary = NeonPalette.textPrimary.toArgb(),
                 textSecondary = NeonPalette.textSecondary.toArgb(),
                 divider = Color.argb(46, 255, 255, 255),
@@ -743,9 +773,9 @@ object ScheduleShareRenderer {
                 cardTop = Color.parseColor("#858A8A8A"),
                 cardBottom = Color.parseColor("#6E272727"),
                 cardBorder = Color.argb(135, 244, 244, 244),
-                changeCardTop = Color.parseColor("#A6362612"),
-                changeCardBottom = Color.parseColor("#941E150A"),
-                changeBorder = ScheduleAccentColors.changeBorderDark.toArgb(),
+                changeCardTop = Color.parseColor("#A64E3818"),
+                changeCardBottom = Color.parseColor("#94291D0C"),
+                changeBorder = Color.parseColor("#FBBF24"),
                 textPrimary = GlassPalette.textPrimary.toArgb(),
                 textSecondary = GlassPalette.textSecondary.toArgb(),
                 divider = Color.argb(56, 244, 244, 244),

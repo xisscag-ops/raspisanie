@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ru.ngieu.raspisanie.R
@@ -68,8 +70,11 @@ fun LessonCard(
 ) {
     val style = LocalAppVisualStyle.current
     val isDark = style.isDark
+    val isStandardDark = !style.isTranslucent && isDark
     val hasAnyChange = slot.lessons.any { it.isChange }
     val allChanges = slot.lessons.all { it.isChange }
+    val hasAnyCancelled = slot.lessons.any { it.isCancelled }
+    val allCancelled = slot.lessons.all { it.isCancelled }
 
     val activeNowAccent = when {
         style.isGlass -> GlassPalette.timelineActiveNow
@@ -80,7 +85,12 @@ fun LessonCard(
     val timelineDotColor by animateColorAsState(
         targetValue = when {
             isCurrentNow -> activeNowAccent
-            hasAnyChange -> if (isDark || style.isTranslucent) ScheduleAccentColors.changeBadgeDark else ScheduleAccentColors.changeBorderLight
+            hasAnyCancelled -> when {
+                isStandardDark -> ScheduleAccentColors.cancelBadgeDark
+                style.isTranslucent -> ScheduleAccentColors.cancelBorderNeon
+                else -> ScheduleAccentColors.cancelBorderLight
+            }
+            hasAnyChange -> if (isStandardDark) ScheduleAccentColors.changeBadgeDark else Color(0xFFFBBF24)
             style.isNeon -> NeonPalette.timelinePurple
             style.isGlass -> GlassPalette.timelineDot
             else -> MaterialTheme.colorScheme.primary
@@ -121,7 +131,7 @@ fun LessonCard(
                 }
 
                 drawCircle(
-                    color = if (style.isGlass && !isCurrentNow && !hasAnyChange) {
+                    color = if (style.isGlass && !isCurrentNow && !hasAnyChange && !hasAnyCancelled) {
                         Color.White.copy(alpha = 0.45f)
                     } else {
                         timelineDotColor.copy(alpha = if (isCurrentNow) 0.56f else 0.28f)
@@ -136,7 +146,7 @@ fun LessonCard(
                 )
                 drawCircle(
                     color = if (isCurrentNow) timelineDotColor else Color.White,
-                    radius = if (style.isGlass && !isCurrentNow && !hasAnyChange) 3.5.dp.toPx() else 2.5.dp.toPx(),
+                    radius = if (style.isGlass && !isCurrentNow && !hasAnyChange && !hasAnyCancelled) 3.5.dp.toPx() else 2.5.dp.toPx(),
                     center = Offset(centerX, centerY),
                 )
             },
@@ -206,11 +216,23 @@ fun LessonCard(
                     if (isDark) ScheduleAccentColors.currentLessonBgDark else ScheduleAccentColors.currentLessonBgLight,
                 ),
             )
+            allCancelled && style.isNeon -> Brush.horizontalGradient(
+                colors = listOf(ScheduleAccentColors.cancelBgNeonStart, ScheduleAccentColors.cancelBgNeonEnd),
+            )
+            allCancelled && style.isGlass -> Brush.linearGradient(
+                colors = listOf(ScheduleAccentColors.cancelBgGlassStart, ScheduleAccentColors.cancelBgGlassEnd),
+            )
+            allCancelled && !style.isTranslucent -> Brush.horizontalGradient(
+                colors = listOf(
+                    if (isDark) ScheduleAccentColors.cancelBgDark else ScheduleAccentColors.cancelBgLight,
+                    if (isDark) ScheduleAccentColors.cancelBgDark else ScheduleAccentColors.cancelBgLight,
+                ),
+            )
             allChanges && style.isNeon -> Brush.horizontalGradient(
-                colors = listOf(Color(0xBD2A1B08), Color(0xB31C1206)),
+                colors = listOf(Color(0xBD3D260A), Color(0xB3271907)),
             )
             allChanges && style.isGlass -> Brush.linearGradient(
-                colors = listOf(Color(0xA6362612), Color(0x941E150A)),
+                colors = listOf(Color(0xA64E3818), Color(0x94291D0C)),
             )
             hasAnyChange && !style.isTranslucent -> Brush.horizontalGradient(
                 colors = listOf(
@@ -219,10 +241,10 @@ fun LessonCard(
                 ),
             )
             hasAnyChange && style.isNeon -> Brush.horizontalGradient(
-                colors = listOf(Color(0xB5231B12), Color(0xA614162E)),
+                colors = listOf(Color(0xB52E2318), Color(0xA6191B38)),
             )
             hasAnyChange && style.isGlass -> Brush.linearGradient(
-                colors = listOf(Color(0x9E302416), Color(0x8C1B1814)),
+                colors = listOf(Color(0x9E45351F), Color(0x8C23201B)),
             )
             style.isNeon -> Brush.verticalGradient(
                 colors = listOf(Color(0xAE1D254B), Color(0x9E131935)),
@@ -243,9 +265,20 @@ fun LessonCard(
             isCurrentNow -> Brush.horizontalGradient(
                 colors = listOf(activeNowAccent, if (style.isTranslucent) GlassPalette.activeLessonAccent else activeNowAccent),
             )
-            hasAnyChange -> if (isDark || style.isTranslucent) {
+            hasAnyCancelled -> when {
+                isStandardDark -> Brush.horizontalGradient(
+                    colors = listOf(ScheduleAccentColors.cancelBorderDark, Color(0xFF6B2028)),
+                )
+                style.isTranslucent -> Brush.horizontalGradient(
+                    colors = listOf(ScheduleAccentColors.cancelBorderNeon, Color(0xFFEF4444)),
+                )
+                else -> Brush.horizontalGradient(
+                    colors = listOf(ScheduleAccentColors.cancelBorderLight, ScheduleAccentColors.cancelBorderLight),
+                )
+            }
+            hasAnyChange -> if (isStandardDark) {
                 Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF925812), Color(0xFF78430C)),
+                    colors = listOf(ScheduleAccentColors.changeBorderDark, Color(0xFF78430C)),
                 )
             } else {
                 Brush.horizontalGradient(
@@ -270,7 +303,8 @@ fun LessonCard(
         val glowColor = when {
             !style.isTranslucent -> null
             isCurrentNow -> NeonPalette.activeLessonBorder
-            hasAnyChange -> Color(0xFF78430C)
+            hasAnyCancelled -> Color(0xFFEF4444)
+            hasAnyChange -> Color(0xFFF59E0B)
             else -> null
         }
 
@@ -281,7 +315,7 @@ fun LessonCard(
             cornerRadius = if (style.isGlass) 22.dp else 18.dp,
             fillBrush = cardFillBrush,
             borderBrush = cardBorderBrush,
-            borderWidth = if (isCurrentNow || hasAnyChange) 1.6.dp else 1.dp,
+            borderWidth = if (isCurrentNow || hasAnyChange || hasAnyCancelled) 1.6.dp else 1.dp,
             glowColor = glowColor,
         ) {
             val isMultiSubgroup = slot.lessons.size > 1
@@ -320,6 +354,7 @@ fun LessonCard(
                         isPastDay = isPastDay,
                         nowTime = nowTime,
                         isCurrentNow = isCurrentNow,
+                        isCancelled = allCancelled,
                         activeNowAccent = activeNowAccent,
                     )
                 }
@@ -445,15 +480,16 @@ private fun SubgroupLessonRow(
             }
 
             if (lesson.isChange) {
-                val changeBg = if (style.isTranslucent || isDark) {
-                    ScheduleAccentColors.changeBadgeBgDark
-                } else {
-                    Color(0xFFF59E0B).copy(alpha = 0.16f)
+                val isStandardDark = !style.isTranslucent && isDark
+                val changeBg = when {
+                    style.isTranslucent -> Color(0xFFF59E0B).copy(alpha = 0.28f)
+                    isStandardDark -> ScheduleAccentColors.changeBadgeBgDark
+                    else -> Color(0xFFF59E0B).copy(alpha = 0.16f)
                 }
-                val changeContent = if (style.isTranslucent || isDark) {
-                    ScheduleAccentColors.changeBadgeDark
-                } else {
-                    ScheduleAccentColors.changeBadgeLight
+                val changeContent = when {
+                    style.isTranslucent -> Color(0xFFFBBF24)
+                    isStandardDark -> ScheduleAccentColors.changeBadgeDark
+                    else -> ScheduleAccentColors.changeBadgeLight
                 }
                 Surface(
                     shape = RoundedCornerShape(10.dp),
@@ -475,6 +511,50 @@ private fun SubgroupLessonRow(
                             text = "ЗАМЕНА",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+
+            if (lesson.isCancelled) {
+                val isStandardDark = !style.isTranslucent && isDark
+                val cancelBg = when {
+                    style.isTranslucent -> ScheduleAccentColors.cancelBadgeBgNeon
+                    isStandardDark -> ScheduleAccentColors.cancelBadgeBgDark
+                    else -> ScheduleAccentColors.cancelBadgeBgLight
+                }
+                val cancelContent = when {
+                    style.isTranslucent -> ScheduleAccentColors.cancelBadgeNeon
+                    isStandardDark -> ScheduleAccentColors.cancelBadgeDark
+                    else -> ScheduleAccentColors.cancelBadgeLight
+                }
+                val cancelBorder = when {
+                    style.isTranslucent -> ScheduleAccentColors.cancelBorderNeon.copy(alpha = 0.45f)
+                    isStandardDark -> ScheduleAccentColors.cancelBorderDark.copy(alpha = 0.6f)
+                    else -> ScheduleAccentColors.cancelBorderLight.copy(alpha = 0.35f)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(cancelBg)
+                        .border(width = 0.75.dp, color = cancelBorder, shape = RoundedCornerShape(10.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Cancel,
+                            contentDescription = null,
+                            tint = cancelContent,
+                            modifier = Modifier.size(11.dp),
+                        )
+                        Text(
+                            text = "ОТМЕНА",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = cancelContent,
                         )
                     }
                 }
@@ -504,15 +584,17 @@ private fun SubgroupLessonRow(
 
         Spacer(modifier = Modifier.height(6.dp))
 
+        val baseSubjectColor = when {
+            style.isNeon -> NeonPalette.textPrimary
+            style.isGlass -> GlassPalette.textPrimary
+            else -> MaterialTheme.colorScheme.onSurface
+        }
         Text(
             text = displaySubject,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = when {
-                style.isNeon -> NeonPalette.textPrimary
-                style.isGlass -> GlassPalette.textPrimary
-                else -> MaterialTheme.colorScheme.onSurface
-            },
+            color = if (lesson.isCancelled) baseSubjectColor.copy(alpha = 0.68f) else baseSubjectColor,
+            textDecoration = if (lesson.isCancelled) TextDecoration.LineThrough else TextDecoration.None,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -619,19 +701,24 @@ private fun PairProgressFooter(
     isPastDay: Boolean,
     nowTime: LocalTime,
     isCurrentNow: Boolean,
+    isCancelled: Boolean,
     activeNowAccent: Color,
 ) {
     val style = LocalAppVisualStyle.current
     val totalSeconds = Duration.between(startTime, endTime).seconds.coerceAtLeast(1L)
     val totalMinutes = Duration.between(startTime, endTime).toMinutes().coerceAtLeast(1L)
 
-    val isFinished = isPastDay || (isToday && !nowTime.isBefore(endTime))
-    val isRunning = isCurrentNow || (isToday && !nowTime.isBefore(startTime) && nowTime.isBefore(endTime))
-    val isUpcomingToday = isToday && nowTime.isBefore(startTime)
+    val isFinished = !isCancelled && (isPastDay || (isToday && !nowTime.isBefore(endTime)))
+    val isRunning = !isCancelled && (isCurrentNow || (isToday && !nowTime.isBefore(startTime) && nowTime.isBefore(endTime)))
+    val isUpcomingToday = !isCancelled && isToday && nowTime.isBefore(startTime)
 
     val targetProgress: Float
     val timerLabel: String
     when {
+        isCancelled -> {
+            targetProgress = 0f
+            timerLabel = "Пара отменена"
+        }
         isFinished -> {
             targetProgress = 1f
             timerLabel = "Пара закончилась"
@@ -660,6 +747,11 @@ private fun PairProgressFooter(
     )
 
     val labelColor = when {
+        isCancelled -> when {
+            !style.isTranslucent && style.isDark -> ScheduleAccentColors.cancelBadgeDark
+            style.isTranslucent -> ScheduleAccentColors.cancelBadgeNeon
+            else -> ScheduleAccentColors.cancelBadgeLight
+        }
         isRunning -> activeNowAccent
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary

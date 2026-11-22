@@ -216,4 +216,45 @@ class ScheduleParserTest {
         assertEquals(1, lessons.size)
         assertEquals(listOf("С-25ИО", "Б-25ИО"), lessons[0].groups)
     }
+
+    @Test
+    fun `detects cancelled lessons from flag or note text without false positives`() {
+        val raw = """
+            [
+              {
+                "dayName": "Четверг",
+                "classNumberName": "1 пара",
+                "classTime": "08:30 / 10:00",
+                "subjects": ["Математика"],
+                "instructors": ["Петров П. П."],
+                "offices": ["101"],
+                "notes": ["Лекция • Занятие отменено"]
+              },
+              {
+                "dayName": "Четверг",
+                "classNumberName": "2 пара",
+                "classTime": "10:15 / 11:45",
+                "subjects": ["Информатика"],
+                "instructors": ["Иванов И. И."],
+                "offices": ["204"],
+                "notes": ["Практика"],
+                "isCancelled": true
+              },
+              {
+                "dayName": "Четверг",
+                "classNumberName": "3 пара",
+                "classTime": "12:15 / 13:45",
+                "subjects": ["История"],
+                "instructors": ["Сидоров С. С."],
+                "offices": ["305"],
+                "notes": ["Лекция"]
+              }
+            ]
+        """.trimIndent()
+        val lessons = ScheduleParser.parseSchedule(raw)
+        assertEquals(3, lessons.size)
+        assertEquals(true, lessons[0].isCancelled)
+        assertEquals(true, lessons[1].isCancelled)
+        assertEquals(false, lessons[2].isCancelled)
+    }
 }
