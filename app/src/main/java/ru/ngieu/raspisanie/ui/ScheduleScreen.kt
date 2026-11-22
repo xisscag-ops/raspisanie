@@ -150,6 +150,8 @@ fun ScheduleScreen(
     onResetToDefaultGroup: () -> Unit,
     onSelectTheme: (ThemeModeSetting) -> Unit,
     onSelectIconStyle: (AppIconStyle) -> Unit,
+    onApplyIconNow: () -> Unit,
+    onForceRefreshIcon: () -> Unit,
     onSelectSubgroup: (SubgroupFilterMode) -> Unit,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
@@ -320,6 +322,8 @@ fun ScheduleScreen(
                                     state = state,
                                     onSelectTheme = onSelectTheme,
                                     onSelectIconStyle = onSelectIconStyle,
+                                    onApplyIconNow = onApplyIconNow,
+                                    onForceRefreshIcon = onForceRefreshIcon,
                                     onSelectWeekMode = onSelectWeekMode,
                                     onGoToday = onGoToday,
                                     onRefresh = onRefresh,
@@ -1898,6 +1902,8 @@ private fun SettingsTab(
     state: ScheduleUiState,
     onSelectTheme: (ThemeModeSetting) -> Unit,
     onSelectIconStyle: (AppIconStyle) -> Unit,
+    onApplyIconNow: () -> Unit,
+    onForceRefreshIcon: () -> Unit,
     onSelectWeekMode: (WeekFilterMode) -> Unit,
     onGoToday: () -> Unit,
     onRefresh: () -> Unit,
@@ -2006,9 +2012,13 @@ private fun SettingsTab(
             AppIconSelectorCard(
                 iconStyle = state.iconStyle,
                 resolvedIcon = resolvedIcon,
+                activeLauncherIcon = state.activeLauncherIcon,
+                iconSyncError = state.iconSyncError,
                 titleColor = titleColor,
                 subColor = subColor,
                 onSelectIconStyle = onSelectIconStyle,
+                onApplyIconNow = onApplyIconNow,
+                onForceRefreshIcon = onForceRefreshIcon,
             )
         }
 
@@ -2305,12 +2315,17 @@ private fun SettingsTab(
 private fun AppIconSelectorCard(
     iconStyle: AppIconStyle,
     resolvedIcon: ResolvedAppIcon,
+    activeLauncherIcon: ResolvedAppIcon?,
+    iconSyncError: String?,
     titleColor: Color,
     subColor: Color,
     onSelectIconStyle: (AppIconStyle) -> Unit,
+    onApplyIconNow: () -> Unit,
+    onForceRefreshIcon: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
     val rows = remember { AppIconStyle.entries.chunked(3) }
+    val hasPendingChange = activeLauncherIcon != null && activeLauncherIcon != resolvedIcon
 
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
@@ -2457,12 +2472,79 @@ private fun AppIconSelectorCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "В режиме «Авто» иконка меняется вместе с темой. Лаунчер обновляет ярлык в течение пары секунд.",
-                style = MaterialTheme.typography.bodySmall,
-                color = subColor.copy(alpha = 0.8f),
-            )
+            Spacer(modifier = Modifier.height(10.dp))
+            if (iconSyncError != null) {
+                Text(
+                    text = "Ошибка смены иконки: $iconSyncError",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else if (hasPendingChange) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "Применится при сворачивании приложения",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subColor,
+                        modifier = Modifier.weight(1f),
+                    )
+                    GlassCard(
+                        cornerRadius = 10.dp,
+                        fillBrush = when {
+                            style.isNeon -> Brush.verticalGradient(
+                                listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                            )
+                            style.isGlass -> Brush.verticalGradient(
+                                listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
+                            )
+                            else -> Brush.verticalGradient(
+                                listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                            )
+                        },
+                        onClick = onApplyIconNow,
+                    ) {
+                        Text(
+                            text = "Применить",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = if (activeLauncherIcon != null) {
+                            "Активно в лаунчере: ${activeLauncherIcon.label}"
+                        } else {
+                            "В режиме «Авто» иконка меняется вместе с темой."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subColor.copy(alpha = 0.85f),
+                        modifier = Modifier.weight(1f),
+                    )
+                    GlassCard(
+                        cornerRadius = 10.dp,
+                        onClick = onForceRefreshIcon,
+                    ) {
+                        Text(
+                            text = "Обновить ярлык",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = titleColor,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }

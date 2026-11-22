@@ -14,11 +14,16 @@ import ru.ngieu.raspisanie.ui.ScheduleViewModel
 import ru.ngieu.raspisanie.ui.theme.NgieuTheme
 
 class MainActivity : ComponentActivity() {
+
+    private var scheduleViewModel: ScheduleViewModel? = null
+    private var suppressNextStopIconApply = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             val viewModel: ScheduleViewModel = viewModel()
+            scheduleViewModel = viewModel
             val state by viewModel.uiState.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
 
@@ -42,13 +47,34 @@ class MainActivity : ComponentActivity() {
                     onResetToDefaultGroup = viewModel::resetToDefaultGroup,
                     onSelectTheme = viewModel::setThemeMode,
                     onSelectIconStyle = viewModel::setIconStyle,
+                    onApplyIconNow = viewModel::applyLauncherIconNow,
+                    onForceRefreshIcon = viewModel::forceRefreshLauncherIcon,
                     onSelectSubgroup = viewModel::setSubgroupFilter,
                     onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
-                    onInstallUpdate = viewModel::downloadAndInstallUpdate,
-                    onShareSchedule = { viewModel.shareDaySchedule(this) },
+                    onInstallUpdate = {
+                        suppressNextStopIconApply = true
+                        viewModel.downloadAndInstallUpdate()
+                    },
+                    onShareSchedule = {
+                        suppressNextStopIconApply = true
+                        viewModel.shareDaySchedule(this)
+                    },
                     onUpdateTetrisBestScore = viewModel::updateTetrisBestScore,
                 )
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        suppressNextStopIconApply = false
+        scheduleViewModel?.refreshActiveLauncherIcon()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations && !suppressNextStopIconApply) {
+            scheduleViewModel?.applyPendingIconIfNeeded()
         }
     }
 }
