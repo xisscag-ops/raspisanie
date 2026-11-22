@@ -1,5 +1,5 @@
 # Keep kotlinx.serialization serializers
--keepattributes *Annotation*, InnerClasses
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
 -dontnote kotlinx.serialization.AnnotationsKt
 
 -keepclassmembers class kotlinx.serialization.json.** {

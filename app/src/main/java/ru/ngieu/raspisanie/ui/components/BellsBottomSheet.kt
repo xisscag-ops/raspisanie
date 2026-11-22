@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import ru.ngieu.raspisanie.BuildConfig
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import java.time.Instant
@@ -135,7 +136,7 @@ fun BellsAndSettingsBottomSheet(
             } ?: "Ещё не синхронизировано"
 
             Text(
-                text = "Группа $groupName • API НГИЭУ\n$updatedLabel",
+                text = "Группа $groupName • Версия ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n$updatedLabel",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

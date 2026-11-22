@@ -29,20 +29,35 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      - name: Resolve version metadata
+        run: |
+          VERSION_CODE="${{ github.run_number }}"
+          VERSION_NAME="1.0.${{ github.run_number }}"
+          TAG="v${VERSION_NAME}"
+          APK_NAME="ngieu-c25io-schedule-${TAG}.apk"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=${VERSION_NAME}" >> "$GITHUB_ENV"
+          echo "TAG=${TAG}" >> "$GITHUB_ENV"
+          echo "APK_NAME=${APK_NAME}" >> "$GITHUB_ENV"
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Build signed Release APK
+        run: >
+          ./gradlew assembleRelease
+          -PappVersionCode=${{ env.VERSION_CODE }}
+          -PappVersionName=${{ env.VERSION_NAME }}
+          --stacktrace
 
-      - name: Prepare APK file
-        run: cp app/build/outputs/apk/debug/app-debug.apk ngieu-c25io-schedule.apk
+      - name: Prepare versioned APK file
+        run: cp app/build/outputs/apk/release/app-release.apk "${{ env.APK_NAME }}"
 
-      - name: Upload Debug APK artifact
+      - name: Upload Release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ngieu-c25io-schedule-debug-apk
-          path: ngieu-c25io-schedule.apk
+          name: ngieu-c25io-schedule-apk
+          path: ngieu-c25io-schedule-v*.apk
           if-no-files-found: error
 
       - name: Publish GitHub Release on main
@@ -50,13 +65,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="v1.0.${{ github.run_number }}"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" ngieu-c25io-schedule.apk --clobber
+          if gh release view "${{ env.TAG }}" >/dev/null 2>&1; then
+            gh release upload "${{ env.TAG }}" "${{ env.APK_NAME }}" --clobber
           else
-            gh release create "$TAG" ngieu-c25io-schedule.apk \
+            gh release create "${{ env.TAG }}" "${{ env.APK_NAME }}" \
               --target "${{ github.sha }}" \
-              --title "Расписание НГИЭУ С-25ИО ($TAG)" \
-              --notes "Автоматическая сборка APK из ветки \`main\` (коммит \`${{ github.sha }}\`)." \
+              --title "Расписание НГИЭУ С-25ИО ${{ env.TAG }}" \
+              --notes "Версия: **${{ env.VERSION_NAME }}** (build ${{ env.VERSION_CODE }}). Подписана постоянным ключом — обновляется поверх предыдущей версии без удаления приложения." \
               --latest
           fi

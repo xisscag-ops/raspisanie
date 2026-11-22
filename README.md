@@ -24,13 +24,13 @@
 
 ### Вариант 1: Готовый APK с GitHub (Releases и Actions)
 В репозитории настроен workflow `.github/workflows/android.yml`.
-- При каждом пуше в `main` автоматически создаётся **GitHub Release** (раздел **Releases** → **Latest**) с прямым файлом **`ngieu-c25io-schedule.apk`**, который можно сразу скачать на телефон и установить без распаковки ZIP.
-- На любой ветке (`main`, `arena/**`) и в PR также запускаются тесты (`./gradlew testDebugUnitTest`), сборка `./gradlew assembleDebug` и загрузка артефакта `ngieu-c25io-schedule-debug-apk` в разделе **Actions**.
+- При каждом пуше в `main` автоматически создаётся **GitHub Release** (раздел **Releases** → **Latest**) с подписанным APK-файлом **`ngieu-c25io-schedule-v1.0.<номер>.apk`**, который можно скачать на телефон и установить поверх предыдущей версии **без удаления старого приложения** (сохраняется кэш и настройки темы).
+- На любой ветке (`main`, `arena/**`) и в PR также запускаются тесты (`./gradlew testDebugUnitTest`), сборка `./gradlew assembleRelease` с постоянной подписью (`app/signing/ngieu-raspisanie.p12`) и загрузка артефакта `ngieu-c25io-schedule-apk` в разделе **Actions**.
 
 ### Вариант 2: Локально в Android Studio / через CLI
 Требуется JDK 17 и Android SDK (compileSdk 36):
 ```bash
 ./gradlew testDebugUnitTest
-./gradlew assembleDebug
+./gradlew assembleRelease
 ```
-Готовый APK будет находиться в `app/build/outputs/apk/debug/app-debug.apk`.
+Готовый подписанный APK будет находиться в `app/build/outputs/apk/release/app-release.apk`.
