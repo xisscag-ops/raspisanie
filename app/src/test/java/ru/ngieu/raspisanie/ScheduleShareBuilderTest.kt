@@ -28,12 +28,13 @@ class ScheduleShareBuilderTest {
         val mondaySnapshot = ScheduleShareBuilder.buildDaySnapshot(
             actorName = "С-25ИО",
             actorKind = ActorKind.GROUP,
-            date = monday,
+            selectedDate = monday,
             weekFilter = WeekFilterMode.UPPER,
             allLessons = lessons,
         )
 
-        assertEquals("С-25ИО", mondaySnapshot.actorName)
+        assertEquals("С-25ИО", mondaySnapshot.actorBadgeName)
+        assertEquals("Группа С-25ИО", mondaySnapshot.actorTitle)
         assertEquals(ActorKind.GROUP, mondaySnapshot.actorKind)
         assertEquals(monday, mondaySnapshot.date)
         assertEquals(2, mondaySnapshot.slots.size)
@@ -43,12 +44,13 @@ class ScheduleShareBuilderTest {
         val tuesdaySnapshot = ScheduleShareBuilder.buildDaySnapshot(
             actorName = "Иванов И. И.",
             actorKind = ActorKind.TEACHER,
-            date = tuesday,
+            selectedDate = tuesday,
             weekFilter = WeekFilterMode.UPPER,
             allLessons = lessons,
         )
 
         assertEquals(ActorKind.TEACHER, tuesdaySnapshot.actorKind)
+        assertEquals("Иванов И. И.", tuesdaySnapshot.actorTitle)
         assertEquals(1, tuesdaySnapshot.slots.size)
         assertEquals("Физика", tuesdaySnapshot.slots[0].lessons[0].subject)
         assertEquals(listOf("С-25ИО"), tuesdaySnapshot.slots[0].lessons[0].groups)
@@ -64,7 +66,7 @@ class ScheduleShareBuilderTest {
         val snapshot = ScheduleShareBuilder.buildDaySnapshot(
             actorName = "С-25ИО",
             actorKind = ActorKind.GROUP,
-            date = tuesday,
+            selectedDate = tuesday,
             weekFilter = WeekFilterMode.UPPER,
             allLessons = lessons,
         )
