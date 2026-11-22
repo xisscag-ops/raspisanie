@@ -7,7 +7,6 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +22,7 @@ import ru.ngieu.raspisanie.data.AppUpdater
 import ru.ngieu.raspisanie.data.InstallLaunchResult
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.NgieuApiClient
+import ru.ngieu.raspisanie.data.ResolvedAppIcon
 import ru.ngieu.raspisanie.data.ScheduleActor
 import ru.ngieu.raspisanie.data.ScheduleCache
 import ru.ngieu.raspisanie.data.ScheduleParser
@@ -96,6 +96,8 @@ data class ScheduleUiState(
     val updatedAtEpochMillis: Long? = null,
     val themeMode: ThemeModeSetting = ThemeModeSetting.NEON,
     val iconStyle: AppIconStyle = AppIconStyle.AUTO,
+    val activeLauncherIcon: ResolvedAppIcon? = null,
+    val iconSyncError: String? = null,
     val subgroupFilter: SubgroupFilterMode = SubgroupFilterMode.ALL,
     val nowTime: LocalTime = currentKnyagininoTime(),
     val weekDays: List<LocalDate> = emptyList(),
@@ -189,10 +191,10 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         ),
     )
     val uiState: StateFlow<ScheduleUiState> = _uiState.asStateFlow()
-    private var iconSyncJob: Job? = null
+    private var latestSystemDark: Boolean = AppIconManager.isSystemDark(application)
 
     init {
-        syncLauncherIcon(delayMs = 0L)
+        refreshActiveLauncherIcon()
         loadInitialData()
         startClockTicker()
         checkForUpdates(silent = true)
@@ -453,41 +455,93 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
 
     fun setThemeMode(mode: ThemeModeSetting) {
         repository.saveThemeMode(mode)
-        updateState { it.copy(themeMode = mode) }
-        syncLauncherIcon(delayMs = 250L)
+        updateState { it.copy(themeMode = mode, iconSyncError = null) }
+        refreshActiveLauncherIcon()
     }
 
     fun setIconStyle(style: AppIconStyle) {
         repository.saveIconStyle(style)
-        updateState { it.copy(iconStyle = style) }
-        syncLauncherIcon(delayMs = 250L)
+        updateState { it.copy(iconStyle = style, iconSyncError = null) }
+        refreshActiveLauncherIcon()
     }
 
     fun onSystemDarkChanged(isSystemDark: Boolean) {
-        val state = _uiState.value
-        if (state.iconStyle == AppIconStyle.AUTO && state.themeMode == ThemeModeSetting.SYSTEM) {
-            syncLauncherIcon(delayMs = 0L, isSystemDarkOverride = isSystemDark)
+        latestSystemDark = isSystemDark
+        refreshActiveLauncherIcon()
+    }
+
+    fun refreshActiveLauncherIcon() {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val active = withContext(Dispatchers.IO) {
+                AppIconManager.readActiveIcon(app)
+            }
+            _uiState.update { it.copy(activeLauncherIcon = active) }
         }
     }
 
-    private fun syncLauncherIcon(
-        delayMs: Long,
-        isSystemDarkOverride: Boolean? = null,
-    ) {
-        iconSyncJob?.cancel()
-        iconSyncJob = viewModelScope.launch {
-            if (delayMs > 0L) delay(delayMs)
-            val snapshot = _uiState.value
-            val app = getApplication<Application>()
-            val systemDark = isSystemDarkOverride ?: AppIconManager.isSystemDark(app)
-            withContext(Dispatchers.IO) {
-                AppIconManager.syncIcon(
-                    context = app,
-                    themeMode = snapshot.themeMode,
-                    iconStyle = snapshot.iconStyle,
-                    isSystemDark = systemDark,
+    fun applyPendingIconIfNeeded() {
+        val snapshot = _uiState.value
+        val app = getApplication<Application>()
+        val target = AppIconManager.resolveIcon(
+            themeMode = snapshot.themeMode,
+            iconStyle = snapshot.iconStyle,
+            isSystemDark = latestSystemDark,
+        )
+        val current = snapshot.activeLauncherIcon ?: AppIconManager.readActiveIcon(app)
+        if (current != target) {
+            val result = AppIconManager.applyResolvedIcon(
+                context = app,
+                target = target,
+                killApp = true,
+            )
+            _uiState.update {
+                it.copy(
+                    activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
+                    iconSyncError = result.errorMessage,
                 )
             }
+        }
+    }
+
+    fun applyLauncherIconNow() {
+        val snapshot = _uiState.value
+        val app = getApplication<Application>()
+        val target = AppIconManager.resolveIcon(
+            themeMode = snapshot.themeMode,
+            iconStyle = snapshot.iconStyle,
+            isSystemDark = latestSystemDark,
+        )
+        val result = AppIconManager.applyResolvedIcon(
+            context = app,
+            target = target,
+            killApp = true,
+        )
+        _uiState.update {
+            it.copy(
+                activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
+                iconSyncError = result.errorMessage,
+            )
+        }
+    }
+
+    fun forceRefreshLauncherIcon() {
+        val snapshot = _uiState.value
+        val app = getApplication<Application>()
+        val target = AppIconManager.resolveIcon(
+            themeMode = snapshot.themeMode,
+            iconStyle = snapshot.iconStyle,
+            isSystemDark = latestSystemDark,
+        )
+        val result = AppIconManager.forceRefreshIcon(
+            context = app,
+            target = target,
+        )
+        _uiState.update {
+            it.copy(
+                activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
+                iconSyncError = result.errorMessage,
+            )
         }
     }
 
