@@ -132,10 +132,10 @@ enum class ResolvedAppIcon(
     val aliasClassName: String,
     val defaultEnabledInManifest: Boolean,
 ) {
-    NEON("Неон", "ru.ngieu.raspisanie.LauncherAliasNeon", defaultEnabledInManifest = true),
+    NEON("Неон", "ru.ngieu.raspisanie.LauncherAliasNeon", defaultEnabledInManifest = false),
     GLASS("Стекло", "ru.ngieu.raspisanie.LauncherAliasGlass", defaultEnabledInManifest = false),
     LIGHT("Светлая", "ru.ngieu.raspisanie.LauncherAliasLight", defaultEnabledInManifest = false),
-    DARK("Тёмная", "ru.ngieu.raspisanie.LauncherAliasDark", defaultEnabledInManifest = false),
+    DARK("Тёмная", "ru.ngieu.raspisanie.LauncherAliasDark", defaultEnabledInManifest = true),
     CLASSIC("Классика", "ru.ngieu.raspisanie.LauncherAliasClassic", defaultEnabledInManifest = false),
 }
 

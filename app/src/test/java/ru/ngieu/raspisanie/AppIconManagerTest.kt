@@ -58,6 +58,6 @@ class AppIconManagerTest {
     @Test
     fun `exactly one launcher alias is enabled by default in manifest`() {
         val defaultEnabled = ResolvedAppIcon.entries.filter { it.defaultEnabledInManifest }
-        assertEquals(listOf(ResolvedAppIcon.NEON), defaultEnabled)
+        assertEquals(listOf(ResolvedAppIcon.DARK), defaultEnabled)
     }
 }

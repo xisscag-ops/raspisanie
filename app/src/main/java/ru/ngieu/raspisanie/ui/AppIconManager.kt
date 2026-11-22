@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.os.Process
+import android.provider.Settings
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.delay
 import ru.ngieu.raspisanie.data.AppIconStyle
@@ -17,8 +19,12 @@ import ru.ngieu.raspisanie.data.ThemeModeSetting
 data class SystemIconDiagnostics(
     val aliases: List<String> = emptyList(),
     val launcherAppsIcon: Bitmap? = null,
+    val launcherAppsDensityIcon: Bitmap? = null,
     val pmActivityIcon: Bitmap? = null,
     val pmAppIcon: Bitmap? = null,
+    val directResIcon: Bitmap? = null,
+    val activityIconResName: String? = null,
+    val samsungThemePackage: String? = null,
 )
 
 data class IconApplyResult(
@@ -71,14 +77,39 @@ object AppIconManager {
                 readLauncherAppsAliases(context)
             }
 
+            val firstActivity = activities.firstOrNull()
+            val densityDpi = context.resources.displayMetrics.densityDpi
+
             val launcherIconBitmap = runCatching {
-                activities.firstOrNull()?.getIcon(0)?.toBitmap(width = 96, height = 96)
+                firstActivity?.getIcon(0)?.toBitmap(width = 96, height = 96)
             }.getOrNull()
 
-            val activeComponent = activities.firstOrNull()?.componentName ?: run {
+            val launcherDensityBitmap = runCatching {
+                firstActivity?.getIcon(densityDpi)?.toBitmap(width = 96, height = 96)
+            }.getOrNull()
+
+            val activeComponent = firstActivity?.componentName ?: run {
                 val active = readActiveIcon(context)
                 active?.let { ComponentName(pkg, it.aliasClassName) }
             }
+
+            val activityInfo = runCatching {
+                activeComponent?.let { pm.getActivityInfo(it, 0) }
+            }.getOrNull()
+
+            val iconResId = activityInfo?.icon ?: 0
+            val activityIconResName = runCatching {
+                if (iconResId != 0) context.resources.getResourceEntryName(iconResId) else "0"
+            }.getOrNull()
+
+            val directResBitmap = runCatching {
+                if (iconResId != 0) {
+                    ResourcesCompat.getDrawable(context.resources, iconResId, null)
+                        ?.toBitmap(width = 96, height = 96)
+                } else {
+                    null
+                }
+            }.getOrNull()
 
             val pmActivityBitmap = runCatching {
                 activeComponent?.let { pm.getActivityIcon(it).toBitmap(width = 96, height = 96) }
@@ -88,11 +119,22 @@ object AppIconManager {
                 pm.getApplicationIcon(pkg).toBitmap(width = 96, height = 96)
             }.getOrNull()
 
+            val samsungThemePkg = runCatching {
+                Settings.System.getString(
+                    context.contentResolver,
+                    "current_sec_appicon_theme_package",
+                )
+            }.getOrNull()
+
             SystemIconDiagnostics(
                 aliases = aliases,
                 launcherAppsIcon = launcherIconBitmap,
+                launcherAppsDensityIcon = launcherDensityBitmap,
                 pmActivityIcon = pmActivityBitmap,
                 pmAppIcon = pmAppBitmap,
+                directResIcon = directResBitmap,
+                activityIconResName = activityIconResName,
+                samsungThemePackage = samsungThemePkg,
             )
         }.getOrDefault(SystemIconDiagnostics(aliases = readLauncherAppsAliases(context)))
     }
@@ -179,28 +221,48 @@ object AppIconManager {
                 )
             }
 
-            // Enable target alias first so the app never has zero enabled launcher entries.
-            if (!targetAlreadyEnabled) {
-                val enableFlags = if (killApp && othersToDisable.isEmpty()) {
-                    0
-                } else {
-                    PackageManager.DONT_KILL_APP
-                }
+            if (target.defaultEnabledInManifest) {
+                // Restoring manifest defaults cleanly (enable default alias first, then reset others).
+                val rest = ResolvedAppIcon.entries.filter { it != target }
+                val targetFlags = if (killApp && rest.isEmpty()) 0 else PackageManager.DONT_KILL_APP
                 pm.setComponentEnabledSetting(
                     ComponentName(pkg, target.aliasClassName),
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    enableFlags,
+                    PackageManager.COMPONENT_ENABLED_STATE_DEFAULT,
+                    targetFlags,
                 )
-            }
+                rest.forEachIndexed { index, icon ->
+                    val isLast = index == rest.lastIndex
+                    val flags = if (killApp && isLast) 0 else PackageManager.DONT_KILL_APP
+                    pm.setComponentEnabledSetting(
+                        ComponentName(pkg, icon.aliasClassName),
+                        PackageManager.COMPONENT_ENABLED_STATE_DEFAULT,
+                        flags,
+                    )
+                }
+            } else {
+                // Enable target alias first so the app never has zero enabled launcher entries.
+                if (!targetAlreadyEnabled) {
+                    val enableFlags = if (killApp && othersToDisable.isEmpty()) {
+                        0
+                    } else {
+                        PackageManager.DONT_KILL_APP
+                    }
+                    pm.setComponentEnabledSetting(
+                        ComponentName(pkg, target.aliasClassName),
+                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                        enableFlags,
+                    )
+                }
 
-            othersToDisable.forEachIndexed { index, icon ->
-                val isLast = index == othersToDisable.lastIndex
-                val disableFlags = if (killApp && isLast) 0 else PackageManager.DONT_KILL_APP
-                pm.setComponentEnabledSetting(
-                    ComponentName(pkg, icon.aliasClassName),
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    disableFlags,
-                )
+                othersToDisable.forEachIndexed { index, icon ->
+                    val isLast = index == othersToDisable.lastIndex
+                    val disableFlags = if (killApp && isLast) 0 else PackageManager.DONT_KILL_APP
+                    pm.setComponentEnabledSetting(
+                        ComponentName(pkg, icon.aliasClassName),
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        disableFlags,
+                    )
+                }
             }
 
             IconApplyResult(
@@ -246,22 +308,11 @@ object AppIconManager {
 
             delay(350L)
 
-            // Phase 2: switch back to the target alias and flush immediately without DONT_KILL_APP.
-            pm.setComponentEnabledSetting(
-                ComponentName(pkg, target.aliasClassName),
-                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                PackageManager.DONT_KILL_APP,
-            )
-            pm.setComponentEnabledSetting(
-                ComponentName(pkg, tempAlias.aliasClassName),
-                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                0,
-            )
-
-            IconApplyResult(
-                changed = true,
-                activeIcon = readActiveIcon(appCtx) ?: target,
-                launcherAliases = readLauncherAppsAliases(appCtx),
+            // Phase 2: switch back to the target alias using DONT_KILL_APP.
+            applyResolvedIcon(
+                context = appCtx,
+                target = target,
+                killApp = false,
             )
         } catch (t: Throwable) {
             IconApplyResult(

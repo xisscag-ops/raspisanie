@@ -2545,37 +2545,51 @@ private fun AppIconSelectorCard(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        if (systemIconDiagnostics.launcherAppsIcon != null ||
-                            systemIconDiagnostics.pmActivityIcon != null ||
-                            systemIconDiagnostics.pmAppIcon != null
-                        ) {
+                        val metaLine = buildList {
+                            systemIconDiagnostics.activityIconResName?.let { add("res=$it") }
+                            systemIconDiagnostics.samsungThemePackage?.takeIf { it.isNotBlank() }?.let {
+                                add("theme=${it.substringAfterLast('.')}")
+                            }
+                        }.joinToString(" • ")
+                        if (metaLine.isNotEmpty()) {
+                            Text(
+                                text = metaLine,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = subColor.copy(alpha = 0.65f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        val diagIcons = listOf(
+                            "Res" to systemIconDiagnostics.directResIcon,
+                            "LA-d" to systemIconDiagnostics.launcherAppsDensityIcon,
+                            "LA" to systemIconDiagnostics.launcherAppsIcon,
+                            "Act" to systemIconDiagnostics.pmActivityIcon,
+                            "App" to systemIconDiagnostics.pmAppIcon,
+                        ).filter { it.second != null }
+                        if (diagIcons.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                val diagIcons = listOf(
-                                    "LA" to systemIconDiagnostics.launcherAppsIcon,
-                                    "Act" to systemIconDiagnostics.pmActivityIcon,
-                                    "App" to systemIconDiagnostics.pmAppIcon,
-                                )
                                 diagIcons.forEach { (label, bmp) ->
                                     if (bmp != null) {
                                         val img = remember(bmp) { bmp.asImageBitmap() }
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
                                         ) {
                                             Image(
                                                 bitmap = img,
                                                 contentDescription = label,
                                                 modifier = Modifier
-                                                    .size(22.dp)
-                                                    .clip(RoundedCornerShape(6.dp))
+                                                    .size(20.dp)
+                                                    .clip(RoundedCornerShape(5.dp))
                                                     .border(
                                                         0.5.dp,
                                                         Color.Gray.copy(alpha = 0.4f),
-                                                        RoundedCornerShape(6.dp),
+                                                        RoundedCornerShape(5.dp),
                                                     ),
                                             )
                                             Text(
