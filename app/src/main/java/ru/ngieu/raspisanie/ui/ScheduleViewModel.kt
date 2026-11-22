@@ -97,8 +97,6 @@ data class ScheduleUiState(
     val themeMode: ThemeModeSetting = ThemeModeSetting.NEON,
     val iconStyle: AppIconStyle = AppIconStyle.AUTO,
     val activeLauncherIcon: ResolvedAppIcon? = null,
-    val launcherAliases: List<String> = emptyList(),
-    val systemIconDiagnostics: SystemIconDiagnostics = SystemIconDiagnostics(),
     val iconSyncError: String? = null,
     val subgroupFilter: SubgroupFilterMode = SubgroupFilterMode.ALL,
     val nowTime: LocalTime = currentKnyagininoTime(),
@@ -475,15 +473,11 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     fun refreshActiveLauncherIcon() {
         viewModelScope.launch {
             val app = getApplication<Application>()
-            val (active, diagnostics) = withContext(Dispatchers.IO) {
-                AppIconManager.readActiveIcon(app) to AppIconManager.readSystemDiagnostics(app)
+            val active = withContext(Dispatchers.IO) {
+                AppIconManager.readActiveIcon(app)
             }
             _uiState.update {
-                it.copy(
-                    activeLauncherIcon = active,
-                    launcherAliases = diagnostics.aliases,
-                    systemIconDiagnostics = diagnostics,
-                )
+                it.copy(activeLauncherIcon = active)
             }
         }
     }
@@ -503,12 +497,9 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 target = target,
                 killApp = false,
             )
-            val diagnostics = AppIconManager.readSystemDiagnostics(app)
             _uiState.update {
                 it.copy(
                     activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
-                    launcherAliases = result.launcherAliases.ifEmpty { it.launcherAliases },
-                    systemIconDiagnostics = diagnostics,
                     iconSyncError = result.errorMessage,
                 )
             }
@@ -525,47 +516,16 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 isSystemDark = latestSystemDark,
             )
             delay(180L)
-            val (result, diagnostics) = withContext(Dispatchers.IO) {
-                val res = AppIconManager.applyResolvedIcon(
+            val result = withContext(Dispatchers.IO) {
+                AppIconManager.applyResolvedIcon(
                     context = app,
                     target = target,
                     killApp = false,
                 )
-                res to AppIconManager.readSystemDiagnostics(app)
             }
             _uiState.update {
                 it.copy(
                     activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
-                    launcherAliases = result.launcherAliases.ifEmpty { it.launcherAliases },
-                    systemIconDiagnostics = diagnostics,
-                    iconSyncError = result.errorMessage,
-                )
-            }
-        }
-    }
-
-    fun forceRefreshLauncherIcon() {
-        viewModelScope.launch {
-            val snapshot = _uiState.value
-            val app = getApplication<Application>()
-            val target = AppIconManager.resolveIcon(
-                themeMode = snapshot.themeMode,
-                iconStyle = snapshot.iconStyle,
-                isSystemDark = latestSystemDark,
-            )
-            delay(180L)
-            val (result, diagnostics) = withContext(Dispatchers.IO) {
-                val res = AppIconManager.forceRefreshIcon(
-                    context = app,
-                    target = target,
-                )
-                res to AppIconManager.readSystemDiagnostics(app)
-            }
-            _uiState.update {
-                it.copy(
-                    activeLauncherIcon = result.activeIcon ?: it.activeLauncherIcon,
-                    launcherAliases = result.launcherAliases.ifEmpty { it.launcherAliases },
-                    systemIconDiagnostics = diagnostics,
                     iconSyncError = result.errorMessage,
                 )
             }

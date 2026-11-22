@@ -83,7 +83,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -152,7 +151,6 @@ fun ScheduleScreen(
     onSelectTheme: (ThemeModeSetting) -> Unit,
     onSelectIconStyle: (AppIconStyle) -> Unit,
     onApplyIconNow: () -> Unit,
-    onForceRefreshIcon: () -> Unit,
     onSelectSubgroup: (SubgroupFilterMode) -> Unit,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
@@ -324,7 +322,6 @@ fun ScheduleScreen(
                                     onSelectTheme = onSelectTheme,
                                     onSelectIconStyle = onSelectIconStyle,
                                     onApplyIconNow = onApplyIconNow,
-                                    onForceRefreshIcon = onForceRefreshIcon,
                                     onSelectWeekMode = onSelectWeekMode,
                                     onGoToday = onGoToday,
                                     onRefresh = onRefresh,
@@ -1904,7 +1901,6 @@ private fun SettingsTab(
     onSelectTheme: (ThemeModeSetting) -> Unit,
     onSelectIconStyle: (AppIconStyle) -> Unit,
     onApplyIconNow: () -> Unit,
-    onForceRefreshIcon: () -> Unit,
     onSelectWeekMode: (WeekFilterMode) -> Unit,
     onGoToday: () -> Unit,
     onRefresh: () -> Unit,
@@ -2014,14 +2010,11 @@ private fun SettingsTab(
                 iconStyle = state.iconStyle,
                 resolvedIcon = resolvedIcon,
                 activeLauncherIcon = state.activeLauncherIcon,
-                launcherAliases = state.launcherAliases,
-                systemIconDiagnostics = state.systemIconDiagnostics,
                 iconSyncError = state.iconSyncError,
                 titleColor = titleColor,
                 subColor = subColor,
                 onSelectIconStyle = onSelectIconStyle,
                 onApplyIconNow = onApplyIconNow,
-                onForceRefreshIcon = onForceRefreshIcon,
             )
         }
 
@@ -2319,14 +2312,11 @@ private fun AppIconSelectorCard(
     iconStyle: AppIconStyle,
     resolvedIcon: ResolvedAppIcon,
     activeLauncherIcon: ResolvedAppIcon?,
-    launcherAliases: List<String>,
-    systemIconDiagnostics: SystemIconDiagnostics,
     iconSyncError: String?,
     titleColor: Color,
     subColor: Color,
     onSelectIconStyle: (AppIconStyle) -> Unit,
     onApplyIconNow: () -> Unit,
-    onForceRefreshIcon: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
     val rows = remember { AppIconStyle.entries.chunked(3) }
@@ -2521,101 +2511,11 @@ private fun AppIconSelectorCard(
                     }
                 }
             } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (activeLauncherIcon != null) {
-                                "Активно в лаунчере: ${activeLauncherIcon.label}"
-                            } else {
-                                "В режиме «Авто» иконка меняется вместе с темой."
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = subColor.copy(alpha = 0.85f),
-                        )
-                        if (launcherAliases.isNotEmpty()) {
-                            Text(
-                                text = "LauncherApps: ${launcherAliases.joinToString(", ")}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = subColor.copy(alpha = 0.65f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        val metaLine = buildList {
-                            systemIconDiagnostics.activityIconResName?.let { add("res=$it") }
-                            systemIconDiagnostics.samsungThemePackage?.takeIf { it.isNotBlank() }?.let {
-                                add("theme=${it.substringAfterLast('.')}")
-                            }
-                        }.joinToString(" • ")
-                        if (metaLine.isNotEmpty()) {
-                            Text(
-                                text = metaLine,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = subColor.copy(alpha = 0.65f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        val diagIcons = listOf(
-                            "Res" to systemIconDiagnostics.directResIcon,
-                            "LA-d" to systemIconDiagnostics.launcherAppsDensityIcon,
-                            "LA" to systemIconDiagnostics.launcherAppsIcon,
-                            "Act" to systemIconDiagnostics.pmActivityIcon,
-                            "App" to systemIconDiagnostics.pmAppIcon,
-                        ).filter { it.second != null }
-                        if (diagIcons.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                diagIcons.forEach { (label, bmp) ->
-                                    if (bmp != null) {
-                                        val img = remember(bmp) { bmp.asImageBitmap() }
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                        ) {
-                                            Image(
-                                                bitmap = img,
-                                                contentDescription = label,
-                                                modifier = Modifier
-                                                    .size(20.dp)
-                                                    .clip(RoundedCornerShape(5.dp))
-                                                    .border(
-                                                        0.5.dp,
-                                                        Color.Gray.copy(alpha = 0.4f),
-                                                        RoundedCornerShape(5.dp),
-                                                    ),
-                                            )
-                                            Text(
-                                                text = label,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = subColor.copy(alpha = 0.7f),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    GlassCard(
-                        cornerRadius = 10.dp,
-                        onClick = onForceRefreshIcon,
-                    ) {
-                        Text(
-                            text = "Обновить ярлык",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = titleColor,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        )
-                    }
-                }
+                Text(
+                    text = "В режиме «Авто» иконка меняется вместе с темой.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = subColor.copy(alpha = 0.85f),
+                )
             }
         }
     }

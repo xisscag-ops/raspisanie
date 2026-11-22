@@ -3,34 +3,15 @@ package ru.ngieu.raspisanie.ui
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.os.Process
-import android.provider.Settings
-import androidx.core.content.res.ResourcesCompat
-import androidx.core.graphics.drawable.toBitmap
-import kotlinx.coroutines.delay
 import ru.ngieu.raspisanie.data.AppIconStyle
 import ru.ngieu.raspisanie.data.ResolvedAppIcon
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 
-data class SystemIconDiagnostics(
-    val aliases: List<String> = emptyList(),
-    val launcherAppsIcon: Bitmap? = null,
-    val launcherAppsDensityIcon: Bitmap? = null,
-    val pmActivityIcon: Bitmap? = null,
-    val pmAppIcon: Bitmap? = null,
-    val directResIcon: Bitmap? = null,
-    val activityIconResName: String? = null,
-    val samsungThemePackage: String? = null,
-)
-
 data class IconApplyResult(
     val changed: Boolean,
     val activeIcon: ResolvedAppIcon?,
-    val launcherAliases: List<String> = emptyList(),
     val errorMessage: String? = null,
 )
 
@@ -60,104 +41,6 @@ object AppIconManager {
     fun isSystemDark(context: Context): Boolean {
         val nightMask = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         return nightMask == Configuration.UI_MODE_NIGHT_YES
-    }
-
-    fun readSystemDiagnostics(context: Context): SystemIconDiagnostics {
-        return runCatching {
-            val pm = context.packageManager
-            val pkg = context.packageName
-            val launcherApps = context.getSystemService(LauncherApps::class.java)
-            val activities = launcherApps
-                ?.getActivityList(pkg, Process.myUserHandle())
-                .orEmpty()
-
-            val aliases = if (activities.isNotEmpty()) {
-                activities.map { it.componentName.shortClassName.substringAfterLast('.') }
-            } else {
-                readLauncherAppsAliases(context)
-            }
-
-            val firstActivity = activities.firstOrNull()
-            val densityDpi = context.resources.displayMetrics.densityDpi
-
-            val launcherIconBitmap = runCatching {
-                firstActivity?.getIcon(0)?.toBitmap(width = 96, height = 96)
-            }.getOrNull()
-
-            val launcherDensityBitmap = runCatching {
-                firstActivity?.getIcon(densityDpi)?.toBitmap(width = 96, height = 96)
-            }.getOrNull()
-
-            val activeComponent = firstActivity?.componentName ?: run {
-                val active = readActiveIcon(context)
-                active?.let { ComponentName(pkg, it.aliasClassName) }
-            }
-
-            val activityInfo = runCatching {
-                activeComponent?.let { pm.getActivityInfo(it, 0) }
-            }.getOrNull()
-
-            val iconResId = activityInfo?.icon ?: 0
-            val activityIconResName = runCatching {
-                if (iconResId != 0) context.resources.getResourceEntryName(iconResId) else "0"
-            }.getOrNull()
-
-            val directResBitmap = runCatching {
-                if (iconResId != 0) {
-                    ResourcesCompat.getDrawable(context.resources, iconResId, null)
-                        ?.toBitmap(width = 96, height = 96)
-                } else {
-                    null
-                }
-            }.getOrNull()
-
-            val pmActivityBitmap = runCatching {
-                activeComponent?.let { pm.getActivityIcon(it).toBitmap(width = 96, height = 96) }
-            }.getOrNull()
-
-            val pmAppBitmap = runCatching {
-                pm.getApplicationIcon(pkg).toBitmap(width = 96, height = 96)
-            }.getOrNull()
-
-            val samsungThemePkg = runCatching {
-                Settings.System.getString(
-                    context.contentResolver,
-                    "current_sec_appicon_theme_package",
-                )
-            }.getOrNull()
-
-            SystemIconDiagnostics(
-                aliases = aliases,
-                launcherAppsIcon = launcherIconBitmap,
-                launcherAppsDensityIcon = launcherDensityBitmap,
-                pmActivityIcon = pmActivityBitmap,
-                pmAppIcon = pmAppBitmap,
-                directResIcon = directResBitmap,
-                activityIconResName = activityIconResName,
-                samsungThemePackage = samsungThemePkg,
-            )
-        }.getOrDefault(SystemIconDiagnostics(aliases = readLauncherAppsAliases(context)))
-    }
-
-    fun readLauncherAppsAliases(context: Context): List<String> {
-        return runCatching {
-            val launcherApps = context.getSystemService(LauncherApps::class.java)
-            val fromLauncherApps = launcherApps
-                ?.getActivityList(context.packageName, Process.myUserHandle())
-                ?.map { it.componentName.shortClassName.substringAfterLast('.') }
-                .orEmpty()
-            if (fromLauncherApps.isNotEmpty()) {
-                return@runCatching fromLauncherApps
-            }
-
-            val launcherIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                setPackage(context.packageName)
-            }
-            context.packageManager
-                .queryIntentActivities(launcherIntent, 0)
-                .map { it.activityInfo.name.substringAfterLast('.') }
-        }.getOrDefault(emptyList())
     }
 
     fun readActiveIcon(context: Context): ResolvedAppIcon? {
@@ -217,12 +100,10 @@ object AppIconManager {
                 return IconApplyResult(
                     changed = false,
                     activeIcon = target,
-                    launcherAliases = readLauncherAppsAliases(context),
                 )
             }
 
             if (target.defaultEnabledInManifest) {
-                // Restoring manifest defaults cleanly (enable default alias first, then reset others).
                 val rest = ResolvedAppIcon.entries.filter { it != target }
                 val targetFlags = if (killApp && rest.isEmpty()) 0 else PackageManager.DONT_KILL_APP
                 pm.setComponentEnabledSetting(
@@ -268,57 +149,11 @@ object AppIconManager {
             IconApplyResult(
                 changed = true,
                 activeIcon = readActiveIcon(context) ?: target,
-                launcherAliases = readLauncherAppsAliases(context),
             )
         } catch (t: Throwable) {
             IconApplyResult(
                 changed = false,
                 activeIcon = readActiveIcon(context),
-                launcherAliases = readLauncherAppsAliases(context),
-                errorMessage = t.message ?: t::class.java.simpleName,
-            )
-        }
-    }
-
-    suspend fun forceRefreshIcon(
-        context: Context,
-        target: ResolvedAppIcon,
-    ): IconApplyResult {
-        return try {
-            val appCtx = context.applicationContext
-            val pm = appCtx.packageManager
-            val pkg = appCtx.packageName
-            val tempAlias = ResolvedAppIcon.entries.last { it != target }
-
-            // Phase 1: move to a temporary alias so PackageManager & LauncherApps observe a real transition.
-            pm.setComponentEnabledSetting(
-                ComponentName(pkg, tempAlias.aliasClassName),
-                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                PackageManager.DONT_KILL_APP,
-            )
-            ResolvedAppIcon.entries.forEach { icon ->
-                if (icon != tempAlias && isEffectivelyEnabled(pm, pkg, icon)) {
-                    pm.setComponentEnabledSetting(
-                        ComponentName(pkg, icon.aliasClassName),
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                        PackageManager.DONT_KILL_APP,
-                    )
-                }
-            }
-
-            delay(350L)
-
-            // Phase 2: switch back to the target alias using DONT_KILL_APP.
-            applyResolvedIcon(
-                context = appCtx,
-                target = target,
-                killApp = false,
-            )
-        } catch (t: Throwable) {
-            IconApplyResult(
-                changed = false,
-                activeIcon = readActiveIcon(context),
-                launcherAliases = readLauncherAppsAliases(context),
                 errorMessage = t.message ?: t::class.java.simpleName,
             )
         }

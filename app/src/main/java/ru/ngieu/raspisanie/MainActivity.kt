@@ -52,11 +52,6 @@ class MainActivity : ComponentActivity() {
                         moveTaskToBack(true)
                         viewModel.applyLauncherIconNow()
                     },
-                    onForceRefreshIcon = {
-                        suppressNextStopIconApply = true
-                        moveTaskToBack(true)
-                        viewModel.forceRefreshLauncherIcon()
-                    },
                     onSelectSubgroup = viewModel::setSubgroupFilter,
                     onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
                     onInstallUpdate = {
