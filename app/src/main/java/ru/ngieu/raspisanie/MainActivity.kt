@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
                     onSelectActor = viewModel::selectActor,
                     onResetToDefaultGroup = viewModel::resetToDefaultGroup,
                     onSelectTheme = viewModel::setThemeMode,
+                    onSelectSubgroup = viewModel::setSubgroupFilter,
                     onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
                     onInstallUpdate = viewModel::downloadAndInstallUpdate,
                     onShareSchedule = { viewModel.shareDaySchedule(this) },

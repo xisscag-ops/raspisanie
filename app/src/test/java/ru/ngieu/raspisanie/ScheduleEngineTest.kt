@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.LessonType
+import ru.ngieu.raspisanie.data.SubgroupFilterMode
 import ru.ngieu.raspisanie.data.WeekParity
 import ru.ngieu.raspisanie.domain.LiveLessonState
 import ru.ngieu.raspisanie.domain.ScheduleEngine
@@ -164,6 +165,28 @@ class ScheduleEngineTest {
         assertEquals("Иностранный язык", ScheduleEngine.cleanSubgroupPrefix("(пр. 1) Иностранный язык"))
         assertEquals("Базы данных", ScheduleEngine.cleanSubgroupPrefix("(2 п/г) Базы данных"))
         assertEquals("Математика", ScheduleEngine.cleanSubgroupPrefix("Математика"))
+    }
+
+    @Test
+    fun `filters day lessons by selected subgroup while keeping common lessons`() {
+        val targetMonday = LocalDate.of(2026, 11, 23)
+        val common = sampleLesson("common", pair = 1).copy(subject = "Математика")
+        val sub1 = sampleLesson("sub1", pair = 2).copy(subject = "(пр. 1) Программирование")
+        val sub2 = sampleLesson("sub2", pair = 2).copy(subject = "(пр. 2) Иностранный язык")
+        val all = listOf(common, sub1, sub2)
+
+        assertEquals(
+            listOf("common", "sub1", "sub2"),
+            ScheduleEngine.lessonsForDay(all, targetMonday, WeekFilterMode.UPPER, SubgroupFilterMode.ALL).map { it.id },
+        )
+        assertEquals(
+            listOf("common", "sub1"),
+            ScheduleEngine.lessonsForDay(all, targetMonday, WeekFilterMode.UPPER, SubgroupFilterMode.FIRST).map { it.id },
+        )
+        assertEquals(
+            listOf("common", "sub2"),
+            ScheduleEngine.lessonsForDay(all, targetMonday, WeekFilterMode.UPPER, SubgroupFilterMode.SECOND).map { it.id },
+        )
     }
 
     private fun sampleLesson(

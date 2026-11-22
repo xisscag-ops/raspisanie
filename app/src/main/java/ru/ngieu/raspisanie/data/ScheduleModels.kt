@@ -113,3 +113,12 @@ enum class ThemeModeSetting(val label: String) {
     LIGHT("Светлая"),
     DARK("Тёмная"),
 }
+
+enum class SubgroupFilterMode(
+    val label: String,
+    val shortLabel: String,
+) {
+    ALL("Обе сразу", "Обе п/г"),
+    FIRST("1 подгруппа", "1 п/г"),
+    SECOND("2 подгруппа", "2 п/г"),
+}
