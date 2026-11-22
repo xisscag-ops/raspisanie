@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,7 +33,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun BellsAndSettingsBottomSheet(
     groupName: String,
@@ -86,15 +88,15 @@ fun BellsAndSettingsBottomSheet(
             )
             Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ThemeModeSetting.entries.forEach { mode ->
                     val selected = mode == themeMode
                     Surface(
                         modifier = Modifier
-                            .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { onSelectTheme(mode) },
                         shape = RoundedCornerShape(12.dp),
@@ -121,9 +123,7 @@ fun BellsAndSettingsBottomSheet(
                             textAlign = TextAlign.Center,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 14.dp),
                         )
                     }
                 }

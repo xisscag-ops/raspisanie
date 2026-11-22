@@ -1,5 +1,6 @@
 package ru.ngieu.raspisanie.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,14 +19,20 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import ru.ngieu.raspisanie.R
+import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 
 /**
- * Полноэкранный неоновый фон с боковым фиолетовым и синим свечением,
- * адаптирующийся под любые пропорции Android-экранов без чёрных углов.
+ * Полноэкранный фон оформления:
+ * - В режиме NEON: неоновое фиолетово-голубое свечение поверх глубокого тёмного фона.
+ * - В режиме GLASS: монохромные шёлковые волны (отдельно прикреплённый фон).
+ * - В стандартных темах: ровный фон MaterialTheme.
  */
 @Composable
 fun NeonAuroraBackground(
@@ -112,8 +119,17 @@ fun NeonAuroraBackground(
                     center = Offset(w * 0.22f, h * 0.92f),
                 )
             },
-        content = content,
-    )
+    ) {
+        if (style.isGlass) {
+            Image(
+                painter = painterResource(id = R.drawable.bg_glass_waves),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        content()
+    }
 }
 
 @Composable
@@ -130,15 +146,21 @@ fun GlassCard(
     val style = LocalAppVisualStyle.current
     val shape: Shape = RoundedCornerShape(cornerRadius)
 
-    val defaultFill = if (style.isNeon) {
-        Brush.verticalGradient(
+    val defaultFill = when {
+        style.isNeon -> Brush.verticalGradient(
             colors = listOf(
                 Color(0xAD1E274E),
                 Color(0xA1121834),
             ),
         )
-    } else {
-        Brush.verticalGradient(
+        style.isGlass -> Brush.linearGradient(
+            colorStops = arrayOf(
+                0.0f to GlassPalette.cardFillTop,
+                0.48f to GlassPalette.cardFillMid,
+                1.0f to GlassPalette.cardFillBottom,
+            ),
+        )
+        else -> Brush.verticalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.surface,
                 MaterialTheme.colorScheme.surface,
@@ -146,15 +168,21 @@ fun GlassCard(
         )
     }
 
-    val defaultBorder = if (style.isNeon) {
-        Brush.linearGradient(
+    val defaultBorder = when {
+        style.isNeon -> Brush.linearGradient(
             colors = listOf(
                 NeonPalette.glassBorderTop,
                 NeonPalette.glassBorderBottom,
             ),
         )
-    } else {
-        Brush.linearGradient(
+        style.isGlass -> Brush.linearGradient(
+            colorStops = arrayOf(
+                0.0f to GlassPalette.cardBorderTop,
+                0.48f to GlassPalette.cardBorderMid,
+                1.0f to GlassPalette.cardBorderBottom,
+            ),
+        )
+        else -> Brush.linearGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.outlineVariant,
                 MaterialTheme.colorScheme.outlineVariant,
@@ -162,11 +190,13 @@ fun GlassCard(
         )
     }
 
-    val glowModifier = if (glowColor != null && style.isNeon) {
+    val glowModifier = if (glowColor != null && style.isTranslucent) {
         Modifier.drawBehind {
             val radiusPx = cornerRadius.toPx()
+            val outerAlpha = if (style.isGlass) 0.14f else 0.22f
+            val haloAlpha = if (style.isGlass) 0.06f else 0.10f
             drawRoundRect(
-                color = glowColor.copy(alpha = 0.22f),
+                color = glowColor.copy(alpha = outerAlpha),
                 topLeft = Offset(-3.dp.toPx(), -2.dp.toPx()),
                 size = Size(
                     width = size.width + 6.dp.toPx(),
@@ -175,7 +205,7 @@ fun GlassCard(
                 cornerRadius = CornerRadius(radiusPx + 3.dp.toPx(), radiusPx + 3.dp.toPx()),
             )
             drawRoundRect(
-                color = glowColor.copy(alpha = 0.10f),
+                color = glowColor.copy(alpha = haloAlpha),
                 topLeft = Offset(-6.dp.toPx(), -4.dp.toPx()),
                 size = Size(
                     width = size.width + 12.dp.toPx(),

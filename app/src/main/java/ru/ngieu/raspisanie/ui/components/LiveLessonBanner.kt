@@ -57,6 +57,8 @@ import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.LiveLessonState
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.ui.DayProgressSummary
+import ru.ngieu.raspisanie.ui.theme.AppVisualSkin
+import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import java.time.format.DateTimeFormatter
@@ -98,15 +100,20 @@ fun LiveLessonBanner(
         label = "chevronRotation",
     )
 
-    val capsuleBrush = if (style.isNeon) {
-        Brush.horizontalGradient(
+    val capsuleBrush = when {
+        style.isNeon -> Brush.horizontalGradient(
             colors = listOf(
                 Color(0xBD242958),
                 Color(0xB319224B),
             ),
         )
-    } else {
-        Brush.horizontalGradient(
+        style.isGlass -> Brush.verticalGradient(
+            colors = listOf(
+                GlassPalette.panelFillTop,
+                GlassPalette.panelFillBottom,
+            ),
+        )
+        else -> Brush.horizontalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.secondaryContainer,
                 MaterialTheme.colorScheme.secondaryContainer,
@@ -114,15 +121,20 @@ fun LiveLessonBanner(
         )
     }
 
-    val borderBrush = if (style.isNeon) {
-        Brush.horizontalGradient(
+    val borderBrush = when {
+        style.isNeon -> Brush.horizontalGradient(
             colors = listOf(
                 Color(0x59A855F7),
                 Color(0x5938BDF8),
             ),
         )
-    } else {
-        Brush.horizontalGradient(
+        style.isGlass -> Brush.verticalGradient(
+            colors = listOf(
+                GlassPalette.panelBorderTop,
+                GlassPalette.panelBorderBottom,
+            ),
+        )
+        else -> Brush.horizontalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.outlineVariant,
                 MaterialTheme.colorScheme.outlineVariant,
@@ -136,10 +148,14 @@ fun LiveLessonBanner(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = tween(130)),
-        cornerRadius = 20.dp,
+        cornerRadius = if (style.isGlass) 22.dp else 20.dp,
         fillBrush = capsuleBrush,
         borderBrush = borderBrush,
-        glowColor = if (style.isNeon) Color(0xFF7C3AED) else null,
+        glowColor = when {
+            style.isNeon -> Color(0xFF7C3AED)
+            style.isGlass -> Color.White
+            else -> null
+        },
         onClick = if (canExpand) {
             { expanded = !expanded }
         } else {
@@ -159,8 +175,16 @@ fun LiveLessonBanner(
                 Column(modifier = Modifier.weight(1f)) {
                     val word = pairsWord(progressSummary.totalCount)
                     val captionSuffix = if (isViewingToday) "$word сегодня" else "$word в этот день"
-                    val primaryTextColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSecondaryContainer
-                    val secondaryTextColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    val primaryTextColor = when {
+                        style.isNeon -> NeonPalette.textPrimary
+                        style.isGlass -> GlassPalette.textPrimary
+                        else -> MaterialTheme.colorScheme.onSecondaryContainer
+                    }
+                    val secondaryTextColor = when {
+                        style.isNeon -> NeonPalette.textSecondary
+                        style.isGlass -> GlassPalette.textSecondary
+                        else -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    }
 
                     Text(
                         text = buildAnnotatedString {
@@ -208,14 +232,18 @@ fun LiveLessonBanner(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Неоновая полоса прогресса
+                    // Полоса прогресса
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp))
                             .background(
-                                if (style.isNeon) Color(0x38FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
+                                when {
+                                    style.isNeon -> Color(0x38FFFFFF)
+                                    style.isGlass -> GlassPalette.progressTrack
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                },
                             ),
                     ) {
                         if (animatedProgress > 0f) {
@@ -226,10 +254,10 @@ fun LiveLessonBanner(
                                     .clip(RoundedCornerShape(3.dp))
                                     .background(
                                         brush = Brush.horizontalGradient(
-                                            colors = if (style.isNeon) {
-                                                listOf(NeonPalette.progressStart, NeonPalette.progressEnd)
-                                            } else {
-                                                listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                                            colors = when {
+                                                style.isNeon -> listOf(NeonPalette.progressStart, NeonPalette.progressEnd)
+                                                style.isGlass -> listOf(GlassPalette.progressFillStart, GlassPalette.progressFillEnd)
+                                                else -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
                                             },
                                         ),
                                     ),
@@ -245,11 +273,19 @@ fun LiveLessonBanner(
                         .size(30.dp)
                         .clip(CircleShape)
                         .background(
-                            if (style.isNeon) Color(0x28FFFFFF) else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            when {
+                                style.isNeon -> Color(0x28FFFFFF)
+                                style.isGlass -> GlassPalette.panelFillTop
+                                else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                            },
                         )
                         .border(
                             width = 1.dp,
-                            color = if (style.isNeon) Color(0x30FFFFFF) else MaterialTheme.colorScheme.outlineVariant,
+                            color = when {
+                                style.isNeon -> Color(0x30FFFFFF)
+                                style.isGlass -> GlassPalette.panelBorderTop
+                                else -> MaterialTheme.colorScheme.outlineVariant
+                            },
                             shape = CircleShape,
                         ),
                     contentAlignment = Alignment.Center,
@@ -257,7 +293,11 @@ fun LiveLessonBanner(
                     Image(
                         painter = painterResource(id = R.drawable.ic_neon_chevron_right),
                         contentDescription = "Подробнее о прогрессе дня",
-                        colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSecondaryContainer),
+                        colorFilter = when {
+                            style.isNeon -> null
+                            style.isGlass -> ColorFilter.tint(Color(0xFFF5F5F5))
+                            else -> ColorFilter.tint(MaterialTheme.colorScheme.onSecondaryContainer)
+                        },
                         modifier = Modifier
                             .size(15.dp)
                             .rotate(chevronRotation),
@@ -276,10 +316,10 @@ fun LiveLessonBanner(
                         transitionSpec = { fadeIn(tween(110)) togetherWith fadeOut(tween(90)) },
                         label = "liveDetail",
                     ) { live ->
-                        LiveDetailsStrip(state = live, isNeon = style.isNeon)
+                        LiveDetailsStrip(state = live, skin = style.skin)
                     }
                 } else if (daySlots.isNotEmpty()) {
-                    DaySummaryStrip(daySlots = daySlots, isNeon = style.isNeon)
+                    DaySummaryStrip(daySlots = daySlots, skin = style.skin)
                 }
             }
         }
@@ -289,13 +329,20 @@ fun LiveLessonBanner(
 @Composable
 private fun DaySummaryStrip(
     daySlots: List<LessonSlot>,
-    isNeon: Boolean,
+    skin: AppVisualSkin,
 ) {
-    val textColor = if (isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSecondaryContainer
-    val subColor = if (isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+    val textColor = when (skin) {
+        AppVisualSkin.NEON -> NeonPalette.textPrimary
+        AppVisualSkin.GLASS -> GlassPalette.textPrimary
+        AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    val subColor = when (skin) {
+        AppVisualSkin.NEON -> NeonPalette.textSecondary
+        AppVisualSkin.GLASS -> GlassPalette.textSecondary
+        AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+    }
 
     val firstSlot = daySlots.first()
-    val lastSlot = daySlots.last()
     val firstStart = daySlots.firstNotNullOfOrNull { it.startTime }
     val lastEnd = daySlots.lastOrNull { it.endTime != null }?.endTime
     val changesCount = daySlots.count { slot -> slot.lessons.any { it.isChange } }
@@ -327,7 +374,11 @@ private fun DaySummaryStrip(
         Icon(
             imageVector = Icons.Rounded.Schedule,
             contentDescription = null,
-            tint = if (isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary,
+            tint = when (skin) {
+                AppVisualSkin.NEON -> Color(0xFF38BDF8)
+                AppVisualSkin.GLASS -> Color(0xFFF5F5F5)
+                AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.primary
+            },
             modifier = Modifier.size(18.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
@@ -353,10 +404,18 @@ private fun DaySummaryStrip(
 @Composable
 private fun LiveDetailsStrip(
     state: LiveLessonState,
-    isNeon: Boolean,
+    skin: AppVisualSkin,
 ) {
-    val textColor = if (isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSecondaryContainer
-    val subColor = if (isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+    val textColor = when (skin) {
+        AppVisualSkin.NEON -> NeonPalette.textPrimary
+        AppVisualSkin.GLASS -> GlassPalette.textPrimary
+        AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    val subColor = when (skin) {
+        AppVisualSkin.NEON -> NeonPalette.textSecondary
+        AppVisualSkin.GLASS -> GlassPalette.textSecondary
+        AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+    }
 
     val (icon, title, subtitle) = when (state) {
         is LiveLessonState.InProgress -> Triple(
@@ -398,7 +457,11 @@ private fun LiveDetailsStrip(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary,
+            tint = when (skin) {
+                AppVisualSkin.NEON -> Color(0xFF38BDF8)
+                AppVisualSkin.GLASS -> Color(0xFFF5F5F5)
+                AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.primary
+            },
             modifier = Modifier.size(18.dp),
         )
         Column(modifier = Modifier.weight(1f)) {

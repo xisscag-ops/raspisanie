@@ -16,14 +16,24 @@ import androidx.core.view.WindowCompat
 import ru.ngieu.raspisanie.data.LessonType
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 
+enum class AppVisualSkin {
+    NEON,
+    GLASS,
+    STANDARD,
+}
+
 @Immutable
 data class AppVisualStyle(
-    val isNeon: Boolean,
+    val skin: AppVisualSkin,
     val isDark: Boolean,
-)
+) {
+    val isNeon: Boolean get() = skin == AppVisualSkin.NEON
+    val isGlass: Boolean get() = skin == AppVisualSkin.GLASS
+    val isTranslucent: Boolean get() = skin == AppVisualSkin.NEON || skin == AppVisualSkin.GLASS
+}
 
 val LocalAppVisualStyle = staticCompositionLocalOf {
-    AppVisualStyle(isNeon = true, isDark = true)
+    AppVisualStyle(skin = AppVisualSkin.NEON, isDark = true)
 }
 
 object NeonPalette {
@@ -56,6 +66,68 @@ object NeonPalette {
     val timelineActiveNow = Color(0xFF34D399)
 }
 
+object GlassPalette {
+    val backgroundBase = Color(0xFF111111)
+
+    // Верхняя навигация, кнопки заголовка, сводка дня (017, 011, 027)
+    val panelFillTop = Color(0x8C737373)
+    val panelFillBottom = Color(0x782C2C2C)
+    val panelBorderTop = Color(0xB8F5F5F5)
+    val panelBorderBottom = Color(0x40919191)
+
+    // Активная вкладка / выбранный переключатель (018)
+    val activeTabFillTop = Color(0x8CAAAAAA)
+    val activeTabFillBottom = Color(0x786E6E6E)
+
+    // Карточка занятия (035, 051)
+    val cardFillTop = Color(0x858A8A8A)
+    val cardFillMid = Color(0x8C272727)
+    val cardFillBottom = Color(0x508A8A8A)
+    val cardBorderTop = Color(0xB3F4F4F4)
+    val cardBorderMid = Color(0x339B9B9B)
+    val cardBorderBottom = Color(0x6BF4F4F4)
+
+    // Нижний календарь недели (071, 072, 076)
+    val dockFillTop = Color(0xA19D9D9D)
+    val dockFillBottom = Color(0xB8464646)
+    val dockBorderTop = Color(0xC2F4F4F4)
+    val dockBorderBottom = Color(0x528C8C8C)
+
+    val dayTileFillTop = Color(0x9E4A4A4A)
+    val dayTileFillBottom = Color(0x991E1E1E)
+    val dayTileBorderTop = Color(0x2EF4F4F4)
+    val dayTileBorderBottom = Color(0x1F6E6E6E)
+
+    val daySelectedFillTop = Color(0xC4C0C0C0)
+    val daySelectedFillBottom = Color(0xB38A8A8A)
+    val daySelectedBorderTop = Color(0xF2F4F4F4)
+    val daySelectedBorderBottom = Color(0x996E6E6E)
+
+    // Плашки, текст, таймлайн (036, 038, 034, 047, 050)
+    val typePillBg = Color(0x85BFBFBF)
+    val typePillText = Color(0xFFF8F8F8)
+    val secondaryPillBg = Color(0x61959595)
+    val secondaryPillText = Color(0xFFCDCDCD)
+
+    val textPrimary = Color(0xFFFAFAFA)
+    val textSecondary = Color(0xFFC1C1C1)
+    val textMuted = Color(0xFFC9C9C9)
+    val iconTint = Color(0xFFDDDDDD)
+
+    val timelineLine = Color(0xB39D9D9D)
+    val timelineDot = Color(0xFFCFCFCF)
+    val timelineActiveNow = Color(0xFF34D399)
+
+    val progressTrack = Color(0x5EB2B2B2)
+    val progressFillStart = Color(0xFFF4F4F4)
+    val progressFillEnd = Color(0xFFBFBFBF)
+
+    val activeLessonStart = Color(0x9E445A52)
+    val activeLessonEnd = Color(0x94212B27)
+    val activeLessonBorder = Color(0xFF6EE7B7)
+    val activeLessonAccent = Color(0xFF34D399)
+}
+
 private val NeonColors = darkColorScheme(
     primary = Color(0xFF9333EA),
     onPrimary = Color(0xFFFFFFFF),
@@ -80,6 +152,33 @@ private val NeonColors = darkColorScheme(
     error = Color(0xFFFB7185),
     onError = Color(0xFF4C0519),
     errorContainer = Color(0xFF4C1124),
+    onErrorContainer = Color(0xFFFFE4E6),
+)
+
+private val GlassColors = darkColorScheme(
+    primary = Color(0xFFE5E5E5),
+    onPrimary = Color(0xFF141414),
+    primaryContainer = Color(0xFF424242),
+    onPrimaryContainer = Color(0xFFFAFAFA),
+    secondary = Color(0xFFC2C2C2),
+    onSecondary = Color(0xFF1A1A1A),
+    secondaryContainer = Color(0xFF2C2C2C),
+    onSecondaryContainer = Color(0xFFF5F5F5),
+    tertiary = Color(0xFF34D399),
+    onTertiary = Color(0xFF022C22),
+    tertiaryContainer = Color(0xFF1E2D28),
+    onTertiaryContainer = Color(0xFFD1FAE5),
+    background = GlassPalette.backgroundBase,
+    onBackground = GlassPalette.textPrimary,
+    surface = Color(0xFF222222),
+    onSurface = GlassPalette.textPrimary,
+    surfaceVariant = Color(0xFF333333),
+    onSurfaceVariant = GlassPalette.textSecondary,
+    outline = Color(0xFF737373),
+    outlineVariant = Color(0x38F4F4F4),
+    error = Color(0xFFFB7185),
+    onError = Color(0xFF4C0519),
+    errorContainer = Color(0xFF4A1922),
     onErrorContainer = Color(0xFFFFE4E6),
 )
 
@@ -170,21 +269,23 @@ fun NgieuTheme(
     content: @Composable () -> Unit,
 ) {
     val systemDark = isSystemInDarkTheme()
-    val isNeon = when (themeMode) {
-        ThemeModeSetting.NEON -> true
-        ThemeModeSetting.SYSTEM -> systemDark
-        ThemeModeSetting.LIGHT -> false
-        ThemeModeSetting.DARK -> false
+    val skin = when (themeMode) {
+        ThemeModeSetting.NEON -> AppVisualSkin.NEON
+        ThemeModeSetting.GLASS -> AppVisualSkin.GLASS
+        ThemeModeSetting.SYSTEM -> if (systemDark) AppVisualSkin.NEON else AppVisualSkin.STANDARD
+        ThemeModeSetting.LIGHT -> AppVisualSkin.STANDARD
+        ThemeModeSetting.DARK -> AppVisualSkin.STANDARD
     }
     val isDark = when (themeMode) {
-        ThemeModeSetting.NEON -> true
+        ThemeModeSetting.NEON, ThemeModeSetting.GLASS -> true
         ThemeModeSetting.SYSTEM -> systemDark
         ThemeModeSetting.LIGHT -> false
         ThemeModeSetting.DARK -> true
     }
 
     val colorScheme = when {
-        isNeon -> NeonColors
+        skin == AppVisualSkin.NEON -> NeonColors
+        skin == AppVisualSkin.GLASS -> GlassColors
         isDark -> DarkColors
         else -> LightColors
     }
@@ -200,7 +301,7 @@ fun NgieuTheme(
     }
 
     CompositionLocalProvider(
-        LocalAppVisualStyle provides AppVisualStyle(isNeon = isNeon, isDark = isDark),
+        LocalAppVisualStyle provides AppVisualStyle(skin = skin, isDark = isDark),
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

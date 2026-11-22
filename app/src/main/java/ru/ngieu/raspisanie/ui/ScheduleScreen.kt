@@ -17,6 +17,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -109,6 +111,7 @@ import ru.ngieu.raspisanie.ui.components.TetrisGameDialog
 import ru.ngieu.raspisanie.ui.components.VerticalListWithHorizontalBias
 import ru.ngieu.raspisanie.ui.components.WeekSelectorBar
 import ru.ngieu.raspisanie.ui.components.fullDayName
+import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import java.time.Instant
@@ -371,8 +374,16 @@ private fun NeonTopHeader(
     onToggleSearch: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
-    val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onBackground
-    val subtitleColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+    val titleColor = when {
+        style.isNeon -> NeonPalette.textPrimary
+        style.isGlass -> GlassPalette.textPrimary
+        else -> MaterialTheme.colorScheme.onBackground
+    }
+    val subtitleColor = when {
+        style.isNeon -> NeonPalette.textSecondary
+        style.isGlass -> GlassPalette.textSecondary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     Row(
         modifier = Modifier
@@ -414,7 +425,11 @@ private fun NeonTopHeader(
                     Image(
                         painter = painterResource(id = R.drawable.ic_neon_expand),
                         contentDescription = "Выбрать неделю",
-                        colorFilter = if (style.isNeon) null else ColorFilter.tint(subtitleColor),
+                        colorFilter = when {
+                            style.isNeon -> null
+                            style.isGlass -> ColorFilter.tint(GlassPalette.textSecondary)
+                            else -> ColorFilter.tint(subtitleColor)
+                        },
                         modifier = Modifier.size(13.dp),
                     )
                 }
@@ -424,7 +439,11 @@ private fun NeonTopHeader(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .background(
-                                if (style.isNeon) Color(0x409333EA) else MaterialTheme.colorScheme.primaryContainer,
+                                when {
+                                    style.isNeon -> Color(0x409333EA)
+                                    style.isGlass -> GlassPalette.typePillBg
+                                    else -> MaterialTheme.colorScheme.primaryContainer
+                                },
                             )
                             .clickable(onClick = onClickToday)
                             .padding(horizontal = 9.dp, vertical = 3.dp),
@@ -433,7 +452,11 @@ private fun NeonTopHeader(
                             text = "Сегодня",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (style.isNeon) Color(0xFFE9D5FF) else MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = when {
+                                style.isNeon -> Color(0xFFE9D5FF)
+                                style.isGlass -> GlassPalette.typePillText
+                                else -> MaterialTheme.colorScheme.onPrimaryContainer
+                            },
                             maxLines = 1,
                             softWrap = false,
                         )
@@ -445,7 +468,11 @@ private fun NeonTopHeader(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .background(
-                                if (style.isNeon) Color(0x3838BDF8) else MaterialTheme.colorScheme.secondaryContainer,
+                                when {
+                                    style.isNeon -> Color(0x3838BDF8)
+                                    style.isGlass -> GlassPalette.secondaryPillBg
+                                    else -> MaterialTheme.colorScheme.secondaryContainer
+                                },
                             )
                             .clickable(onClick = onClickResetGroup)
                             .padding(horizontal = 9.dp, vertical = 3.dp),
@@ -454,7 +481,11 @@ private fun NeonTopHeader(
                             text = "← ${ScheduleRepository.TARGET_GROUP_NAME}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.onSecondaryContainer,
+                            color = when {
+                                style.isNeon -> Color(0xFF7DD3FC)
+                                style.isGlass -> GlassPalette.textPrimary
+                                else -> MaterialTheme.colorScheme.onSecondaryContainer
+                            },
                             maxLines = 1,
                             softWrap = false,
                         )
@@ -467,11 +498,20 @@ private fun NeonTopHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            HeaderVectorCircleButton(
-                imageVector = Icons.Rounded.SportsEsports,
-                contentDescription = "Тетрис на перемене",
-                onClick = onClickOpenGame,
-            )
+            if (style.isGlass) {
+                HeaderCircleButton(
+                    iconRes = R.drawable.ic_glass_game,
+                    contentDescription = "Тетрис на перемене",
+                    highlighted = false,
+                    onClick = onClickOpenGame,
+                )
+            } else {
+                HeaderVectorCircleButton(
+                    imageVector = Icons.Rounded.SportsEsports,
+                    contentDescription = "Тетрис на перемене",
+                    onClick = onClickOpenGame,
+                )
+            }
             HeaderCircleButton(
                 iconRes = R.drawable.ic_neon_share,
                 contentDescription = "Поделиться расписанием",
@@ -497,15 +537,15 @@ private fun HeaderVectorCircleButton(
     onClick: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
-    val fill = if (style.isNeon) {
-        Brush.verticalGradient(listOf(Color(0xBA242D58), Color(0xB3161E41)))
-    } else {
-        Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface))
+    val fill = when {
+        style.isNeon -> Brush.verticalGradient(listOf(Color(0xBA242D58), Color(0xB3161E41)))
+        style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelFillTop, GlassPalette.panelFillBottom))
+        else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface))
     }
-    val border = if (style.isNeon) {
-        Brush.verticalGradient(listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom))
-    } else {
-        Brush.verticalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant))
+    val border = when {
+        style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom))
+        style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom))
+        else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant))
     }
 
     Box(
@@ -520,7 +560,11 @@ private fun HeaderVectorCircleButton(
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
-            tint = if (style.isNeon) Color(0xFFC4B5FD) else MaterialTheme.colorScheme.primary,
+            tint = when {
+                style.isNeon -> Color(0xFFC4B5FD)
+                style.isGlass -> Color(0xFFF5F5F5)
+                else -> MaterialTheme.colorScheme.primary
+            },
             modifier = Modifier.size(19.dp),
         )
     }
@@ -538,14 +582,16 @@ private fun HeaderCircleButton(
     val style = LocalAppVisualStyle.current
     val fill = when {
         highlighted && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
+        highlighted && style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
         highlighted -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primaryContainer))
         style.isNeon -> Brush.verticalGradient(listOf(Color(0xBA242D58), Color(0xB3161E41)))
+        style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelFillTop, GlassPalette.panelFillBottom))
         else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface))
     }
-    val border = if (style.isNeon) {
-        Brush.verticalGradient(listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom))
-    } else {
-        Brush.verticalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant))
+    val border = when {
+        style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom))
+        style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom))
+        else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant))
     }
 
     Box(
@@ -560,14 +606,22 @@ private fun HeaderCircleButton(
         if (isLoading) {
             CircularProgressIndicator(
                 strokeWidth = 2.dp,
-                color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.primary,
+                color = when {
+                    style.isNeon -> NeonPalette.textPrimary
+                    style.isGlass -> GlassPalette.textPrimary
+                    else -> MaterialTheme.colorScheme.primary
+                },
                 modifier = Modifier.size(17.dp),
             )
         } else {
             Image(
                 painter = painterResource(id = iconRes),
                 contentDescription = contentDescription,
-                colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
+                colorFilter = when {
+                    style.isNeon -> null
+                    style.isGlass -> if (iconRes == R.drawable.ic_glass_game) null else ColorFilter.tint(Color(0xFFF5F5F5))
+                    else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                },
                 alpha = if (enabled) 1f else 0.4f,
                 modifier = Modifier.size(19.dp),
             )
@@ -590,8 +644,16 @@ private fun NeonSearchBar(
     modifier: Modifier = Modifier,
 ) {
     val style = LocalAppVisualStyle.current
-    val textColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
-    val hintColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+    val textColor = when {
+        style.isNeon -> NeonPalette.textPrimary
+        style.isGlass -> GlassPalette.textPrimary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val hintColor = when {
+        style.isNeon -> NeonPalette.textSecondary
+        style.isGlass -> GlassPalette.textSecondary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     val groupsCount = remember(actors) { actors.count { it.kind == ActorKind.GROUP } }
     val teachersCount = remember(actors) { actors.count { it.kind == ActorKind.TEACHER } }
@@ -622,7 +684,11 @@ private fun NeonSearchBar(
                 Image(
                     painter = painterResource(id = R.drawable.ic_neon_search),
                     contentDescription = null,
-                    colorFilter = if (style.isNeon) null else ColorFilter.tint(hintColor),
+                    colorFilter = when {
+                        style.isNeon -> null
+                        style.isGlass -> ColorFilter.tint(GlassPalette.textSecondary)
+                        else -> ColorFilter.tint(hintColor)
+                    },
                     modifier = Modifier.size(18.dp),
                 )
                 Box(modifier = Modifier.weight(1f)) {
@@ -640,7 +706,13 @@ private fun NeonSearchBar(
                         onValueChange = onQueryChange,
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(color = textColor),
-                        cursorBrush = SolidColor(if (style.isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary),
+                        cursorBrush = SolidColor(
+                            when {
+                                style.isNeon -> Color(0xFF38BDF8)
+                                style.isGlass -> Color.White
+                                else -> MaterialTheme.colorScheme.primary
+                            },
+                        ),
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -713,13 +785,21 @@ private fun NeonSearchBar(
                                 text = "Вернуться к своей группе (${ScheduleRepository.TARGET_GROUP_NAME})",
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.primary,
+                                color = when {
+                                    style.isNeon -> Color(0xFF7DD3FC)
+                                    style.isGlass -> GlassPalette.textPrimary
+                                    else -> MaterialTheme.colorScheme.primary
+                                },
                             )
                         }
                         if (matchingActors.isNotEmpty() || isActorsLoading) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(horizontal = 14.dp),
-                                color = if (style.isNeon) Color(0x24FFFFFF) else MaterialTheme.colorScheme.outlineVariant,
+                                color = when {
+                                    style.isNeon -> Color(0x24FFFFFF)
+                                    style.isGlass -> Color(0x33F4F4F4)
+                                    else -> MaterialTheme.colorScheme.outlineVariant
+                                },
                             )
                         }
                     }
@@ -786,7 +866,11 @@ private fun NeonSearchBar(
                                                 },
                                             ),
                                             contentDescription = null,
-                                            colorFilter = if (style.isNeon) null else ColorFilter.tint(hintColor),
+                                            colorFilter = when {
+                                                style.isNeon -> null
+                                                style.isGlass -> ColorFilter.tint(GlassPalette.iconTint)
+                                                else -> ColorFilter.tint(hintColor)
+                                            },
                                             modifier = Modifier.size(18.dp),
                                         )
                                         Column(modifier = Modifier.weight(1f)) {
@@ -794,12 +878,11 @@ private fun NeonSearchBar(
                                                 text = actor.name,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
-                                                color = if (isCurrent && style.isNeon) {
-                                                    Color(0xFF7DD3FC)
-                                                } else if (isCurrent) {
-                                                    MaterialTheme.colorScheme.primary
-                                                } else {
-                                                    textColor
+                                                color = when {
+                                                    isCurrent && style.isNeon -> Color(0xFF7DD3FC)
+                                                    isCurrent && style.isGlass -> Color.White
+                                                    isCurrent -> MaterialTheme.colorScheme.primary
+                                                    else -> textColor
                                                 },
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
@@ -815,7 +898,7 @@ private fun NeonSearchBar(
                                                 text = "Открыто",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = if (style.isNeon) Color(0xFF34D399) else MaterialTheme.colorScheme.primary,
+                                                color = if (style.isTranslucent) Color(0xFF34D399) else MaterialTheme.colorScheme.primary,
                                             )
                                         }
                                     }
@@ -839,12 +922,14 @@ private fun SearchFilterChip(
     val style = LocalAppVisualStyle.current
     val fillBrush = when {
         selected && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
+        selected && style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
         selected -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
         else -> null
     }
     val labelColor = when {
         selected -> Color.White
         style.isNeon -> NeonPalette.textSecondary
+        style.isGlass -> GlassPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -1076,12 +1161,20 @@ private fun DayLessonsList(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = when {
+                        style.isNeon -> NeonPalette.textSecondary
+                        style.isGlass -> GlassPalette.textSecondary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
                 Text(
                     text = pairsCountLabel(daySlots.size),
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = when {
+                        style.isNeon -> NeonPalette.textSecondary
+                        style.isGlass -> GlassPalette.textSecondary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             }
         }
@@ -1290,8 +1383,10 @@ private fun WeekHorizontalPager(
                                 fontWeight = FontWeight.Bold,
                                 color = when {
                                     isToday && style.isNeon -> Color(0xFF38BDF8)
+                                    isToday && style.isGlass -> Color.White
                                     isToday -> MaterialTheme.colorScheme.primary
                                     style.isNeon -> NeonPalette.textPrimary
+                                    style.isGlass -> GlassPalette.textPrimary
                                     else -> MaterialTheme.colorScheme.onBackground
                                 },
                             )
@@ -1300,7 +1395,11 @@ private fun WeekHorizontalPager(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(
-                                            if (style.isNeon) Color(0x3838BDF8) else MaterialTheme.colorScheme.primaryContainer,
+                                            when {
+                                                style.isNeon -> Color(0x3838BDF8)
+                                                style.isGlass -> GlassPalette.typePillBg
+                                                else -> MaterialTheme.colorScheme.primaryContainer
+                                            },
                                         )
                                         .padding(horizontal = 7.dp, vertical = 2.dp),
                                 ) {
@@ -1308,7 +1407,11 @@ private fun WeekHorizontalPager(
                                         text = "Сегодня",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.onPrimaryContainer,
+                                        color = when {
+                                            style.isNeon -> Color(0xFF7DD3FC)
+                                            style.isGlass -> GlassPalette.typePillText
+                                            else -> MaterialTheme.colorScheme.onPrimaryContainer
+                                        },
                                     )
                                 }
                             }
@@ -1316,7 +1419,11 @@ private fun WeekHorizontalPager(
                         Text(
                             text = pairsCountLabel(daySlots.size),
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = when {
+                                style.isNeon -> NeonPalette.textSecondary
+                                style.isGlass -> GlassPalette.textSecondary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                         )
                     }
                 }
@@ -1332,7 +1439,11 @@ private fun WeekHorizontalPager(
                             Text(
                                 text = "Занятий нет",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = when {
+                                    style.isNeon -> NeonPalette.textSecondary
+                                    style.isGlass -> GlassPalette.textSecondary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             )
                         }
@@ -1372,8 +1483,16 @@ private fun SubgroupsAndGroupTab(
     onResetToDefaultGroup: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
-    val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
-    val subColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+    val titleColor = when {
+        style.isNeon -> NeonPalette.textPrimary
+        style.isGlass -> GlassPalette.textPrimary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val subColor = when {
+        style.isNeon -> NeonPalette.textSecondary
+        style.isGlass -> GlassPalette.textSecondary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
 
     val updatedLabel = state.updatedAtEpochMillis?.let { millis ->
         val formatted = Instant.ofEpochMilli(millis)
@@ -1403,7 +1522,11 @@ private fun SubgroupsAndGroupTab(
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 cornerRadius = 20.dp,
-                glowColor = if (style.isNeon) Color(0xFF38BDF8) else null,
+                glowColor = when {
+                    style.isNeon -> Color(0xFF38BDF8)
+                    style.isGlass -> Color.White
+                    else -> null
+                },
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -1415,9 +1538,15 @@ private fun SubgroupsAndGroupTab(
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(
-                                    Brush.verticalGradient(
-                                        listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
-                                    ),
+                                    if (style.isGlass) {
+                                        Brush.verticalGradient(
+                                            listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
+                                        )
+                                    } else {
+                                        Brush.verticalGradient(
+                                            listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                                        )
+                                    },
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -1454,6 +1583,9 @@ private fun SubgroupsAndGroupTab(
                                 selected && style.isNeon -> Brush.verticalGradient(
                                     listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
                                 )
+                                selected && style.isGlass -> Brush.verticalGradient(
+                                    listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
+                                )
                                 selected -> Brush.verticalGradient(
                                     listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                                 )
@@ -1463,11 +1595,17 @@ private fun SubgroupsAndGroupTab(
                                 selected && style.isNeon -> Brush.linearGradient(
                                     listOf(Color(0x99E9D5FF), Color(0x667DD3FC)),
                                 )
+                                selected && style.isGlass -> Brush.linearGradient(
+                                    listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom),
+                                )
                                 selected -> Brush.linearGradient(
                                     listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                                 )
                                 style.isNeon -> Brush.linearGradient(
                                     listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom),
+                                )
+                                style.isGlass -> Brush.linearGradient(
+                                    listOf(GlassPalette.cardBorderTop, GlassPalette.cardBorderBottom),
                                 )
                                 else -> Brush.linearGradient(
                                     listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
@@ -1521,7 +1659,11 @@ private fun SubgroupsAndGroupTab(
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 cornerRadius = 20.dp,
-                glowColor = if (style.isNeon) Color(0xFF7C3AED) else null,
+                glowColor = when {
+                    style.isNeon -> Color(0xFF7C3AED)
+                    style.isGlass -> Color.White
+                    else -> null
+                },
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -1533,9 +1675,15 @@ private fun SubgroupsAndGroupTab(
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(
-                                    Brush.verticalGradient(
-                                        listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
-                                    ),
+                                    if (style.isGlass) {
+                                        Brush.verticalGradient(
+                                            listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
+                                        )
+                                    } else {
+                                        Brush.verticalGradient(
+                                            listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                                        )
+                                    },
                                 ),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -1585,7 +1733,11 @@ private fun SubgroupsAndGroupTab(
                                 text = "Вернуться к группе ${ScheduleRepository.TARGET_GROUP_NAME}",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.primary,
+                                color = when {
+                                    style.isNeon -> Color(0xFF7DD3FC)
+                                    style.isGlass -> GlassPalette.textPrimary
+                                    else -> MaterialTheme.colorScheme.primary
+                                },
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1617,7 +1769,11 @@ private fun SubgroupsAndGroupTab(
                             Icon(
                                 imageVector = Icons.Rounded.Refresh,
                                 contentDescription = null,
-                                tint = if (style.isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary,
+                                tint = when {
+                                    style.isNeon -> Color(0xFF38BDF8)
+                                    style.isGlass -> GlassPalette.textPrimary
+                                    else -> MaterialTheme.colorScheme.primary
+                                },
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -1635,6 +1791,7 @@ private fun SubgroupsAndGroupTab(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SettingsTab(
     state: ScheduleUiState,
@@ -1647,8 +1804,16 @@ private fun SettingsTab(
     onInstallUpdate: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
-    val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
-    val subColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
+    val titleColor = when {
+        style.isNeon -> NeonPalette.textPrimary
+        style.isGlass -> GlassPalette.textPrimary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val subColor = when {
+        style.isNeon -> NeonPalette.textSecondary
+        style.isGlass -> GlassPalette.textSecondary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     LazyColumn(
@@ -1672,9 +1837,15 @@ private fun SettingsTab(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_neon_themes),
+                            painter = painterResource(
+                                id = if (style.isGlass) R.drawable.ic_glass_themes else R.drawable.ic_neon_themes,
+                            ),
                             contentDescription = null,
-                            colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.primary),
+                            colorFilter = when {
+                                style.isNeon -> null
+                                style.isGlass -> ColorFilter.tint(GlassPalette.textPrimary)
+                                else -> ColorFilter.tint(MaterialTheme.colorScheme.primary)
+                            },
                             modifier = Modifier.size(20.dp),
                         )
                         Text(
@@ -1685,22 +1856,21 @@ private fun SettingsTab(
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         ThemeModeSetting.entries.forEach { mode ->
                             val selected = mode == state.themeMode
-                            val pillBrush = if (selected && style.isNeon) {
-                                Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
-                            } else if (selected) {
-                                Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
-                            } else {
-                                null
+                            val pillBrush = when {
+                                selected && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
+                                selected && style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
+                                selected -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
+                                else -> null
                             }
 
                             GlassCard(
-                                modifier = Modifier.weight(1f),
                                 cornerRadius = 12.dp,
                                 fillBrush = pillBrush,
                                 onClick = { onSelectTheme(mode) },
@@ -1713,9 +1883,7 @@ private fun SettingsTab(
                                     textAlign = TextAlign.Center,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                                    modifier = Modifier.padding(vertical = 10.dp, horizontal = 14.dp),
                                 )
                             }
                         }
@@ -1743,12 +1911,11 @@ private fun SettingsTab(
                     ) {
                         WeekFilterMode.entries.forEach { mode ->
                             val selected = state.activeWeekFilter == mode
-                            val pillBrush = if (selected && style.isNeon) {
-                                Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
-                            } else if (selected) {
-                                Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
-                            } else {
-                                null
+                            val pillBrush = when {
+                                selected && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
+                                selected && style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
+                                selected -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
+                                else -> null
                             }
                             GlassCard(
                                 modifier = Modifier.weight(1f),
@@ -1789,7 +1956,11 @@ private fun SettingsTab(
                                 Icon(
                                     imageVector = Icons.Rounded.Today,
                                     contentDescription = null,
-                                    tint = if (style.isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary,
+                                    tint = when {
+                                        style.isNeon -> Color(0xFF38BDF8)
+                                        style.isGlass -> GlassPalette.textPrimary
+                                        else -> MaterialTheme.colorScheme.primary
+                                    },
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -1816,7 +1987,11 @@ private fun SettingsTab(
                                 Icon(
                                     imageVector = Icons.Rounded.Refresh,
                                     contentDescription = null,
-                                    tint = if (style.isNeon) Color(0xFFA855F7) else MaterialTheme.colorScheme.primary,
+                                    tint = when {
+                                        style.isNeon -> Color(0xFFA855F7)
+                                        style.isGlass -> GlassPalette.textPrimary
+                                        else -> MaterialTheme.colorScheme.primary
+                                    },
                                     modifier = Modifier.size(16.dp),
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -1837,7 +2012,11 @@ private fun SettingsTab(
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 cornerRadius = 18.dp,
-                glowColor = if (style.isNeon) Color(0xFF8B5CF6) else null,
+                glowColor = when {
+                    style.isNeon -> Color(0xFF8B5CF6)
+                    style.isGlass -> Color.White
+                    else -> null
+                },
                 onClick = onOpenGame,
             ) {
                 Row(
@@ -1852,9 +2031,15 @@ private fun SettingsTab(
                             .size(40.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(
-                                Brush.verticalGradient(
-                                    listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
-                                ),
+                                if (style.isGlass) {
+                                    Brush.verticalGradient(
+                                        listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
+                                    )
+                                } else {
+                                    Brush.verticalGradient(
+                                        listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                                    )
+                                },
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -1867,7 +2052,7 @@ private fun SettingsTab(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Неоновый Тетрис",
+                            text = if (style.isGlass) "Стеклянный Тетрис" else "Неоновый Тетрис",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = titleColor,
@@ -1886,7 +2071,11 @@ private fun SettingsTab(
                         text = "Играть",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (style.isNeon) Color(0xFF7DD3FC) else MaterialTheme.colorScheme.primary,
+                        color = when {
+                            style.isNeon -> Color(0xFF7DD3FC)
+                            style.isGlass -> GlassPalette.textPrimary
+                            else -> MaterialTheme.colorScheme.primary
+                        },
                     )
                 }
             }
@@ -1922,7 +2111,11 @@ private fun SettingsTab(
                         Image(
                             painter = painterResource(id = R.drawable.ic_neon_expand),
                             contentDescription = if (bellsExpanded) "Свернуть" else "Развернуть",
-                            colorFilter = if (style.isNeon) null else ColorFilter.tint(subColor),
+                            colorFilter = when {
+                                style.isNeon -> null
+                                style.isGlass -> ColorFilter.tint(GlassPalette.textSecondary)
+                                else -> ColorFilter.tint(subColor)
+                            },
                             modifier = Modifier.size(14.dp),
                         )
                     }
@@ -1950,7 +2143,11 @@ private fun SettingsTab(
                                 }
                                 if (index < ScheduleEngine.standardBells.lastIndex) {
                                     HorizontalDivider(
-                                        color = if (style.isNeon) Color(0x1EFFFFFF) else MaterialTheme.colorScheme.outlineVariant,
+                                        color = when {
+                                            style.isNeon -> Color(0x1EFFFFFF)
+                                            style.isGlass -> Color(0x2EF4F4F4)
+                                            else -> MaterialTheme.colorScheme.outlineVariant
+                                        },
                                     )
                                 }
                             }
@@ -1991,9 +2188,21 @@ private fun AppUpdateCard(
     onInstallUpdate: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
-    val titleColor = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface
-    val subColor = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant
-    val accentColor = if (style.isNeon) Color(0xFF2DD4BF) else MaterialTheme.colorScheme.primary
+    val titleColor = when {
+        style.isNeon -> NeonPalette.textPrimary
+        style.isGlass -> GlassPalette.textPrimary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val subColor = when {
+        style.isNeon -> NeonPalette.textSecondary
+        style.isGlass -> GlassPalette.textSecondary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val accentColor = when {
+        style.isNeon -> Color(0xFF2DD4BF)
+        style.isGlass -> GlassPalette.textPrimary
+        else -> MaterialTheme.colorScheme.primary
+    }
 
     val isAvailableOrReady = updateState is UpdateCheckState.Available ||
         updateState is UpdateCheckState.ReadyToInstall ||
@@ -2002,7 +2211,7 @@ private fun AppUpdateCard(
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = 20.dp,
-        glowColor = if (style.isNeon && isAvailableOrReady) Color(0xFF14B8A6) else null,
+        glowColor = if (style.isTranslucent && isAvailableOrReady) Color(0xFF14B8A6) else null,
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -2086,7 +2295,7 @@ private fun AppUpdateCard(
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(999.dp)),
                             color = accentColor,
-                            trackColor = if (style.isNeon) Color(0x33FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
+                            trackColor = if (style.isTranslucent) Color(0x33FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
                         )
                     } else {
                         LinearProgressIndicator(
@@ -2095,7 +2304,7 @@ private fun AppUpdateCard(
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(999.dp)),
                             color = accentColor,
-                            trackColor = if (style.isNeon) Color(0x33FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
+                            trackColor = if (style.isTranslucent) Color(0x33FFFFFF) else MaterialTheme.colorScheme.surfaceVariant,
                         )
                     }
                 }
@@ -2150,10 +2359,10 @@ private fun AppUpdateCard(
                 }
 
                 if (isAvailableOrReady) {
-                    val installBrush = if (style.isNeon) {
-                        Brush.verticalGradient(listOf(Color(0xFF14B8A6), Color(0xFF0F766E)))
-                    } else {
-                        Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
+                    val installBrush = when {
+                        style.isNeon -> Brush.verticalGradient(listOf(Color(0xFF14B8A6), Color(0xFF0F766E)))
+                        style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
+                        else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
                     }
                     GlassCard(
                         modifier = Modifier.weight(1f),
@@ -2215,12 +2424,20 @@ private fun LoadingView(groupName: String) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             CircularProgressIndicator(
-                color = if (style.isNeon) Color(0xFFA855F7) else MaterialTheme.colorScheme.primary,
+                color = when {
+                    style.isNeon -> Color(0xFFA855F7)
+                    style.isGlass -> GlassPalette.textPrimary
+                    else -> MaterialTheme.colorScheme.primary
+                },
             )
             Text(
                 text = "Загружаем расписание $groupName...",
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = when {
+                    style.isNeon -> NeonPalette.textSecondary
+                    style.isGlass -> GlassPalette.textSecondary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
             )
         }
     }
@@ -2254,13 +2471,21 @@ private fun ErrorView(
                     text = "Не удалось загрузить расписание",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface,
+                    color = when {
+                        style.isNeon -> NeonPalette.textPrimary
+                        style.isGlass -> GlassPalette.textPrimary
+                        else -> MaterialTheme.colorScheme.onSurface
+                    },
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     text = errorMessage,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = when {
+                        style.isNeon -> NeonPalette.textSecondary
+                        style.isGlass -> GlassPalette.textSecondary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     textAlign = TextAlign.Center,
                 )
                 Button(onClick = onRefresh) {
@@ -2329,13 +2554,21 @@ private fun EmptyDayCard(hasSearchQuery: Boolean) {
                 imageVector = Icons.Rounded.EventAvailable,
                 contentDescription = null,
                 modifier = Modifier.size(44.dp),
-                tint = if (style.isNeon) Color(0xFF38BDF8) else MaterialTheme.colorScheme.primary,
+                tint = when {
+                    style.isNeon -> Color(0xFF38BDF8)
+                    style.isGlass -> GlassPalette.textPrimary
+                    else -> MaterialTheme.colorScheme.primary
+                },
             )
             Text(
                 text = if (hasSearchQuery) "Ничего не найдено" else "В этот день пар нет",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = if (style.isNeon) NeonPalette.textPrimary else MaterialTheme.colorScheme.onSurface,
+                color = when {
+                    style.isNeon -> NeonPalette.textPrimary
+                    style.isGlass -> GlassPalette.textPrimary
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
             )
             Text(
                 text = if (hasSearchQuery) {
@@ -2344,7 +2577,11 @@ private fun EmptyDayCard(hasSearchQuery: Boolean) {
                     "Можно отдохнуть или свайпнуть на другой день"
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = when {
+                    style.isNeon -> NeonPalette.textSecondary
+                    style.isGlass -> GlassPalette.textSecondary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 textAlign = TextAlign.Center,
             )
         }
