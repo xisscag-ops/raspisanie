@@ -30,7 +30,7 @@ object ScheduleParser {
         DateTimeFormatter.ofPattern("yyyy.MM.dd"),
     )
 
-    private val timeRegex = Regex("""(\d{1,2})[:.](\d{2})""")
+    private val timeRegex = Regex("""(\d{1,2})[:.\-](\d{2})""")
     private val numberRegex = Regex("""(\d+)""")
 
     fun parseActors(rawJson: String): List<ActorDto> {
@@ -76,22 +76,65 @@ object ScheduleParser {
         val root = json.parseToJsonElement(rawJson)
         val array = extractArray(root, listOf("data", "schedule", "result", "items")) ?: return emptyList()
 
-        return array.mapIndexedNotNull { index, element ->
+        return array.flatMapIndexed { index, element ->
             val dto = runCatching { json.decodeFromJsonElement<RawScheduleItem>(element) }.getOrNull()
-                ?: return@mapIndexedNotNull null
-            mapDtoToLesson(dto, index)
+                ?: return@flatMapIndexed emptyList()
+            mapDtoToLessons(dto, index)
         }
     }
 
-    private fun mapDtoToLesson(dto: RawScheduleItem, index: Int): Lesson? {
-        val day = parseDayOfWeek(dto.dayName) ?: return null
-        val subject = dto.subjects.map { it.trim() }.firstOrNull { it.isNotEmpty() }.orEmpty()
+    private fun mapDtoToLessons(dto: RawScheduleItem, index: Int): List<Lesson> {
+        val day = parseDayOfWeek(dto.dayName) ?: return emptyList()
+        val rawSubjects = dto.subjects.map { it.trim() }
+        val hasMultipleSubgroups = rawSubjects.count { it.isNotEmpty() } > 1
+
+        if (hasMultipleSubgroups) {
+            return rawSubjects.mapIndexedNotNull { subIndex, subTitle ->
+                if (subTitle.isEmpty()) return@mapIndexedNotNull null
+                val teacher = dto.instructors.getOrNull(subIndex)?.trim()?.takeIf { it.isNotEmpty() }
+                val room = dto.offices.getOrNull(subIndex)?.trim().orEmpty()
+                val note = dto.notes.getOrNull(subIndex)?.trim().orEmpty()
+                buildLesson(
+                    dto = dto,
+                    day = day,
+                    subject = subTitle,
+                    teachers = listOfNotNull(teacher),
+                    room = room,
+                    note = note,
+                    uniqueSuffix = "${index}_$subIndex",
+                )
+            }
+        }
+
+        val subject = rawSubjects.firstOrNull { it.isNotEmpty() }.orEmpty()
         val teachers = dto.instructors.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
         val room = dto.offices.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(", ")
         val note = dto.notes.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(" • ")
 
-        if (subject.isEmpty() && note.isEmpty()) return null
+        if (subject.isEmpty() && note.isEmpty()) return emptyList()
 
+        return listOfNotNull(
+            buildLesson(
+                dto = dto,
+                day = day,
+                subject = subject.ifEmpty { note },
+                teachers = teachers,
+                room = room,
+                note = note,
+                uniqueSuffix = index.toString(),
+            )
+        )
+    }
+
+    private fun buildLesson(
+        dto: RawScheduleItem,
+        day: DayOfWeek,
+        subject: String,
+        teachers: List<String>,
+        room: String,
+        note: String,
+        uniqueSuffix: String,
+    ): Lesson {
         val pairNumber = parsePairNumber(dto.classNumberName)
         val (startTime, endTime) = parseClassTime(dto.classTime)
         val formattedTime = when {
@@ -108,7 +151,7 @@ object ScheduleParser {
         }
 
         val lessonType = detectLessonType(note = note, subject = subject)
-        val id = "${day.value}|$pairNumber|$subject|$room|${dto.isUpperWeek}|${dto.isChange}|$explicitDate|$index"
+        val id = "${day.value}|$pairNumber|$subject|$room|${dto.isUpperWeek}|${dto.isChange}|$explicitDate|$uniqueSuffix"
 
         return Lesson(
             id = id,
@@ -117,7 +160,7 @@ object ScheduleParser {
             timeRangeText = formattedTime,
             startTime = startTime,
             endTime = endTime,
-            subject = subject.ifEmpty { note },
+            subject = subject,
             teachers = teachers,
             room = room,
             note = note,

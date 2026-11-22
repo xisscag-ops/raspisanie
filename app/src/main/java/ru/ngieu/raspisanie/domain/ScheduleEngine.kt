@@ -44,13 +44,13 @@ data class BellSlot(
 object ScheduleEngine {
 
     val standardBells = listOf(
-        BellSlot(1, "08:30", "10:00"),
-        BellSlot(2, "10:15", "11:45"),
-        BellSlot(3, "12:00", "13:30"),
-        BellSlot(4, "14:00", "15:30"),
-        BellSlot(5, "15:45", "17:15"),
-        BellSlot(6, "17:30", "19:00"),
-        BellSlot(7, "19:10", "20:40"),
+        BellSlot(1, "08:00", "09:30"),
+        BellSlot(2, "09:40", "11:10"),
+        BellSlot(3, "11:20 / 12:05", "12:50 / 13:35"),
+        BellSlot(4, "13:45", "15:15"),
+        BellSlot(5, "15:25", "16:55"),
+        BellSlot(6, "17:05", "18:35"),
+        BellSlot(7, "18:45", "20:15"),
     )
 
     fun mondayOf(date: LocalDate): LocalDate {
@@ -99,9 +99,27 @@ object ScheduleEngine {
             }
         }
 
-        // Если на конкретную пару есть замена с явной датой (isChange && explicitDate == targetDate),
-        // она остаётся вверху внутри своего слота и не теряется.
-        return dayCandidates.sortedWith(
+        // Если на конкретную дату и пару есть общегрупповая замена (isChange && explicitDate == targetDate),
+        // она заменяет обычные пары в этом слоте; если замена точечная для подгруппы — оставляем оба варианта.
+        val wholeGroupReplacedPairs = dayCandidates
+            .filter {
+                it.isChange &&
+                    it.explicitDate == targetDate &&
+                    it.pairNumber > 0 &&
+                    !it.subject.contains("(пр.", ignoreCase = true)
+            }
+            .map { it.pairNumber }
+            .toSet()
+
+        val resolved = dayCandidates.filter { lesson ->
+            if (!lesson.isChange && lesson.pairNumber in wholeGroupReplacedPairs) {
+                false
+            } else {
+                true
+            }
+        }
+
+        return resolved.sortedWith(
             compareBy<Lesson>(
                 { if (it.pairNumber > 0) it.pairNumber else Int.MAX_VALUE },
                 { it.startTime ?: LocalTime.MAX },

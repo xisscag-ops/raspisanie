@@ -106,4 +106,38 @@ class ScheduleParserTest {
         assertEquals(LocalDate.of(2026, 11, 24), second.explicitDate)
         assertTrue(second.isChange)
     }
+
+    @Test
+    fun `parses hyphenated times and splits multiple subgroups`() {
+        val raw = """
+            [
+              {
+                "dayName": "Вторник",
+                "classNumberName": "1 пара",
+                "classTime": "08-00 / 09-30",
+                "groups": ["С-25ИО", "С-25ИО"],
+                "subjects": [
+                  "(пр. 2) Иностранный язык",
+                  "(пр. 1) Иностранный язык"
+                ],
+                "instructors": ["Митина И. В.", "Демидова Е. Е."],
+                "offices": ["112", "113"],
+                "notes": ["Практические занятия", "Практические занятия"],
+                "isUpperWeek": true,
+                "date": null,
+                "isChange": false
+              }
+            ]
+        """.trimIndent()
+
+        val lessons = ScheduleParser.parseSchedule(raw)
+        assertEquals(2, lessons.size)
+        assertEquals(LocalTime.of(8, 0), lessons[0].startTime)
+        assertEquals(LocalTime.of(9, 30), lessons[0].endTime)
+        assertEquals("08:00 – 09:30", lessons[0].timeRangeText)
+        assertEquals("112", lessons[0].room)
+        assertEquals(listOf("Митина И. В."), lessons[0].teachers)
+        assertEquals("113", lessons[1].room)
+        assertEquals(listOf("Демидова Е. Е."), lessons[1].teachers)
+    }
 }

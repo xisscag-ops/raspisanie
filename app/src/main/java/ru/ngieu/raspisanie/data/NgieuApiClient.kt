@@ -42,12 +42,19 @@ class NgieuApiClient(
             if (!response.isSuccessful) {
                 throw IOException("Сервер НГИЭУ вернул код ${response.code}")
             }
-            response.body?.string()?.takeIf { it.isNotBlank() }
+            val body = response.body?.string()?.takeIf { it.isNotBlank() }
                 ?: throw IOException("Пустой ответ от сервера расписания")
+            val trimmed = body.trimStart()
+            if (trimmed.startsWith("<")) {
+                throw IOException(
+                    "Сервер вернул HTML-страницу вместо расписания. Проверьте интернет или отключите VPN."
+                )
+            }
+            body
         }
     }
 
     companion object {
-        const val DEFAULT_BASE_URL = "https://230352-2.vm.clodo.ru"
+        const val DEFAULT_BASE_URL = "https://schedule.ngieu.ru"
     }
 }
