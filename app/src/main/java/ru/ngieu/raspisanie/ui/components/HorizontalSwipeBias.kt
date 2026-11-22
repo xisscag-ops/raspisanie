@@ -9,6 +9,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -35,8 +36,8 @@ object SwipeBiasPolicy {
      */
     const val HORIZONTAL_OVER_VERTICAL_RATIO = 0.65f
     const val VERTICAL_OVER_HORIZONTAL_RATIO = 1.50f
-    const val PAGER_TOUCH_SLOP_MULTIPLIER = 0.65f
-    const val VERTICAL_TOUCH_SLOP_MULTIPLIER = 2.25f
+    const val PAGER_TOUCH_SLOP_MULTIPLIER = 0.90f
+    const val VERTICAL_TOUCH_SLOP_MULTIPLIER = 1.35f
 
     fun decide(
         dx: Float,
@@ -68,6 +69,9 @@ class HorizontalSwipeGateState(
     var allowVerticalScroll by mutableStateOf(true)
         internal set
 
+    var allowHorizontalScroll by mutableStateOf(true)
+        internal set
+
     // Синхронный флаг для nestedScroll, чтобы гасить вертикальный скролл и PullToRefresh в тот же кадр
     internal var lockVerticalSync: Boolean = false
 
@@ -84,9 +88,14 @@ class HorizontalSwipeGateState(
 
 @Composable
 fun HorizontalBiasPagerContainer(
-    isPagerScrolling: Boolean,
+    canInterruptSettling: () -> Boolean,
+    onInterruptSettling: () -> Unit,
     modifier: Modifier = Modifier,
-    content: @Composable (gateState: HorizontalSwipeGateState, allowVerticalScroll: Boolean) -> Unit,
+    content: @Composable (
+        gateState: HorizontalSwipeGateState,
+        allowHorizontalScroll: Boolean,
+        allowVerticalScroll: Boolean,
+    ) -> Unit,
 ) {
     val baseViewConfig = LocalViewConfiguration.current
     val horizontalSlopPx = (baseViewConfig.touchSlop * SwipeBiasPolicy.PAGER_TOUCH_SLOP_MULTIPLIER).coerceAtLeast(1f)
@@ -101,6 +110,8 @@ fun HorizontalBiasPagerContainer(
     val gateState = remember(verticalViewConfig) {
         HorizontalSwipeGateState(verticalViewConfig)
     }
+    val latestCanInterrupt by rememberUpdatedState(canInterruptSettling)
+    val latestInterrupt by rememberUpdatedState(onInterruptSettling)
 
     CompositionLocalProvider(LocalViewConfiguration provides pagerViewConfig) {
         Box(
@@ -108,11 +119,18 @@ fun HorizontalBiasPagerContainer(
                 awaitEachGesture {
                     gateState.lockVerticalSync = false
                     gateState.allowVerticalScroll = true
+                    gateState.allowHorizontalScroll = true
                     try {
                         val down = awaitFirstDown(
                             requireUnconsumed = false,
                             pass = PointerEventPass.Initial,
                         )
+                        // Если предыдущий горизонтальный свайп уже почти доехал до страницы,
+                        // сразу фиксируем страницу при новом касании, чтобы избежать "вибрации" вбок
+                        if (latestCanInterrupt()) {
+                            latestInterrupt()
+                        }
+
                         val startPos = down.position
                         var decision = SwipeAxisDecision.UNDECIDED
 
@@ -134,10 +152,15 @@ fun HorizontalBiasPagerContainer(
                                     SwipeAxisDecision.HORIZONTAL -> {
                                         gateState.lockVerticalSync = true
                                         gateState.allowVerticalScroll = false
+                                        gateState.allowHorizontalScroll = true
                                     }
                                     SwipeAxisDecision.VERTICAL -> {
                                         gateState.lockVerticalSync = false
                                         gateState.allowVerticalScroll = true
+                                        gateState.allowHorizontalScroll = false
+                                        if (latestCanInterrupt()) {
+                                            latestInterrupt()
+                                        }
                                     }
                                     SwipeAxisDecision.UNDECIDED -> Unit
                                 }
@@ -146,11 +169,16 @@ fun HorizontalBiasPagerContainer(
                     } finally {
                         gateState.lockVerticalSync = false
                         gateState.allowVerticalScroll = true
+                        gateState.allowHorizontalScroll = true
                     }
                 }
             },
         ) {
-            content(gateState, gateState.allowVerticalScroll && !isPagerScrolling)
+            content(
+                gateState,
+                gateState.allowHorizontalScroll,
+                gateState.allowVerticalScroll,
+            )
         }
     }
 }

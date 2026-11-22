@@ -2,6 +2,7 @@ package ru.ngieu.raspisanie.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -36,6 +37,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,6 +68,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -82,7 +86,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import ru.ngieu.raspisanie.BuildConfig
 import ru.ngieu.raspisanie.R
 import ru.ngieu.raspisanie.data.ActorKind
@@ -115,6 +121,7 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 
 private val ruLocale = Locale("ru", "RU")
 private val dayHeaderDateFormatter = DateTimeFormatter.ofPattern("d MMMM", ruLocale)
@@ -906,6 +913,12 @@ private fun DayHorizontalPager(
         initialPage = initialPage,
         pageCount = { ScheduleEngine.TOTAL_DAY_PAGES },
     )
+    val coroutineScope = rememberCoroutineScope()
+    val pagerFlingBehavior = PagerDefaults.flingBehavior(
+        state = pagerState,
+        pagerSnapDistance = PagerSnapDistance.atMost(1),
+        snapAnimationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing),
+    )
     var lastPagerDate by remember { mutableStateOf(state.selectedDate) }
 
     LaunchedEffect(pagerState) {
@@ -930,11 +943,20 @@ private fun DayHorizontalPager(
     }
 
     HorizontalBiasPagerContainer(
-        isPagerScrolling = pagerState.isScrollInProgress,
+        canInterruptSettling = {
+            pagerState.isScrollInProgress && abs(pagerState.currentPageOffsetFraction) <= 0.35f
+        },
+        onInterruptSettling = {
+            coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                pagerState.scrollToPage(pagerState.targetPage)
+            }
+        },
         modifier = Modifier.fillMaxSize(),
-    ) { gateState, allowVerticalScroll ->
+    ) { gateState, allowHorizontalScroll, allowVerticalScroll ->
         HorizontalPager(
             state = pagerState,
+            flingBehavior = pagerFlingBehavior,
+            userScrollEnabled = allowHorizontalScroll,
             beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxSize(),
         ) { pageIndex ->
