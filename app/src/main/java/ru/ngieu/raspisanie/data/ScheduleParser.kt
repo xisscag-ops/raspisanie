@@ -296,7 +296,7 @@ object ScheduleParser {
         return "%02d:%02d".format(time.hour, time.minute)
     }
 
-    private fun normalizeGroupName(name: String): String {
+    fun normalizeGroupName(name: String): String {
         return name.trim().replace(" ", "").uppercase()
     }
 
