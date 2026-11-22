@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -167,7 +168,7 @@ fun GlassCard(
             drawRoundRect(
                 color = glowColor.copy(alpha = 0.22f),
                 topLeft = Offset(-3.dp.toPx(), -2.dp.toPx()),
-                size = size.copy(
+                size = Size(
                     width = size.width + 6.dp.toPx(),
                     height = size.height + 5.dp.toPx(),
                 ),
@@ -176,7 +177,7 @@ fun GlassCard(
             drawRoundRect(
                 color = glowColor.copy(alpha = 0.10f),
                 topLeft = Offset(-6.dp.toPx(), -4.dp.toPx()),
-                size = size.copy(
+                size = Size(
                     width = size.width + 12.dp.toPx(),
                     height = size.height + 10.dp.toPx(),
                 ),

@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -144,7 +145,7 @@ fun NeonBottomBar(
                                     drawRoundRect(
                                         color = Color(0xFF9333EA).copy(alpha = 0.42f),
                                         topLeft = Offset(-2.dp.toPx(), -2.dp.toPx()),
-                                        size = size.copy(
+                                        size = Size(
                                             width = size.width + 4.dp.toPx(),
                                             height = size.height + 4.dp.toPx(),
                                         ),
