@@ -47,8 +47,16 @@ class MainActivity : ComponentActivity() {
                     onResetToDefaultGroup = viewModel::resetToDefaultGroup,
                     onSelectTheme = viewModel::setThemeMode,
                     onSelectIconStyle = viewModel::setIconStyle,
-                    onApplyIconNow = viewModel::applyLauncherIconNow,
-                    onForceRefreshIcon = viewModel::forceRefreshLauncherIcon,
+                    onApplyIconNow = {
+                        suppressNextStopIconApply = true
+                        moveTaskToBack(true)
+                        viewModel.applyLauncherIconNow()
+                    },
+                    onForceRefreshIcon = {
+                        suppressNextStopIconApply = true
+                        moveTaskToBack(true)
+                        viewModel.forceRefreshLauncherIcon()
+                    },
                     onSelectSubgroup = viewModel::setSubgroupFilter,
                     onCheckForUpdates = { viewModel.checkForUpdates(silent = false) },
                     onInstallUpdate = {
