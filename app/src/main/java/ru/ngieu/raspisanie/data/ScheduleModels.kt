@@ -86,7 +86,8 @@ data class ScheduleSnapshot(
 )
 
 enum class ThemeModeSetting(val label: String) {
-    SYSTEM("Как в системе"),
+    NEON("Неон"),
+    SYSTEM("Система"),
     LIGHT("Светлая"),
     DARK("Тёмная"),
 }

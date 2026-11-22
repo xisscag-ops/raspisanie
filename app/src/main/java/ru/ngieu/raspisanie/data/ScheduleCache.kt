@@ -31,14 +31,14 @@ class ScheduleCache(context: Context) {
     }
 
     fun loadThemeMode(): ThemeModeSetting {
-        val raw = prefs.getString(KEY_THEME_MODE, ThemeModeSetting.SYSTEM.name)
-        return runCatching { ThemeModeSetting.valueOf(raw ?: ThemeModeSetting.SYSTEM.name) }
-            .getOrDefault(ThemeModeSetting.SYSTEM)
+        val raw = prefs.getString(KEY_THEME_MODE, ThemeModeSetting.NEON.name)
+        return runCatching { ThemeModeSetting.valueOf(raw ?: ThemeModeSetting.NEON.name) }
+            .getOrDefault(ThemeModeSetting.NEON)
     }
 
     private companion object {
         const val CACHE_FILE_NAME = "schedule_cache_c25io.json"
         const val PREFS_NAME = "ngieu_raspisanie_prefs"
-        const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_THEME_MODE = "theme_mode_v2"
     }
 }

@@ -26,9 +26,23 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 enum class ScheduleViewMode(val label: String) {
-    DAY("День"),
-    WEEK("Вся неделя"),
+    DAY("Главная"),
+    WEEK("Расписание"),
 }
+
+enum class MainNavTab(val label: String) {
+    HOME("Главная"),
+    WEEK("Неделя"),
+    GROUP("Группа"),
+    SETTINGS("Настройки"),
+}
+
+@Immutable
+data class DayProgressSummary(
+    val activeCount: Int = 0,
+    val totalCount: Int = 0,
+    val fraction: Float = 0f,
+)
 
 @Immutable
 data class ScheduleUiState(
@@ -38,6 +52,8 @@ data class ScheduleUiState(
     val todayDate: LocalDate = currentKnyagininoDate(),
     val manualWeekOverride: WeekFilterMode? = null,
     val viewMode: ScheduleViewMode = ScheduleViewMode.DAY,
+    val activeTab: MainNavTab = MainNavTab.HOME,
+    val searchQuery: String = "",
     val allLessons: List<Lesson> = emptyList(),
     val weekAnchorDate: LocalDate? = null,
     val weekAnchorIsUpper: Boolean? = null,
@@ -46,11 +62,12 @@ data class ScheduleUiState(
     val isOfflineFallback: Boolean = false,
     val errorMessage: String? = null,
     val updatedAtEpochMillis: Long? = null,
-    val themeMode: ThemeModeSetting = ThemeModeSetting.SYSTEM,
+    val themeMode: ThemeModeSetting = ThemeModeSetting.NEON,
     val nowTime: LocalTime = currentKnyagininoTime(),
     val weekDays: List<LocalDate> = emptyList(),
     val lessonsByWeekDay: Map<LocalDate, List<Lesson>> = emptyMap(),
     val liveLessonState: LiveLessonState = LiveLessonState.NoLessonsToday,
+    val selectedDayProgress: DayProgressSummary = DayProgressSummary(),
 ) {
     val selectedMonday: LocalDate
         get() = ScheduleEngine.mondayOf(selectedDate)
@@ -78,6 +95,15 @@ data class ScheduleUiState(
         } else {
             detectedWeekForMonday(monday) ?: WeekFilterMode.UPPER
         }
+    }
+
+    fun matchesSearch(lesson: Lesson): Boolean {
+        val q = searchQuery.trim()
+        if (q.isEmpty()) return true
+        return lesson.subject.contains(q, ignoreCase = true) ||
+            lesson.room.contains(q, ignoreCase = true) ||
+            lesson.teachers.any { it.contains(q, ignoreCase = true) } ||
+            lesson.note.contains(q, ignoreCase = true)
     }
 }
 
@@ -215,8 +241,31 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun selectTab(tab: MainNavTab) {
+        updateState { state ->
+            val nextViewMode = when (tab) {
+                MainNavTab.HOME -> ScheduleViewMode.DAY
+                MainNavTab.WEEK -> ScheduleViewMode.WEEK
+                else -> state.viewMode
+            }
+            state.copy(
+                activeTab = tab,
+                viewMode = nextViewMode,
+            )
+        }
+    }
+
     fun setViewMode(mode: ScheduleViewMode) {
-        updateState { it.copy(viewMode = mode) }
+        updateState {
+            it.copy(
+                viewMode = mode,
+                activeTab = if (mode == ScheduleViewMode.DAY) MainNavTab.HOME else MainNavTab.WEEK,
+            )
+        }
+    }
+
+    fun setSearchQuery(query: String) {
+        updateState { it.copy(searchQuery = query) }
     }
 
     fun setThemeMode(mode: ThemeModeSetting) {
@@ -253,7 +302,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                 allLessons = state.allLessons,
                 targetDate = date,
                 weekFilter = activeFilter,
-            )
+            ).filter(state::matchesSearch)
         }
 
         val todayLessons = ScheduleEngine.lessonsForDay(
@@ -263,10 +312,27 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         )
         val liveState = ScheduleEngine.computeLiveLessonState(todayLessons, state.nowTime)
 
+        val selectedLessons = lessonsByDay[state.selectedDate].orEmpty()
+        val total = selectedLessons.size
+        val activeCount = when {
+            total == 0 -> 0
+            state.selectedDate.isBefore(state.todayDate) -> total
+            state.selectedDate.isAfter(state.todayDate) -> 0
+            else -> selectedLessons.count { lesson ->
+                lesson.startTime != null && !state.nowTime.isBefore(lesson.startTime)
+            }
+        }
+        val fraction = if (total == 0) 0f else (activeCount.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+
         return state.copy(
             weekDays = weekDays,
             lessonsByWeekDay = lessonsByDay,
             liveLessonState = liveState,
+            selectedDayProgress = DayProgressSummary(
+                activeCount = activeCount,
+                totalCount = total,
+                fraction = fraction,
+            ),
         )
     }
 }

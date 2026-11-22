@@ -1,13 +1,85 @@
 package ru.ngieu.raspisanie.ui.theme
 
+import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import ru.ngieu.raspisanie.data.LessonType
 import ru.ngieu.raspisanie.data.ThemeModeSetting
+
+@Immutable
+data class AppVisualStyle(
+    val isNeon: Boolean,
+    val isDark: Boolean,
+)
+
+val LocalAppVisualStyle = staticCompositionLocalOf {
+    AppVisualStyle(isNeon = true, isDark = true)
+}
+
+object NeonPalette {
+    val backgroundBase = Color(0xFF060916)
+    val leftEdgeGlow = Color(0xFF8B5CF6)
+    val rightEdgeGlow = Color(0xFF2563EB)
+    val rightCyanGlow = Color(0xFF0EA5E9)
+
+    val glassSurface = Color(0x9E141B38)
+    val glassSurfaceElevated = Color(0xB81B244A)
+    val glassBorderTop = Color(0x3DFFFFFF)
+    val glassBorderBottom = Color(0x1F818CF8)
+
+    val activeDayStart = Color(0xFF9D4EDD)
+    val activeDayEnd = Color(0xFF5B46F6)
+    val activeDayBorder = Color(0xFFE9D5FF)
+
+    val activeLessonStart = Color(0xBA1E3A8A)
+    val activeLessonEnd = Color(0xB816204A)
+    val activeLessonBorder = Color(0xFF38BDF8)
+
+    val progressStart = Color(0xFFA855F7)
+    val progressEnd = Color(0xFF38BDF8)
+
+    val textPrimary = Color(0xFFF5F1FF)
+    val textSecondary = Color(0xFFA5B0D6)
+    val timelinePurple = Color(0xFF8B5CF6)
+    val timelineCyan = Color(0xFF38BDF8)
+}
+
+private val NeonColors = darkColorScheme(
+    primary = Color(0xFF9333EA),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFF261F4D),
+    onPrimaryContainer = Color(0xFFF5F1FF),
+    secondary = Color(0xFF38BDF8),
+    onSecondary = Color(0xFF041C2C),
+    secondaryContainer = Color(0xFF162244),
+    onSecondaryContainer = Color(0xFFE2E8F0),
+    tertiary = Color(0xFF10B981),
+    onTertiary = Color(0xFF022C22),
+    tertiaryContainer = Color(0xFF064E3B),
+    onTertiaryContainer = Color(0xFFD1FAE5),
+    background = NeonPalette.backgroundBase,
+    onBackground = NeonPalette.textPrimary,
+    surface = Color(0xFF141B38),
+    onSurface = NeonPalette.textPrimary,
+    surfaceVariant = Color(0xFF1C2447),
+    onSurfaceVariant = NeonPalette.textSecondary,
+    outline = Color(0xFF3B4675),
+    outlineVariant = Color(0x28FFFFFF),
+    error = Color(0xFFFB7185),
+    onError = Color(0xFF4C0519),
+    errorContainer = Color(0xFF4C1124),
+    onErrorContainer = Color(0xFFFFE4E6),
+)
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF155EEF),
@@ -68,19 +140,19 @@ object ScheduleAccentColors {
     val changeBorderLight = Color(0xFFF79009)
     val changeBadgeLight = Color(0xFFDC6803)
 
-    val changeBgDark = Color(0xFF33200B)
-    val changeBorderDark = Color(0xFFFDB022)
-    val changeBadgeDark = Color(0xFFFDB022)
+    val changeBgDark = Color(0x8838220A)
+    val changeBorderDark = Color(0xFFFBBF24)
+    val changeBadgeDark = Color(0xFFFBBF24)
 
     fun lessonTypeColor(type: LessonType, isDark: Boolean): Color {
         return when (type) {
-            LessonType.LECTURE -> if (isDark) Color(0xFF84ADFF) else Color(0xFF155EEF)
-            LessonType.PRACTICE -> if (isDark) Color(0xFF5FE9D0) else Color(0xFF0E9384)
-            LessonType.LAB -> if (isDark) Color(0xFFB692F6) else Color(0xFF6938EF)
-            LessonType.EXAM -> if (isDark) Color(0xFFF97066) else Color(0xFFD92D20)
-            LessonType.CONSULTATION -> if (isDark) Color(0xFFFDB022) else Color(0xFFDC6803)
-            LessonType.EVENT -> if (isDark) Color(0xFFF472B6) else Color(0xFFC11574)
-            LessonType.OTHER -> if (isDark) Color(0xFF98A2B3) else Color(0xFF475467)
+            LessonType.LECTURE -> if (isDark) Color(0xFF3B82F6) else Color(0xFF155EEF)
+            LessonType.PRACTICE -> if (isDark) Color(0xFF10B981) else Color(0xFF0E9384)
+            LessonType.LAB -> if (isDark) Color(0xFFA855F7) else Color(0xFF6938EF)
+            LessonType.EXAM -> if (isDark) Color(0xFFEF4444) else Color(0xFFD92D20)
+            LessonType.CONSULTATION -> if (isDark) Color(0xFFF59E0B) else Color(0xFFDC6803)
+            LessonType.EVENT -> if (isDark) Color(0xFFEC4899) else Color(0xFFC11574)
+            LessonType.OTHER -> if (isDark) Color(0xFF94A3B8) else Color(0xFF475467)
         }
     }
 }
@@ -90,14 +162,42 @@ fun NgieuTheme(
     themeMode: ThemeModeSetting,
     content: @Composable () -> Unit,
 ) {
-    val darkTheme = when (themeMode) {
-        ThemeModeSetting.SYSTEM -> isSystemInDarkTheme()
+    val systemDark = isSystemInDarkTheme()
+    val isNeon = when (themeMode) {
+        ThemeModeSetting.NEON -> true
+        ThemeModeSetting.SYSTEM -> systemDark
+        ThemeModeSetting.LIGHT -> false
+        ThemeModeSetting.DARK -> false
+    }
+    val isDark = when (themeMode) {
+        ThemeModeSetting.NEON -> true
+        ThemeModeSetting.SYSTEM -> systemDark
         ThemeModeSetting.LIGHT -> false
         ThemeModeSetting.DARK -> true
     }
 
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        content = content,
-    )
+    val colorScheme = when {
+        isNeon -> NeonColors
+        isDark -> DarkColors
+        else -> LightColors
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.isAppearanceLightStatusBars = !isDark
+            insetsController.isAppearanceLightNavigationBars = !isDark
+        }
+    }
+
+    CompositionLocalProvider(
+        LocalAppVisualStyle provides AppVisualStyle(isNeon = isNeon, isDark = isDark),
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            content = content,
+        )
+    }
 }
