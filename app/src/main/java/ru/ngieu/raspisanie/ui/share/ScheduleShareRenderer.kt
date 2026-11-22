@@ -135,7 +135,7 @@ object ScheduleShareRenderer {
         val dayCountPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = colors.textSecondary
             textSize = 24f
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.MEDIUM)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         }
         val timeStartPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = colors.textPrimary
