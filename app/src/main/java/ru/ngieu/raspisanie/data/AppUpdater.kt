@@ -119,6 +119,11 @@ class AppUpdater(
 
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
+                    if (response.code == 404) {
+                        throw IOException(
+                            "Релизы недоступны (404). Если репозиторий GitHub приватный, переключите его в Public.",
+                        )
+                    }
                     throw IOException("GitHub вернул код ${response.code}")
                 }
                 val body = response.body?.string()?.takeIf { it.isNotBlank() }
@@ -220,5 +225,7 @@ class AppUpdater(
     companion object {
         const val GITHUB_LATEST_RELEASE_URL =
             "https://api.github.com/repos/xisscag-ops/raspisanie/releases/latest"
+        const val GITHUB_RELEASES_PAGE_URL =
+            "https://github.com/xisscag-ops/raspisanie/releases/latest"
     }
 }

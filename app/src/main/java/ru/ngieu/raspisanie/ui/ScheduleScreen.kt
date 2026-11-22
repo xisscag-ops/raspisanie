@@ -72,6 +72,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -81,6 +82,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.flow.distinctUntilChanged
 import ru.ngieu.raspisanie.BuildConfig
 import ru.ngieu.raspisanie.R
+import ru.ngieu.raspisanie.data.AppUpdater
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.LiveLessonState
@@ -1526,6 +1528,26 @@ private fun AppUpdateCard(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                        )
+                    }
+                } else if (updateState is UpdateCheckState.Error) {
+                    val uriHandler = LocalUriHandler.current
+                    GlassCard(
+                        modifier = Modifier.weight(1f),
+                        cornerRadius = 12.dp,
+                        onClick = {
+                            runCatching { uriHandler.openUri(AppUpdater.GITHUB_RELEASES_PAGE_URL) }
+                        },
+                    ) {
+                        Text(
+                            text = "Открыть GitHub",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = accentColor,
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
