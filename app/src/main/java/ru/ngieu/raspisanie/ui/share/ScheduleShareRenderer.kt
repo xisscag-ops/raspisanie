@@ -438,12 +438,18 @@ object ScheduleShareRenderer {
             add(
                 BadgeSpec(
                     text = lesson.lessonType.label,
-                    bgColor = if (colors.isGlass) {
-                        Color.argb(133, 191, 191, 191)
-                    } else {
-                        Color.argb(48, Color.red(typeColor), Color.green(typeColor), Color.blue(typeColor))
+                    bgColor = when {
+                        colors.isGlass -> Color.argb(133, 191, 191, 191)
+                        colors.isNeon -> Color.parseColor("#28325C")
+                        colors.isDark -> Color.parseColor("#283244")
+                        else -> Color.parseColor("#E9EEF5")
                     },
-                    textColor = if (colors.isGlass) Color.parseColor("#F8F8F8") else typeColor,
+                    textColor = when {
+                        colors.isGlass -> Color.parseColor("#F8F8F8")
+                        colors.isNeon -> Color.parseColor("#E2E8F0")
+                        colors.isDark -> Color.parseColor("#E4E7EC")
+                        else -> typeColor
+                    },
                 ),
             )
 
@@ -451,8 +457,16 @@ object ScheduleShareRenderer {
                 add(
                     BadgeSpec(
                         text = "Замена",
-                        bgColor = Color.argb(56, 251, 191, 36),
-                        textColor = if (colors.isDark) Color.parseColor("#FBBF24") else Color.parseColor("#B45309"),
+                        bgColor = if (colors.isDark) {
+                            ScheduleAccentColors.changeBadgeBgDark.toArgb()
+                        } else {
+                            Color.argb(56, 251, 191, 36)
+                        },
+                        textColor = if (colors.isDark) {
+                            ScheduleAccentColors.changeBadgeDark.toArgb()
+                        } else {
+                            Color.parseColor("#B45309")
+                        },
                     ),
                 )
             }
@@ -709,9 +723,9 @@ object ScheduleShareRenderer {
                 cardTop = Color.parseColor("#B51D254B"),
                 cardBottom = Color.parseColor("#A6131935"),
                 cardBorder = Color.argb(68, 165, 180, 252),
-                changeCardTop = Color.parseColor("#BD3D260A"),
-                changeCardBottom = Color.parseColor("#B3271907"),
-                changeBorder = Color.parseColor("#FBBF24"),
+                changeCardTop = Color.parseColor("#BD2A1B08"),
+                changeCardBottom = Color.parseColor("#B31C1206"),
+                changeBorder = ScheduleAccentColors.changeBorderDark.toArgb(),
                 textPrimary = NeonPalette.textPrimary.toArgb(),
                 textSecondary = NeonPalette.textSecondary.toArgb(),
                 divider = Color.argb(46, 255, 255, 255),
@@ -729,9 +743,9 @@ object ScheduleShareRenderer {
                 cardTop = Color.parseColor("#858A8A8A"),
                 cardBottom = Color.parseColor("#6E272727"),
                 cardBorder = Color.argb(135, 244, 244, 244),
-                changeCardTop = Color.parseColor("#A64E3818"),
-                changeCardBottom = Color.parseColor("#94291D0C"),
-                changeBorder = Color.parseColor("#FBBF24"),
+                changeCardTop = Color.parseColor("#A6362612"),
+                changeCardBottom = Color.parseColor("#941E150A"),
+                changeBorder = ScheduleAccentColors.changeBorderDark.toArgb(),
                 textPrimary = GlassPalette.textPrimary.toArgb(),
                 textSecondary = GlassPalette.textSecondary.toArgb(),
                 divider = Color.argb(56, 244, 244, 244),
@@ -749,9 +763,9 @@ object ScheduleShareRenderer {
                 cardTop = Color.parseColor("#151B26"),
                 cardBottom = Color.parseColor("#151B26"),
                 cardBorder = Color.parseColor("#242D3D"),
-                changeCardTop = Color.parseColor("#38220A"),
-                changeCardBottom = Color.parseColor("#38220A"),
-                changeBorder = Color.parseColor("#FBBF24"),
+                changeCardTop = Color.parseColor("#261807"),
+                changeCardBottom = Color.parseColor("#261807"),
+                changeBorder = ScheduleAccentColors.changeBorderDark.toArgb(),
                 textPrimary = Color.parseColor("#F2F4F7"),
                 textSecondary = Color.parseColor("#98A2B3"),
                 divider = Color.parseColor("#242D3D"),

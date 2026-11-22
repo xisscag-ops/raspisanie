@@ -1,5 +1,6 @@
 package ru.ngieu.raspisanie.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -156,6 +157,32 @@ fun ScheduleScreen(
         state.updateState is UpdateCheckState.ReadyToInstall ||
         state.updateState is UpdateCheckState.NeedsInstallPermission
 
+    val isOnDefaultHomeDay = !showSearchBar &&
+        state.activeTab == MainNavTab.HOME &&
+        state.isViewingToday
+
+    BackHandler(enabled = !isOnDefaultHomeDay) {
+        when {
+            showSearchBar -> {
+                showSearchBar = false
+                if (state.searchQuery.isNotEmpty()) onSearchQueryChange("")
+                if (state.actorSearchFilter != null) onActorSearchFilterChange(null)
+                if (state.activeTab != MainNavTab.HOME && state.activeTab != MainNavTab.WEEK) {
+                    onSelectTab(MainNavTab.HOME)
+                }
+            }
+            state.activeTab != MainNavTab.HOME -> {
+                onSelectTab(MainNavTab.HOME)
+                if (!state.isViewingToday) {
+                    onGoToday()
+                }
+            }
+            !state.isViewingToday -> {
+                onGoToday()
+            }
+        }
+    }
+
     NeonAuroraBackground {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -174,7 +201,7 @@ fun ScheduleScreen(
                     activeActorKind = state.activeActorKind,
                     isViewingDefaultGroup = state.isViewingDefaultGroup,
                     weekSubtitle = "${state.activeWeekFilter.title} неделя$subgroupSuffix",
-                    showTodayPill = state.selectedDate != state.todayDate || state.manualWeekOverride != null,
+                    showTodayPill = !state.isViewingToday,
                     isSearchVisible = showSearchBar,
                     isSharing = state.isSharingSchedule,
                     canShare = !state.isLoading && state.allLessons.isNotEmpty(),
@@ -333,7 +360,7 @@ fun ScheduleScreen(
                     selectedMonday = state.selectedMonday,
                     activeWeekFilter = state.activeWeekFilter,
                     detectedWeekForSelectedMonday = state.detectedWeekForSelectedMonday,
-                    showTodayButton = state.selectedDate != state.todayDate || state.manualWeekOverride != null,
+                    showTodayButton = !state.isViewingToday,
                     onPreviousWeek = { onShiftWeek(-1) },
                     onNextWeek = { onShiftWeek(1) },
                     onGoToday = {

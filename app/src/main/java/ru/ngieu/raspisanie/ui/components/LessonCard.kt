@@ -81,7 +81,7 @@ fun LessonCard(
     val timelineDotColor by animateColorAsState(
         targetValue = when {
             isCurrentNow -> activeNowAccent
-            hasAnyChange -> Color(0xFFFBBF24)
+            hasAnyChange -> if (isDark || style.isTranslucent) ScheduleAccentColors.changeBadgeDark else ScheduleAccentColors.changeBorderLight
             style.isNeon -> NeonPalette.timelinePurple
             style.isGlass -> GlassPalette.timelineDot
             else -> MaterialTheme.colorScheme.primary
@@ -208,10 +208,10 @@ fun LessonCard(
                 ),
             )
             allChanges && style.isNeon -> Brush.horizontalGradient(
-                colors = listOf(Color(0xBD3D260A), Color(0xB3271907)),
+                colors = listOf(Color(0xBD2A1B08), Color(0xB31C1206)),
             )
             allChanges && style.isGlass -> Brush.linearGradient(
-                colors = listOf(Color(0xA64E3818), Color(0x94291D0C)),
+                colors = listOf(Color(0xA6362612), Color(0x941E150A)),
             )
             hasAnyChange && !style.isTranslucent -> Brush.horizontalGradient(
                 colors = listOf(
@@ -220,10 +220,10 @@ fun LessonCard(
                 ),
             )
             hasAnyChange && style.isNeon -> Brush.horizontalGradient(
-                colors = listOf(Color(0xB52E2318), Color(0xA6191B38)),
+                colors = listOf(Color(0xB5231B12), Color(0xA614162E)),
             )
             hasAnyChange && style.isGlass -> Brush.linearGradient(
-                colors = listOf(Color(0x9E45351F), Color(0x8C23201B)),
+                colors = listOf(Color(0x9E302416), Color(0x8C1B1814)),
             )
             style.isNeon -> Brush.verticalGradient(
                 colors = listOf(Color(0xAE1D254B), Color(0x9E131935)),
@@ -244,9 +244,15 @@ fun LessonCard(
             isCurrentNow -> Brush.horizontalGradient(
                 colors = listOf(activeNowAccent, if (style.isTranslucent) GlassPalette.activeLessonAccent else activeNowAccent),
             )
-            hasAnyChange -> Brush.horizontalGradient(
-                colors = listOf(Color(0xFFFBBF24), Color(0xFFF59E0B)),
-            )
+            hasAnyChange -> if (isDark || style.isTranslucent) {
+                Brush.horizontalGradient(
+                    colors = listOf(Color(0xFF925812), Color(0xFF78430C)),
+                )
+            } else {
+                Brush.horizontalGradient(
+                    colors = listOf(Color(0xFFFBBF24), Color(0xFFF59E0B)),
+                )
+            }
             style.isNeon -> Brush.linearGradient(
                 colors = listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom),
             )
@@ -265,7 +271,7 @@ fun LessonCard(
         val glowColor = when {
             !style.isTranslucent -> null
             isCurrentNow -> NeonPalette.activeLessonBorder
-            hasAnyChange -> Color(0xFFF59E0B)
+            hasAnyChange -> Color(0xFF78430C)
             else -> null
         }
 
@@ -336,7 +342,6 @@ private fun SubgroupLessonRow(
 ) {
     val style = LocalAppVisualStyle.current
     val isDark = style.isDark
-    val typeColor = ScheduleAccentColors.lessonTypeColor(lesson.lessonType, isDark)
     val subgroupNumber = ScheduleEngine.extractSubgroupNumber(lesson)
     val showSubgroupChip = isMultiSubgroup || subgroupNumber != null
     val displaySubject = if (showSubgroupChip) {
@@ -364,13 +369,19 @@ private fun SubgroupLessonRow(
                     .clip(RoundedCornerShape(10.dp))
                     .background(
                         when {
-                            style.isNeon -> typeColor
+                            style.isNeon -> Color(0xFF28325C)
                             style.isGlass -> GlassPalette.typePillBg
-                            else -> typeColor.copy(alpha = 0.14f)
+                            else -> MaterialTheme.colorScheme.secondaryContainer
                         },
                     )
                     .then(
-                        if (isCurrentNow && style.isTranslucent) {
+                        if (style.isNeon) {
+                            Modifier.border(
+                                width = 0.75.dp,
+                                color = Color.White.copy(alpha = if (isCurrentNow) 0.35f else 0.16f),
+                                shape = RoundedCornerShape(10.dp),
+                            )
+                        } else if (isCurrentNow && style.isGlass) {
                             Modifier.border(
                                 width = 0.75.dp,
                                 color = Color.White.copy(alpha = 0.35f),
@@ -387,9 +398,9 @@ private fun SubgroupLessonRow(
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = when {
-                        style.isNeon -> Color.White
+                        style.isNeon -> Color(0xFFE2E8F0)
                         style.isGlass -> GlassPalette.typePillText
-                        else -> typeColor
+                        else -> MaterialTheme.colorScheme.onSecondaryContainer
                     },
                 )
             }
@@ -435,10 +446,20 @@ private fun SubgroupLessonRow(
             }
 
             if (lesson.isChange) {
+                val changeBg = if (style.isTranslucent || isDark) {
+                    ScheduleAccentColors.changeBadgeBgDark
+                } else {
+                    Color(0xFFF59E0B).copy(alpha = 0.16f)
+                }
+                val changeContent = if (style.isTranslucent || isDark) {
+                    ScheduleAccentColors.changeBadgeDark
+                } else {
+                    ScheduleAccentColors.changeBadgeLight
+                }
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFF59E0B).copy(alpha = if (style.isTranslucent) 0.28f else 0.16f),
-                    contentColor = if (style.isTranslucent || isDark) Color(0xFFFBBF24) else ScheduleAccentColors.changeBadgeLight,
+                    color = changeBg,
+                    contentColor = changeContent,
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
@@ -448,6 +469,7 @@ private fun SubgroupLessonRow(
                         Icon(
                             imageVector = Icons.Rounded.Warning,
                             contentDescription = null,
+                            tint = changeContent,
                             modifier = Modifier.size(11.dp),
                         )
                         Text(
