@@ -50,7 +50,7 @@ private data class NavTabItem(
 private val navItems = listOf(
     NavTabItem(MainNavTab.HOME, "Главная", R.drawable.ic_neon_home),
     NavTabItem(MainNavTab.WEEK, "Неделя", R.drawable.ic_neon_calendar),
-    NavTabItem(MainNavTab.GROUP, "Звонки", R.drawable.ic_neon_group),
+    NavTabItem(MainNavTab.GROUP, "Подгруппы", R.drawable.ic_neon_group),
     NavTabItem(MainNavTab.SETTINGS, "Настройки", R.drawable.ic_neon_settings_nav),
 )
 

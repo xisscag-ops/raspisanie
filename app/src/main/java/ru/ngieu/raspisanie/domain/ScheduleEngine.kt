@@ -1,6 +1,7 @@
 package ru.ngieu.raspisanie.domain
 
 import ru.ngieu.raspisanie.data.Lesson
+import ru.ngieu.raspisanie.data.SubgroupFilterMode
 import ru.ngieu.raspisanie.data.WeekParity
 import java.time.DayOfWeek
 import java.time.Duration
@@ -129,12 +130,13 @@ object ScheduleEngine {
     }
 
     /**
-     * Фильтрует пары для конкретного дня недели/даты и выбранной чётности недели.
+     * Фильтрует пары для конкретного дня недели/даты, выбранной чётности недели и подгруппы.
      */
     fun lessonsForDay(
         allLessons: List<Lesson>,
         targetDate: LocalDate,
         weekFilter: WeekFilterMode,
+        subgroupFilter: SubgroupFilterMode = SubgroupFilterMode.ALL,
     ): List<Lesson> {
         val targetDay = targetDate.dayOfWeek
         val dayCandidates = allLessons.filter { lesson ->
@@ -164,11 +166,8 @@ object ScheduleEngine {
             .toSet()
 
         val resolved = dayCandidates.filter { lesson ->
-            if (!lesson.isChange && lesson.pairNumber in wholeGroupReplacedPairs) {
-                false
-            } else {
-                true
-            }
+            val keepByReplacement = lesson.isChange || lesson.pairNumber !in wholeGroupReplacedPairs
+            keepByReplacement && matchesSubgroupFilter(lesson, subgroupFilter)
         }
 
         return resolved.sortedWith(
@@ -180,6 +179,19 @@ object ScheduleEngine {
                 { it.subject },
             )
         )
+    }
+
+    fun matchesSubgroupFilter(
+        lesson: Lesson,
+        subgroupFilter: SubgroupFilterMode,
+    ): Boolean {
+        if (subgroupFilter == SubgroupFilterMode.ALL) return true
+        val subgroup = extractSubgroupNumber(lesson) ?: return true
+        return when (subgroupFilter) {
+            SubgroupFilterMode.ALL -> true
+            SubgroupFilterMode.FIRST -> subgroup == 1
+            SubgroupFilterMode.SECOND -> subgroup == 2
+        }
     }
 
     fun extractSubgroupNumber(lesson: Lesson): Int? {

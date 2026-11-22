@@ -2,6 +2,7 @@ package ru.ngieu.raspisanie.ui.share
 
 import ru.ngieu.raspisanie.data.ActorKind
 import ru.ngieu.raspisanie.data.Lesson
+import ru.ngieu.raspisanie.data.SubgroupFilterMode
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.domain.WeekFilterMode
@@ -31,11 +32,13 @@ object ScheduleShareBuilder {
         selectedDate: LocalDate,
         weekFilter: WeekFilterMode,
         allLessons: List<Lesson>,
+        subgroupFilter: SubgroupFilterMode = SubgroupFilterMode.ALL,
     ): ShareDaySnapshot {
         val rawLessons = ScheduleEngine.lessonsForDay(
             allLessons = allLessons,
             targetDate = selectedDate,
             weekFilter = weekFilter,
+            subgroupFilter = subgroupFilter,
         )
         val slots = ScheduleEngine.groupLessonsIntoSlots(rawLessons)
         val title = when (actorKind) {

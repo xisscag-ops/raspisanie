@@ -24,6 +24,7 @@ import ru.ngieu.raspisanie.data.ScheduleCache
 import ru.ngieu.raspisanie.data.ScheduleParser
 import ru.ngieu.raspisanie.data.ScheduleRepository
 import ru.ngieu.raspisanie.data.ScheduleSnapshot
+import ru.ngieu.raspisanie.data.SubgroupFilterMode
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LiveLessonState
 import ru.ngieu.raspisanie.domain.ScheduleEngine
@@ -44,7 +45,7 @@ enum class ScheduleViewMode(val label: String) {
 enum class MainNavTab(val label: String) {
     HOME("Главная"),
     WEEK("Неделя"),
-    GROUP("Группа"),
+    GROUP("Подгруппы"),
     SETTINGS("Настройки"),
 }
 
@@ -90,6 +91,7 @@ data class ScheduleUiState(
     val errorMessage: String? = null,
     val updatedAtEpochMillis: Long? = null,
     val themeMode: ThemeModeSetting = ThemeModeSetting.NEON,
+    val subgroupFilter: SubgroupFilterMode = SubgroupFilterMode.ALL,
     val nowTime: LocalTime = currentKnyagininoTime(),
     val weekDays: List<LocalDate> = emptyList(),
     val lessonsByWeekDay: Map<LocalDate, List<Lesson>> = emptyMap(),
@@ -102,6 +104,9 @@ data class ScheduleUiState(
         get() = activeActorKind == ActorKind.GROUP &&
             ScheduleParser.normalizeGroupName(groupName) ==
             ScheduleParser.normalizeGroupName(ScheduleRepository.TARGET_GROUP_NAME)
+
+    val effectiveSubgroupFilter: SubgroupFilterMode
+        get() = if (activeActorKind == ActorKind.GROUP) subgroupFilter else SubgroupFilterMode.ALL
 
     val selectedMonday: LocalDate
         get() = ScheduleEngine.mondayOf(selectedDate)
@@ -162,7 +167,12 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     private val appUpdater = AppUpdater()
 
     private val _uiState = MutableStateFlow(
-        recomputeDerived(ScheduleUiState(themeMode = repository.loadThemeMode()))
+        recomputeDerived(
+            ScheduleUiState(
+                themeMode = repository.loadThemeMode(),
+                subgroupFilter = repository.loadSubgroupFilter(),
+            ),
+        ),
     )
     val uiState: StateFlow<ScheduleUiState> = _uiState.asStateFlow()
 
@@ -430,6 +440,11 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         updateState { it.copy(themeMode = mode) }
     }
 
+    fun setSubgroupFilter(mode: SubgroupFilterMode) {
+        repository.saveSubgroupFilter(mode)
+        updateState { it.copy(subgroupFilter = mode) }
+    }
+
     fun checkForUpdates(silent: Boolean = false) {
         viewModelScope.launch {
             if (!silent) {
@@ -550,6 +565,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
                     selectedDate = snapshotState.selectedDate,
                     weekFilter = snapshotState.activeWeekFilter,
                     allLessons = snapshotState.allLessons,
+                    subgroupFilter = snapshotState.effectiveSubgroupFilter,
                 )
                 ScheduleShareRenderer.renderAndShareDay(
                     context = context,
@@ -594,11 +610,13 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         val monday = state.selectedMonday
         val weekDays = (0L..5L).map { monday.plusDays(it) }
         val activeFilter = state.activeWeekFilter
+        val activeSubgroup = state.effectiveSubgroupFilter
         val lessonsByDay = weekDays.associateWith { date ->
             ScheduleEngine.lessonsForDay(
                 allLessons = state.allLessons,
                 targetDate = date,
                 weekFilter = activeFilter,
+                subgroupFilter = activeSubgroup,
             ).filter(state::matchesSearch)
         }
 
@@ -606,6 +624,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
             allLessons = state.allLessons,
             targetDate = state.todayDate,
             weekFilter = state.detectedCurrentWeek ?: activeFilter,
+            subgroupFilter = activeSubgroup,
         )
         val liveState = ScheduleEngine.computeLiveLessonState(todayLessons, state.nowTime)
 

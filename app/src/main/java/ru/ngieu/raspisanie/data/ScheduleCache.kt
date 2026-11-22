@@ -53,10 +53,21 @@ class ScheduleCache(context: Context) {
             .getOrDefault(ThemeModeSetting.NEON)
     }
 
+    fun saveSubgroupFilter(mode: SubgroupFilterMode) {
+        prefs.edit().putString(KEY_SUBGROUP_FILTER, mode.name).apply()
+    }
+
+    fun loadSubgroupFilter(): SubgroupFilterMode {
+        val raw = prefs.getString(KEY_SUBGROUP_FILTER, SubgroupFilterMode.ALL.name)
+        return runCatching { SubgroupFilterMode.valueOf(raw ?: SubgroupFilterMode.ALL.name) }
+            .getOrDefault(SubgroupFilterMode.ALL)
+    }
+
     private companion object {
         const val CACHE_FILE_NAME = "schedule_cache_c25io.json"
         const val ACTORS_CACHE_FILE_NAME = "actors_cache_v1.json"
         const val PREFS_NAME = "ngieu_raspisanie_prefs"
         const val KEY_THEME_MODE = "theme_mode_v2"
+        const val KEY_SUBGROUP_FILTER = "subgroup_filter_v1"
     }
 }

@@ -261,6 +261,10 @@ class ScheduleRepository(
 
     fun saveThemeMode(mode: ThemeModeSetting) = cache.saveThemeMode(mode)
 
+    fun loadSubgroupFilter(): SubgroupFilterMode = cache.loadSubgroupFilter()
+
+    fun saveSubgroupFilter(mode: SubgroupFilterMode) = cache.saveSubgroupFilter(mode)
+
     companion object {
         const val TARGET_GROUP_NAME = "С-25ИО"
         const val FALLBACK_ACTOR_ID = "a11ce001-0000-0001-0000-00a200000000"

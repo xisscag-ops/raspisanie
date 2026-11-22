@@ -89,6 +89,7 @@ import ru.ngieu.raspisanie.data.AppUpdater
 import ru.ngieu.raspisanie.data.ScheduleActor
 import ru.ngieu.raspisanie.data.ScheduleParser
 import ru.ngieu.raspisanie.data.ScheduleRepository
+import ru.ngieu.raspisanie.data.SubgroupFilterMode
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.LiveLessonState
@@ -133,6 +134,7 @@ fun ScheduleScreen(
     onSelectActor: (ScheduleActor) -> Unit,
     onResetToDefaultGroup: () -> Unit,
     onSelectTheme: (ThemeModeSetting) -> Unit,
+    onSelectSubgroup: (SubgroupFilterMode) -> Unit,
     onCheckForUpdates: () -> Unit,
     onInstallUpdate: () -> Unit,
     onShareSchedule: () -> Unit,
@@ -153,11 +155,16 @@ fun ScheduleScreen(
                     .statusBarsPadding(),
             ) {
                 // Верхний заголовок в стиле Neon Glass
+                val subgroupSuffix = if (state.effectiveSubgroupFilter != SubgroupFilterMode.ALL) {
+                    " • ${state.effectiveSubgroupFilter.shortLabel}"
+                } else {
+                    ""
+                }
                 NeonTopHeader(
                     groupName = state.groupName,
                     activeActorKind = state.activeActorKind,
                     isViewingDefaultGroup = state.isViewingDefaultGroup,
-                    weekSubtitle = "${state.activeWeekFilter.title} неделя",
+                    weekSubtitle = "${state.activeWeekFilter.title} неделя$subgroupSuffix",
                     showTodayPill = state.selectedDate != state.todayDate || state.manualWeekOverride != null,
                     isSearchVisible = showSearchBar,
                     isSharing = state.isSharingSchedule,
@@ -255,8 +262,9 @@ fun ScheduleScreen(
                             }
 
                             MainNavTab.GROUP -> {
-                                GroupAndBellsTab(
+                                SubgroupsAndGroupTab(
                                     state = state,
+                                    onSelectSubgroup = onSelectSubgroup,
                                     onRefresh = onRefresh,
                                     onResetToDefaultGroup = onResetToDefaultGroup,
                                 )
@@ -880,10 +888,12 @@ private fun DayHorizontalPager(
                 ScheduleEngine.mondayOf(pageDate)
             }
             val pageWeekFilter = state.weekFilterForMonday(pageMonday)
+            val activeSubgroup = state.effectiveSubgroupFilter
             val daySlots = remember(
                 state.allLessons,
                 state.lessonsByWeekDay,
                 state.searchQuery,
+                activeSubgroup,
                 pageDate,
                 pageMonday,
                 state.selectedMonday,
@@ -896,6 +906,7 @@ private fun DayHorizontalPager(
                         allLessons = state.allLessons,
                         targetDate = pageDate,
                         weekFilter = pageWeekFilter,
+                        subgroupFilter = activeSubgroup,
                     ).filter(state::matchesSearch)
                 }
                 ScheduleEngine.groupLessonsIntoSlots(rawLessons)
@@ -1130,10 +1141,12 @@ private fun WeekHorizontalPager(
                 (0L..5L).map { pageMonday.plusDays(it) }
             }
             val pageWeekFilter = state.weekFilterForMonday(pageMonday)
+            val activeSubgroup = state.effectiveSubgroupFilter
             val slotsByDay = remember(
                 state.allLessons,
                 state.lessonsByWeekDay,
                 state.searchQuery,
+                activeSubgroup,
                 pageMonday,
                 state.selectedMonday,
                 pageWeekFilter,
@@ -1146,6 +1159,7 @@ private fun WeekHorizontalPager(
                             allLessons = state.allLessons,
                             targetDate = date,
                             weekFilter = pageWeekFilter,
+                            subgroupFilter = activeSubgroup,
                         ).filter(state::matchesSearch)
                     }
                 }
@@ -1276,8 +1290,9 @@ private fun WeekHorizontalPager(
 }
 
 @Composable
-private fun GroupAndBellsTab(
+private fun SubgroupsAndGroupTab(
     state: ScheduleUiState,
+    onSelectSubgroup: (SubgroupFilterMode) -> Unit,
     onRefresh: () -> Unit,
     onResetToDefaultGroup: () -> Unit,
 ) {
@@ -1293,6 +1308,12 @@ private fun GroupAndBellsTab(
     } ?: "Ожидается синхронизация"
     val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
+    val subgroupOptions = listOf(
+        SubgroupFilterMode.FIRST,
+        SubgroupFilterMode.SECOND,
+        SubgroupFilterMode.ALL,
+    )
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -1303,6 +1324,124 @@ private fun GroupAndBellsTab(
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item {
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 20.dp,
+                glowColor = if (style.isNeon) Color(0xFF38BDF8) else null,
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                                    ),
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_neon_group),
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Отображение подгрупп",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = titleColor,
+                            )
+                            Text(
+                                text = "Выберите свою подгруппу или показ обеих сразу",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = subColor,
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        subgroupOptions.forEach { mode ->
+                            val selected = state.subgroupFilter == mode
+                            val pillBrush = when {
+                                selected && style.isNeon -> Brush.verticalGradient(
+                                    listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
+                                )
+                                selected -> Brush.verticalGradient(
+                                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                                )
+                                else -> null
+                            }
+                            val borderBrush = when {
+                                selected && style.isNeon -> Brush.linearGradient(
+                                    listOf(Color(0x99E9D5FF), Color(0x667DD3FC)),
+                                )
+                                selected -> Brush.linearGradient(
+                                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                                )
+                                style.isNeon -> Brush.linearGradient(
+                                    listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom),
+                                )
+                                else -> Brush.linearGradient(
+                                    listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
+                                )
+                            }
+
+                            GlassCard(
+                                modifier = Modifier.weight(1f),
+                                cornerRadius = 14.dp,
+                                fillBrush = pillBrush,
+                                borderBrush = borderBrush,
+                                borderWidth = if (selected) 1.4.dp else 1.dp,
+                                onClick = { onSelectSubgroup(mode) },
+                            ) {
+                                Text(
+                                    text = mode.label,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selected) Color.White else subColor,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp, horizontal = 6.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val hintText = when {
+                        state.activeActorKind == ActorKind.TEACHER ->
+                            "Сейчас открыто расписание преподавателя — для него показываются все пары, а ваш выбор сохранится для групп."
+                        state.subgroupFilter == SubgroupFilterMode.ALL ->
+                            "Показываются пары обеих подгрупп. Выберите 1 или 2 подгруппу, чтобы скрыть лишние карточки."
+                        else ->
+                            "Включена ${state.subgroupFilter.label.lowercase()}: пары другой подгруппы скрыты, а общие лекции и пары всей группы видны всегда."
+                    }
+                    Text(
+                        text = hintText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subColor,
+                    )
+                }
+            }
+        }
+
         item {
             GlassCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -1412,49 +1551,6 @@ private fun GroupAndBellsTab(
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.SemiBold,
                                 color = titleColor,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            GlassCard(
-                modifier = Modifier.fillMaxWidth(),
-                cornerRadius = 20.dp,
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Расписание звонков",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = titleColor,
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    ScheduleEngine.standardBells.forEachIndexed { index, bell ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = "${bell.pairNumber} пара",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = titleColor,
-                            )
-                            Text(
-                                text = "${bell.start} – ${bell.end}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = subColor,
-                            )
-                        }
-                        if (index < ScheduleEngine.standardBells.lastIndex) {
-                            HorizontalDivider(
-                                color = if (style.isNeon) Color(0x1EFFFFFF) else MaterialTheme.colorScheme.outlineVariant,
                             )
                         }
                     }
@@ -1667,6 +1763,66 @@ private fun SettingsTab(
                 onCheckForUpdates = onCheckForUpdates,
                 onInstallUpdate = onInstallUpdate,
             )
+        }
+
+        item {
+            var bellsExpanded by remember { mutableStateOf(false) }
+            GlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 18.dp,
+                onClick = { bellsExpanded = !bellsExpanded },
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Расписание звонков",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = titleColor,
+                        )
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_neon_expand),
+                            contentDescription = if (bellsExpanded) "Свернуть" else "Развернуть",
+                            colorFilter = if (style.isNeon) null else ColorFilter.tint(subColor),
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                    AnimatedVisibility(visible = bellsExpanded) {
+                        Column(modifier = Modifier.padding(top = 10.dp)) {
+                            ScheduleEngine.standardBells.forEachIndexed { index, bell ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = "${bell.pairNumber} пара",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = titleColor,
+                                    )
+                                    Text(
+                                        text = "${bell.start} – ${bell.end}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = subColor,
+                                    )
+                                }
+                                if (index < ScheduleEngine.standardBells.lastIndex) {
+                                    HorizontalDivider(
+                                        color = if (style.isNeon) Color(0x1EFFFFFF) else MaterialTheme.colorScheme.outlineVariant,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         item {
