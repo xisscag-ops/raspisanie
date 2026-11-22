@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import ru.ngieu.raspisanie.R
 import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.ThemeModeSetting
-import ru.ngieu.raspisanie.data.WeekParity
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
@@ -501,31 +500,6 @@ private fun SubgroupLessonRow(
                     )
                 }
             }
-
-            if (lesson.parity != WeekParity.EVERY) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(
-                            when {
-                                style.isNeon -> Color(0x22FFFFFF)
-                                style.isGlass -> GlassPalette.secondaryPillBg
-                                else -> MaterialTheme.colorScheme.surfaceVariant
-                            },
-                        )
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                ) {
-                    Text(
-                        text = lesson.parity.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when {
-                            style.isNeon -> NeonPalette.textSecondary
-                            style.isGlass -> GlassPalette.secondaryPillText
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -733,8 +707,9 @@ private fun PairProgressFooter(
                 .clip(RoundedCornerShape(2.dp))
                 .background(
                     when {
-                        style.isNeon -> Color(0x29FFFFFF)
+                        style.isNeon -> labelColor.copy(alpha = if (isRunning) 0.32f else 0.65f)
                         style.isGlass -> GlassPalette.progressTrack
+                        style.isDark -> labelColor.copy(alpha = if (isRunning) 0.35f else 1f)
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     },
                 ),
