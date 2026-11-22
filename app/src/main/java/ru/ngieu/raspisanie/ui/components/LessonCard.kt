@@ -64,6 +64,7 @@ fun LessonCard(
     modifier: Modifier = Modifier,
     isFirst: Boolean = false,
     isLast: Boolean = false,
+    showGroupsInsteadOfTeachers: Boolean = false,
 ) {
     val style = LocalAppVisualStyle.current
     val isDark = style.isDark
@@ -267,6 +268,7 @@ fun LessonCard(
                         isCurrentNow = isCurrentNow,
                         showNowBadge = isCurrentNow && index == 0,
                         activeNowAccent = activeNowAccent,
+                        showGroupsInsteadOfTeachers = showGroupsInsteadOfTeachers,
                     )
                 }
 
@@ -296,6 +298,7 @@ private fun SubgroupLessonRow(
     isCurrentNow: Boolean,
     showNowBadge: Boolean,
     activeNowAccent: Color,
+    showGroupsInsteadOfTeachers: Boolean,
 ) {
     val style = LocalAppVisualStyle.current
     val isDark = style.isDark
@@ -474,7 +477,28 @@ private fun SubgroupLessonRow(
             }
         }
 
-        if (lesson.teachers.isNotEmpty()) {
+        val showGroups = showGroupsInsteadOfTeachers && lesson.groups.isNotEmpty()
+        if (showGroups) {
+            Spacer(modifier = Modifier.height(3.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_neon_group),
+                    contentDescription = null,
+                    colorFilter = if (style.isNeon) null else ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = lesson.groups.joinToString(", "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (style.isNeon) NeonPalette.textSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        } else if (lesson.teachers.isNotEmpty()) {
             Spacer(modifier = Modifier.height(3.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,

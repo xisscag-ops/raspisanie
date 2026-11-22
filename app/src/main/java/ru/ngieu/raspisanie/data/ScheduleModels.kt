@@ -6,6 +6,26 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 @Serializable
+enum class ActorKind {
+    GROUP,
+    TEACHER,
+}
+
+@Serializable
+data class ScheduleActor(
+    val id: String,
+    val name: String,
+    val kind: ActorKind,
+    val departmentId: Int = 0,
+)
+
+@Serializable
+data class CachedActorsBundle(
+    val actors: List<ScheduleActor>,
+    val updatedAtEpochMillis: Long,
+)
+
+@Serializable
 data class ActorDto(
     val id: String = "",
     val departmentId: Int = 0,
@@ -63,6 +83,7 @@ data class Lesson(
     val parity: WeekParity,
     val explicitDate: LocalDate?,
     val isChange: Boolean,
+    val groups: List<String> = emptyList(),
 )
 
 @Serializable
@@ -83,6 +104,7 @@ data class ScheduleSnapshot(
     val weekAnchorIsUpper: Boolean?,
     val updatedAtEpochMillis: Long,
     val isFromCache: Boolean,
+    val actorKind: ActorKind = ActorKind.GROUP,
 )
 
 enum class ThemeModeSetting(val label: String) {

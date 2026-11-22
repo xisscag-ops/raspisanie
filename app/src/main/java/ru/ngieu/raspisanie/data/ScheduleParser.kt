@@ -41,6 +41,51 @@ object ScheduleParser {
         }.filter { it.id.isNotBlank() && it.name.isNotBlank() }
     }
 
+    fun parseTypedActors(rawJson: String, kind: ActorKind): List<ScheduleActor> {
+        return parseActors(rawJson)
+            .distinctBy { it.id }
+            .map { dto ->
+                ScheduleActor(
+                    id = dto.id.trim(),
+                    name = dto.name.trim(),
+                    kind = kind,
+                    departmentId = dto.departmentId,
+                )
+            }
+            .sortedBy { it.name.lowercase() }
+    }
+
+    fun searchActors(
+        actors: List<ScheduleActor>,
+        query: String,
+        filter: ActorKind? = null,
+    ): List<ScheduleActor> {
+        val scoped = if (filter != null) {
+            actors.filter { it.kind == filter }
+        } else {
+            actors
+        }
+        val trimmed = query.trim().lowercase()
+        if (trimmed.isEmpty()) {
+            return scoped.sortedWith(compareBy({ it.kind.ordinal }, { it.name.lowercase() }))
+        }
+        val normalizedCompact = trimmed.replace("-", "").replace(" ", "")
+        return scoped
+            .mapNotNull { actor ->
+                val lowerName = actor.name.lowercase()
+                val compactName = lowerName.replace("-", "").replace(" ", "")
+                val rank = when {
+                    lowerName.startsWith(trimmed) || compactName.startsWith(normalizedCompact) -> 0
+                    lowerName.split(" ", "-").any { it.startsWith(trimmed) } -> 1
+                    lowerName.contains(trimmed) || compactName.contains(normalizedCompact) -> 2
+                    else -> return@mapNotNull null
+                }
+                rank to actor
+            }
+            .sortedWith(compareBy({ it.first }, { it.second.kind.ordinal }, { it.second.name.lowercase() }))
+            .map { it.second }
+    }
+
     fun findGroupActorId(actors: List<ActorDto>, targetGroupName: String): String? {
         val normalizedTarget = normalizeGroupName(targetGroupName)
         return actors.firstOrNull { normalizeGroupName(it.name) == normalizedTarget }?.id
@@ -97,11 +142,14 @@ object ScheduleParser {
                     ?: dto.offices.singleOrNull()?.trim().orEmpty()
                 val note = dto.notes.getOrNull(subIndex)?.trim()?.takeIf { it.isNotEmpty() }
                     ?: dto.notes.singleOrNull()?.trim().orEmpty()
+                val group = dto.groups.getOrNull(subIndex)?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: dto.groups.singleOrNull()?.trim()?.takeIf { it.isNotEmpty() }
                 buildLesson(
                     dto = dto,
                     day = day,
                     subject = subTitle,
                     teachers = listOfNotNull(teacher),
+                    groups = listOfNotNull(group),
                     room = room,
                     note = note,
                     uniqueSuffix = "${index}_$subIndex",
@@ -111,6 +159,7 @@ object ScheduleParser {
 
         val subject = rawSubjects.firstOrNull { it.isNotEmpty() }.orEmpty()
         val teachers = dto.instructors.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        val groups = dto.groups.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
         val room = dto.offices.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(", ")
         val note = dto.notes.map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(" • ")
 
@@ -122,6 +171,7 @@ object ScheduleParser {
                 day = day,
                 subject = subject.ifEmpty { note },
                 teachers = teachers,
+                groups = groups,
                 room = room,
                 note = note,
                 uniqueSuffix = index.toString(),
@@ -134,6 +184,7 @@ object ScheduleParser {
         day: DayOfWeek,
         subject: String,
         teachers: List<String>,
+        groups: List<String>,
         room: String,
         note: String,
         uniqueSuffix: String,
@@ -171,6 +222,7 @@ object ScheduleParser {
             parity = parity,
             explicitDate = explicitDate,
             isChange = dto.isChange,
+            groups = groups,
         )
     }
 
@@ -244,7 +296,7 @@ object ScheduleParser {
         return "%02d:%02d".format(time.hour, time.minute)
     }
 
-    private fun normalizeGroupName(name: String): String {
+    fun normalizeGroupName(name: String): String {
         return name.trim().replace(" ", "").uppercase()
     }
 

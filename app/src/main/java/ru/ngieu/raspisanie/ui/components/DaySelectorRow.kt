@@ -1,9 +1,5 @@
 package ru.ngieu.raspisanie.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -132,36 +128,21 @@ fun DaySelectorRow(
             val dayLessons = lessonsByDay[date].orEmpty()
             val hasChanges = dayLessons.any { it.isChange }
 
-            val scale by animateFloatAsState(
-                targetValue = if (isSelected) 1.02f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessHigh,
-                ),
-                label = "dayScale",
-            )
+            val scale = if (isSelected) 1.02f else 1f
 
-            val labelColor by animateColorAsState(
-                targetValue = when {
-                    isSelected -> Color.White
-                    style.isNeon -> NeonPalette.textSecondary
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                animationSpec = tween(80),
-                label = "dayLabelColor",
-            )
+            val labelColor = when {
+                isSelected -> Color.White
+                style.isNeon -> NeonPalette.textSecondary
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
 
-            val numberColor by animateColorAsState(
-                targetValue = when {
-                    isSelected -> Color.White
-                    isToday && style.isNeon -> Color(0xFF38BDF8)
-                    isToday -> MaterialTheme.colorScheme.primary
-                    style.isNeon -> NeonPalette.textPrimary
-                    else -> MaterialTheme.colorScheme.onSurface
-                },
-                animationSpec = tween(80),
-                label = "dayNumberColor",
-            )
+            val numberColor = when {
+                isSelected -> Color.White
+                isToday && style.isNeon -> Color(0xFF38BDF8)
+                isToday -> MaterialTheme.colorScheme.primary
+                style.isNeon -> NeonPalette.textPrimary
+                else -> MaterialTheme.colorScheme.onSurface
+            }
 
             val shape = RoundedCornerShape(16.dp)
             val fillBrush = when {
