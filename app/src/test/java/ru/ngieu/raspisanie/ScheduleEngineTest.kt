@@ -101,6 +101,33 @@ class ScheduleEngineTest {
         assertFalse(finished is LiveLessonState.NoLessonsToday)
     }
 
+    @Test
+    fun `maps day and week pager indices symmetrically across study weeks`() {
+        val anchorMonday = LocalDate.of(2026, 11, 23) // Monday
+
+        // Monday of anchor week
+        val anchorIndex = ScheduleEngine.dateToDayIndex(anchorMonday, anchorMonday)
+        assertEquals(ScheduleEngine.MAX_WEEK_OFFSET * ScheduleEngine.DAYS_PER_STUDY_WEEK, anchorIndex)
+        assertEquals(anchorMonday, ScheduleEngine.dayIndexToDate(anchorMonday, anchorIndex))
+
+        // Saturday of anchor week -> next page is Monday of next week (skips Sunday)
+        val saturday = anchorMonday.plusDays(5)
+        val saturdayIndex = ScheduleEngine.dateToDayIndex(anchorMonday, saturday)
+        assertEquals(anchorIndex + 5, saturdayIndex)
+        assertEquals(saturday, ScheduleEngine.dayIndexToDate(anchorMonday, saturdayIndex))
+        assertEquals(anchorMonday.plusWeeks(1), ScheduleEngine.dayIndexToDate(anchorMonday, saturdayIndex + 1))
+
+        // Previous week Friday
+        val prevFriday = anchorMonday.minusDays(3)
+        val prevFridayIndex = ScheduleEngine.dateToDayIndex(anchorMonday, prevFriday)
+        assertEquals(prevFriday, ScheduleEngine.dayIndexToDate(anchorMonday, prevFridayIndex))
+
+        // Week index round-trips
+        val weekIdx = ScheduleEngine.mondayToWeekIndex(anchorMonday, anchorMonday.plusWeeks(3))
+        assertEquals(ScheduleEngine.MAX_WEEK_OFFSET + 3, weekIdx)
+        assertEquals(anchorMonday.plusWeeks(3), ScheduleEngine.weekIndexToMonday(anchorMonday, weekIdx))
+    }
+
     private fun sampleLesson(
         id: String,
         pair: Int,

@@ -43,6 +43,11 @@ data class BellSlot(
 
 object ScheduleEngine {
 
+    const val MAX_WEEK_OFFSET = 52
+    const val DAYS_PER_STUDY_WEEK = 6
+    const val TOTAL_WEEK_PAGES = MAX_WEEK_OFFSET * 2 + 1
+    const val TOTAL_DAY_PAGES = TOTAL_WEEK_PAGES * DAYS_PER_STUDY_WEEK
+
     val standardBells = listOf(
         BellSlot(1, "08:00", "09:30"),
         BellSlot(2, "09:40", "11:10"),
@@ -55,6 +60,34 @@ object ScheduleEngine {
 
     fun mondayOf(date: LocalDate): LocalDate {
         return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    }
+
+    fun dayIndexToDate(anchorMonday: LocalDate, pageIndex: Int): LocalDate {
+        val clamped = pageIndex.coerceIn(0, TOTAL_DAY_PAGES - 1)
+        val weekOffset = clamped / DAYS_PER_STUDY_WEEK - MAX_WEEK_OFFSET
+        val dayOffset = clamped % DAYS_PER_STUDY_WEEK
+        return anchorMonday.plusWeeks(weekOffset.toLong()).plusDays(dayOffset.toLong())
+    }
+
+    fun dateToDayIndex(anchorMonday: LocalDate, date: LocalDate): Int {
+        val monday = mondayOf(date)
+        val weekDiff = ChronoUnit.WEEKS.between(anchorMonday, monday)
+            .toInt()
+            .coerceIn(-MAX_WEEK_OFFSET, MAX_WEEK_OFFSET)
+        val dayOffset = (date.dayOfWeek.value - 1).coerceIn(0, DAYS_PER_STUDY_WEEK - 1)
+        return (weekDiff + MAX_WEEK_OFFSET) * DAYS_PER_STUDY_WEEK + dayOffset
+    }
+
+    fun weekIndexToMonday(anchorMonday: LocalDate, pageIndex: Int): LocalDate {
+        val clamped = pageIndex.coerceIn(0, TOTAL_WEEK_PAGES - 1)
+        return anchorMonday.plusWeeks((clamped - MAX_WEEK_OFFSET).toLong())
+    }
+
+    fun mondayToWeekIndex(anchorMonday: LocalDate, monday: LocalDate): Int {
+        val weekDiff = ChronoUnit.WEEKS.between(anchorMonday, monday)
+            .toInt()
+            .coerceIn(-MAX_WEEK_OFFSET, MAX_WEEK_OFFSET)
+        return weekDiff + MAX_WEEK_OFFSET
     }
 
     /**

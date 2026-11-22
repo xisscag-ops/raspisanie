@@ -1,5 +1,16 @@
 package ru.ngieu.raspisanie.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,11 +78,20 @@ fun WeekSelectorBar(
                         contentDescription = "Предыдущая неделя",
                     )
                 }
-                Text(
-                    text = rangeText,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                AnimatedContent(
+                    targetState = rangeText,
+                    transitionSpec = {
+                        (slideInVertically(tween(180)) { it / 3 } + fadeIn(tween(180)))
+                            .togetherWith(slideOutVertically(tween(140)) { -it / 3 } + fadeOut(tween(140)))
+                    },
+                    label = "weekRangeText",
+                ) { text ->
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
                 IconButton(
                     onClick = onNextWeek,
                     modifier = Modifier.size(36.dp),
@@ -82,7 +103,11 @@ fun WeekSelectorBar(
                 }
             }
 
-            if (showTodayButton) {
+            AnimatedVisibility(
+                visible = showTodayButton,
+                enter = scaleIn(tween(180)) + fadeIn(tween(180)),
+                exit = scaleOut(tween(140)) + fadeOut(tween(140)),
+            ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
                     color = MaterialTheme.colorScheme.primaryContainer,
@@ -120,22 +145,33 @@ fun WeekSelectorBar(
             WeekFilterMode.entries.forEach { mode ->
                 val selected = activeWeekFilter == mode
                 val isActualWeek = detectedWeekForSelectedMonday == mode
+                val bgColor by animateColorAsState(
+                    targetValue = if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                    animationSpec = tween(durationMillis = 200),
+                    label = "weekTabBg",
+                )
+                val textColor by animateColorAsState(
+                    targetValue = if (selected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    animationSpec = tween(durationMillis = 200),
+                    label = "weekTabText",
+                )
+
                 Surface(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { onSelectWeekMode(mode) },
                     shape = RoundedCornerShape(12.dp),
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
-                    contentColor = if (selected) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
+                    color = bgColor,
+                    contentColor = textColor,
                     border = if (selected) {
                         null
                     } else {

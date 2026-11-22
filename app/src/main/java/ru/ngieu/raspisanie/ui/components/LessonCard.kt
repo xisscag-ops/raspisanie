@@ -1,5 +1,7 @@
 package ru.ngieu.raspisanie.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -48,20 +51,26 @@ fun LessonCard(
         ThemeModeSetting.DARK -> true
     }
 
-    val cardColor = when {
-        lesson.isChange -> if (isDark) ScheduleAccentColors.changeBgDark else ScheduleAccentColors.changeBgLight
-        isCurrentNow -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        else -> MaterialTheme.colorScheme.surface
-    }
+    val cardColor by animateColorAsState(
+        targetValue = when {
+            lesson.isChange -> if (isDark) ScheduleAccentColors.changeBgDark else ScheduleAccentColors.changeBgLight
+            isCurrentNow -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+            else -> MaterialTheme.colorScheme.surface
+        },
+        animationSpec = tween(durationMillis = 220),
+        label = "lessonCardBg",
+    )
 
-    val borderStroke = when {
-        lesson.isChange -> BorderStroke(
-            1.5.dp,
-            if (isDark) ScheduleAccentColors.changeBorderDark else ScheduleAccentColors.changeBorderLight,
-        )
-        isCurrentNow -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    }
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            lesson.isChange -> if (isDark) ScheduleAccentColors.changeBorderDark else ScheduleAccentColors.changeBorderLight
+            isCurrentNow -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.outlineVariant
+        },
+        animationSpec = tween(durationMillis = 220),
+        label = "lessonCardBorder",
+    )
+    val borderWidth = if (lesson.isChange || isCurrentNow) 1.5.dp else 1.dp
 
     val typeColor = ScheduleAccentColors.lessonTypeColor(lesson.lessonType, isDark)
 
@@ -69,7 +78,7 @@ fun LessonCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = cardColor,
-        border = borderStroke,
+        border = BorderStroke(borderWidth, borderColor),
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
