@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,7 +55,7 @@ private val navItems = listOf(
 )
 
 @Composable
-fun NeonBottomBar(
+fun NeonTopNavBar(
     activeTab: MainNavTab,
     onSelectTab: (MainNavTab) -> Unit,
     modifier: Modifier = Modifier,
@@ -66,17 +65,16 @@ fun NeonBottomBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
         GlassCard(
-            cornerRadius = 26.dp,
+            cornerRadius = 22.dp,
             fillBrush = if (style.isNeon) {
                 Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0xD91A1F44),
-                        Color(0xCC131936),
-                        Color(0xD915224B),
+                        Color(0xCC1A1F44),
+                        Color(0xBF131936),
+                        Color(0xCC15224B),
                     ),
                 )
             } else {
@@ -90,9 +88,9 @@ fun NeonBottomBar(
             borderBrush = if (style.isNeon) {
                 Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0x66A855F7),
-                        Color(0x2EFFFFFF),
-                        Color(0x6638BDF8),
+                        Color(0x55A855F7),
+                        Color(0x28FFFFFF),
+                        Color(0x5538BDF8),
                     ),
                 )
             } else {
@@ -103,12 +101,11 @@ fun NeonBottomBar(
                     ),
                 )
             },
-            glowColor = if (style.isNeon) Color(0xFF7C3AED) else null,
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                    .padding(horizontal = 5.dp, vertical = 5.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -121,11 +118,11 @@ fun NeonBottomBar(
                             style.isNeon -> NeonPalette.textSecondary
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                        animationSpec = tween(200),
+                        animationSpec = tween(90),
                         label = "navLabel",
                     )
 
-                    val pillShape = RoundedCornerShape(20.dp)
+                    val pillShape = RoundedCornerShape(17.dp)
                     val activeBrush = if (style.isNeon) {
                         Brush.verticalGradient(
                             colors = listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
@@ -141,15 +138,15 @@ fun NeonBottomBar(
                             .weight(1f)
                             .drawBehind {
                                 if (selected && style.isNeon) {
-                                    val r = 20.dp.toPx()
+                                    val r = 17.dp.toPx()
                                     drawRoundRect(
-                                        color = Color(0xFF9333EA).copy(alpha = 0.42f),
-                                        topLeft = Offset(-2.dp.toPx(), -2.dp.toPx()),
+                                        color = Color(0xFF9333EA).copy(alpha = 0.36f),
+                                        topLeft = Offset(-1.5.dp.toPx(), -1.5.dp.toPx()),
                                         size = Size(
-                                            width = size.width + 4.dp.toPx(),
-                                            height = size.height + 4.dp.toPx(),
+                                            width = size.width + 3.dp.toPx(),
+                                            height = size.height + 3.dp.toPx(),
                                         ),
-                                        cornerRadius = CornerRadius(r + 2.dp.toPx(), r + 2.dp.toPx()),
+                                        cornerRadius = CornerRadius(r + 1.5.dp.toPx(), r + 1.5.dp.toPx()),
                                     )
                                 }
                             }
@@ -168,7 +165,7 @@ fun NeonBottomBar(
                                 }
                             )
                             .clickable { onSelectTab(item.tab) }
-                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                            .padding(vertical = 7.dp, horizontal = 4.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(
@@ -184,9 +181,9 @@ fun NeonBottomBar(
                                     style.isNeon -> ColorFilter.tint(NeonPalette.textSecondary)
                                     else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                                 },
-                                modifier = Modifier.size(21.dp),
+                                modifier = Modifier.size(19.dp),
                             )
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = item.label,
                                 fontSize = 11.sp,

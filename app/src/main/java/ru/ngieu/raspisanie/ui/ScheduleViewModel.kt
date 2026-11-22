@@ -313,13 +313,14 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
         val liveState = ScheduleEngine.computeLiveLessonState(todayLessons, state.nowTime)
 
         val selectedLessons = lessonsByDay[state.selectedDate].orEmpty()
-        val total = selectedLessons.size
+        val selectedSlots = ScheduleEngine.groupLessonsIntoSlots(selectedLessons)
+        val total = selectedSlots.size
         val activeCount = when {
             total == 0 -> 0
             state.selectedDate.isBefore(state.todayDate) -> total
             state.selectedDate.isAfter(state.todayDate) -> 0
-            else -> selectedLessons.count { lesson ->
-                lesson.startTime != null && !state.nowTime.isBefore(lesson.startTime)
+            else -> selectedSlots.count { slot ->
+                slot.startTime != null && !state.nowTime.isBefore(slot.startTime)
             }
         }
         val fraction = if (total == 0) 0f else (activeCount.toFloat() / total.toFloat()).coerceIn(0f, 1f)

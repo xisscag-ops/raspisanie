@@ -41,9 +41,10 @@ object NeonPalette {
     val activeDayEnd = Color(0xFF5B46F6)
     val activeDayBorder = Color(0xFFE9D5FF)
 
-    val activeLessonStart = Color(0xBA1E3A8A)
-    val activeLessonEnd = Color(0xB816204A)
-    val activeLessonBorder = Color(0xFF38BDF8)
+    val activeLessonStart = Color(0xCC0D4A3E)
+    val activeLessonEnd = Color(0xBA093334)
+    val activeLessonBorder = Color(0xFF34D399)
+    val activeLessonAccent = Color(0xFF10B981)
 
     val progressStart = Color(0xFFA855F7)
     val progressEnd = Color(0xFF38BDF8)
@@ -52,6 +53,7 @@ object NeonPalette {
     val textSecondary = Color(0xFFA5B0D6)
     val timelinePurple = Color(0xFF8B5CF6)
     val timelineCyan = Color(0xFF38BDF8)
+    val timelineActiveNow = Color(0xFF34D399)
 }
 
 private val NeonColors = darkColorScheme(
@@ -143,6 +145,11 @@ object ScheduleAccentColors {
     val changeBgDark = Color(0x8838220A)
     val changeBorderDark = Color(0xFFFBBF24)
     val changeBadgeDark = Color(0xFFFBBF24)
+
+    val currentLessonBgLight = Color(0xFFE6F9F2)
+    val currentLessonBorderLight = Color(0xFF059669)
+    val currentLessonBgDark = Color(0x800B3B2E)
+    val currentLessonBorderDark = Color(0xFF34D399)
 
     fun lessonTypeColor(type: LessonType, isDark: Boolean): Color {
         return when (type) {

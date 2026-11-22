@@ -82,13 +82,13 @@ fun LiveLessonBanner(
 
     val animatedProgress by animateFloatAsState(
         targetValue = targetFraction,
-        animationSpec = tween(durationMillis = 450),
+        animationSpec = tween(durationMillis = 250),
         label = "dayProgress",
     )
 
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 90f else 0f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = 120),
         label = "chevronRotation",
     )
 
@@ -127,7 +127,7 @@ fun LiveLessonBanner(
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(220)),
+            .animateContentSize(animationSpec = tween(130)),
         cornerRadius = 20.dp,
         fillBrush = capsuleBrush,
         borderBrush = borderBrush,
@@ -254,12 +254,12 @@ fun LiveLessonBanner(
 
             AnimatedVisibility(
                 visible = expanded && isViewingToday && state !is LiveLessonState.NoLessonsToday,
-                enter = expandVertically(tween(200)) + fadeIn(tween(200)),
-                exit = shrinkVertically(tween(160)) + fadeOut(tween(160)),
+                enter = expandVertically(tween(120)) + fadeIn(tween(120)),
+                exit = shrinkVertically(tween(100)) + fadeOut(tween(100)),
             ) {
                 AnimatedContent(
                     targetState = state,
-                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(140)) },
+                    transitionSpec = { fadeIn(tween(110)) togetherWith fadeOut(tween(90)) },
                     label = "liveDetail",
                 ) { live ->
                     LiveDetailsStrip(state = live, isNeon = style.isNeon)
