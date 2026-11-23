@@ -153,20 +153,23 @@ object ScheduleEngine {
             }
         }
 
-        // Если на конкретную дату и пару есть общегрупповая замена (isChange && explicitDate == targetDate),
-        // она заменяет обычные пары в этом слоте; если замена точечная для подгруппы — оставляем оба варианта.
-        val wholeGroupReplacedPairs = dayCandidates
-            .filter {
-                it.isChange &&
-                    it.explicitDate == targetDate &&
-                    it.pairNumber > 0 &&
-                    !it.subject.contains("(пр.", ignoreCase = true)
-            }
-            .map { it.pairNumber }
+        // Если на конкретную дату и пару есть замена (isChange && explicitDate == targetDate),
+        // она заменяет базовые пары (!isChange) в этом слоте — включая случаи, когда замена
+        // назначена только одной подгруппе.
+        val datedChanges = dayCandidates.filter { it.isChange && it.explicitDate == targetDate }
+        val replacedPairs = datedChanges
+            .mapNotNull { it.pairNumber.takeIf { num -> num > 0 } }
+            .toSet()
+        val replacedTimeWindows = datedChanges
+            .filter { it.pairNumber <= 0 && it.startTime != null && it.endTime != null }
+            .map { it.startTime!! to it.endTime!! }
             .toSet()
 
         val resolved = dayCandidates.filter { lesson ->
-            val keepByReplacement = lesson.isChange || lesson.pairNumber !in wholeGroupReplacedPairs
+            val isReplacedSlot = lesson.pairNumber in replacedPairs ||
+                (lesson.pairNumber <= 0 && lesson.startTime != null && lesson.endTime != null &&
+                    (lesson.startTime to lesson.endTime) in replacedTimeWindows)
+            val keepByReplacement = lesson.isChange || !isReplacedSlot
             keepByReplacement && matchesSubgroupFilter(lesson, subgroupFilter)
         }
 
