@@ -189,6 +189,58 @@ class ScheduleEngineTest {
         )
     }
 
+    @Test
+    fun `subgroup-only dated replacement hides unreplaced base lessons in that pair slot`() {
+        val targetTuesday = LocalDate.of(2026, 11, 24)
+
+        val basePair1 = sampleLesson("base1", pair = 1, parity = WeekParity.LOWER).copy(
+            dayOfWeek = DayOfWeek.TUESDAY,
+            subject = "Элементы высшей математики",
+        )
+        val basePair2 = sampleLesson("base2", pair = 2, parity = WeekParity.LOWER).copy(
+            dayOfWeek = DayOfWeek.TUESDAY,
+            subject = "История",
+        )
+        val basePair4 = sampleLesson("base4", pair = 4, parity = WeekParity.LOWER).copy(
+            dayOfWeek = DayOfWeek.TUESDAY,
+            subject = "Физика",
+        )
+
+        val changePair1Sub1 = sampleLesson(
+            id = "chg1",
+            pair = 1,
+            explicitDate = targetTuesday,
+            isChange = true,
+        ).copy(dayOfWeek = DayOfWeek.TUESDAY, subject = "(пр. 1) Практика")
+        val changePair2Sub1 = sampleLesson(
+            id = "chg2",
+            pair = 2,
+            explicitDate = targetTuesday,
+            isChange = true,
+        ).copy(dayOfWeek = DayOfWeek.TUESDAY, subject = "(пр. 1) Практика")
+        val changePair4All = sampleLesson(
+            id = "chg4",
+            pair = 4,
+            explicitDate = targetTuesday,
+            isChange = true,
+        ).copy(dayOfWeek = DayOfWeek.TUESDAY, subject = "Практика")
+
+        val all = listOf(basePair1, basePair2, basePair4, changePair1Sub1, changePair2Sub1, changePair4All)
+
+        assertEquals(
+            listOf("chg1", "chg2", "chg4"),
+            ScheduleEngine.lessonsForDay(all, targetTuesday, WeekFilterMode.LOWER, SubgroupFilterMode.ALL).map { it.id },
+        )
+        assertEquals(
+            listOf("chg1", "chg2", "chg4"),
+            ScheduleEngine.lessonsForDay(all, targetTuesday, WeekFilterMode.LOWER, SubgroupFilterMode.FIRST).map { it.id },
+        )
+        assertEquals(
+            listOf("chg4"),
+            ScheduleEngine.lessonsForDay(all, targetTuesday, WeekFilterMode.LOWER, SubgroupFilterMode.SECOND).map { it.id },
+        )
+    }
+
     private fun sampleLesson(
         id: String,
         pair: Int,
