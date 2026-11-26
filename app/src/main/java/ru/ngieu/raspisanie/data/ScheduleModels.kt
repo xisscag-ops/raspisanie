@@ -113,6 +113,7 @@ data class ScheduleSnapshot(
 enum class ThemeModeSetting(val label: String) {
     NEON("Неон"),
     GLASS("Стекло"),
+    AERO("Аэро"),
     SYSTEM("Система"),
     LIGHT("Светлая"),
     DARK("Тёмная"),
@@ -122,6 +123,7 @@ enum class AppIconStyle(val label: String) {
     AUTO("Авто"),
     NEON("Неон"),
     GLASS("Стекло"),
+    AERO("Аэро"),
     LIGHT("Светлая"),
     DARK("Тёмная"),
     CLASSIC("Классика"),
@@ -134,6 +136,7 @@ enum class ResolvedAppIcon(
 ) {
     NEON("Неон", "ru.ngieu.raspisanie.LauncherAliasNeon", defaultEnabledInManifest = false),
     GLASS("Стекло", "ru.ngieu.raspisanie.LauncherAliasGlass", defaultEnabledInManifest = false),
+    AERO("Аэро", "ru.ngieu.raspisanie.LauncherAliasAero", defaultEnabledInManifest = false),
     LIGHT("Светлая", "ru.ngieu.raspisanie.LauncherAliasLight", defaultEnabledInManifest = false),
     DARK("Тёмная", "ru.ngieu.raspisanie.LauncherAliasDark", defaultEnabledInManifest = true),
     CLASSIC("Классика", "ru.ngieu.raspisanie.LauncherAliasClassic", defaultEnabledInManifest = false),

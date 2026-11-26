@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.ngieu.raspisanie.domain.WeekFilterMode
+import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
@@ -65,11 +66,13 @@ fun WeekSelectorBar(
     val headerTextColor = when {
         style.isNeon -> NeonPalette.textPrimary
         style.isGlass -> GlassPalette.textPrimary
+        style.isAero -> AeroPalette.textPrimary
         else -> MaterialTheme.colorScheme.onBackground
     }
     val inactiveSubColor = when {
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary
+        style.isAero -> AeroPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -130,11 +133,13 @@ fun WeekSelectorBar(
                     color = when {
                         style.isNeon -> Color(0x409333EA)
                         style.isGlass -> GlassPalette.typePillBg
+                        style.isAero -> AeroPalette.activeFillMidUpper
                         else -> MaterialTheme.colorScheme.primaryContainer
                     },
                     contentColor = when {
                         style.isNeon -> Color(0xFFE9D5FF)
                         style.isGlass -> Color.White
+                        style.isAero -> Color.White
                         else -> MaterialTheme.colorScheme.onPrimaryContainer
                     },
                     modifier = Modifier
@@ -177,6 +182,7 @@ fun WeekSelectorBar(
                     selected && style.isGlass -> Brush.linearGradient(
                         listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                     )
+                    selected && style.isAero -> AeroPalette.activeFillBrush()
                     selected -> Brush.verticalGradient(
                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
@@ -189,6 +195,7 @@ fun WeekSelectorBar(
                     selected && style.isGlass -> Brush.linearGradient(
                         listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom),
                     )
+                    selected && style.isAero -> AeroPalette.activeBorderBrush()
                     selected -> Brush.linearGradient(
                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
@@ -198,6 +205,7 @@ fun WeekSelectorBar(
                     style.isGlass -> Brush.linearGradient(
                         listOf(GlassPalette.cardBorderTop, GlassPalette.cardBorderBottom),
                     )
+                    style.isAero -> AeroPalette.glassBorderBrush()
                     else -> Brush.linearGradient(
                         listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
                     )
@@ -237,7 +245,7 @@ fun WeekSelectorBar(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = when {
                                     selected -> textColor
-                                    style.isGlass -> Color.White
+                                    style.isGlass || style.isAero -> Color.White
                                     else -> Color(0xFF38BDF8)
                                 },
                             )

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ru.ngieu.raspisanie.R
 import ru.ngieu.raspisanie.ui.MainNavTab
+import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
@@ -77,7 +78,11 @@ fun NeonTopNavBar(
             .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
         GlassCard(
-            cornerRadius = if (style.isGlass) 24.dp else 22.dp,
+            cornerRadius = when {
+                style.isGlass -> 24.dp
+                style.isAero -> 16.dp
+                else -> 22.dp
+            },
             fillBrush = when {
                 style.isNeon -> Brush.horizontalGradient(
                     colors = listOf(
@@ -92,6 +97,7 @@ fun NeonTopNavBar(
                         GlassPalette.panelFillBottom,
                     ),
                 )
+                style.isAero -> AeroPalette.panelFillBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface,
@@ -113,6 +119,7 @@ fun NeonTopNavBar(
                         GlassPalette.panelBorderBottom,
                     ),
                 )
+                style.isAero -> AeroPalette.glassBorderBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.outlineVariant,
@@ -120,7 +127,11 @@ fun NeonTopNavBar(
                     ),
                 )
             },
-            glowColor = if (style.isGlass) Color.White else null,
+            glowColor = when {
+                style.isGlass -> Color.White
+                style.isAero -> Color(0xFF38BDF8)
+                else -> null
+            },
         ) {
             Row(
                 modifier = Modifier
@@ -137,13 +148,18 @@ fun NeonTopNavBar(
                             selected -> MaterialTheme.colorScheme.onPrimary
                             style.isNeon -> NeonPalette.textSecondary
                             style.isGlass -> GlassPalette.textSecondary
+                            style.isAero -> AeroPalette.textMuted
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         animationSpec = tween(90),
                         label = "navLabel",
                     )
 
-                    val pillCorner = if (style.isGlass) 19.dp else 17.dp
+                    val pillCorner = when {
+                        style.isGlass -> 19.dp
+                        style.isAero -> 13.dp
+                        else -> 17.dp
+                    }
                     val pillShape = RoundedCornerShape(pillCorner)
                     val activeBrush = when {
                         style.isNeon -> Brush.verticalGradient(
@@ -152,6 +168,7 @@ fun NeonTopNavBar(
                         style.isGlass -> Brush.linearGradient(
                             colors = listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                         )
+                        style.isAero -> AeroPalette.activeFillBrush()
                         else -> Brush.verticalGradient(
                             colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                         )
@@ -163,6 +180,7 @@ fun NeonTopNavBar(
                         style.isGlass -> Brush.linearGradient(
                             colors = listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom),
                         )
+                        style.isAero -> AeroPalette.activeBorderBrush()
                         else -> Brush.verticalGradient(
                             colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                         )
@@ -174,10 +192,10 @@ fun NeonTopNavBar(
                             .drawBehind {
                                 if (selected && style.isTranslucent) {
                                     val r = pillCorner.toPx()
-                                    val halo = if (style.isGlass) {
-                                        Color.White.copy(alpha = 0.14f)
-                                    } else {
-                                        Color(0xFF9333EA).copy(alpha = 0.36f)
+                                    val halo = when {
+                                        style.isGlass -> Color.White.copy(alpha = 0.14f)
+                                        style.isAero -> Color(0xFF7DD3FC).copy(alpha = 0.34f)
+                                        else -> Color(0xFF9333EA).copy(alpha = 0.36f)
                                     }
                                     drawRoundRect(
                                         color = halo,
@@ -215,15 +233,16 @@ fun NeonTopNavBar(
                             Box {
                                 Image(
                                     painter = painterResource(
-                                        id = if (style.isGlass) item.glassIconRes else item.iconRes,
+                                        id = if (style.isGlass || style.isAero) item.glassIconRes else item.iconRes,
                                     ),
                                     contentDescription = item.label,
                                     colorFilter = when {
                                         selected && style.isNeon -> null
-                                        selected && style.isGlass -> ColorFilter.tint(Color.White)
+                                        selected && (style.isGlass || style.isAero) -> ColorFilter.tint(Color.White)
                                         selected -> ColorFilter.tint(MaterialTheme.colorScheme.onPrimary)
                                         style.isNeon -> ColorFilter.tint(NeonPalette.textSecondary)
                                         style.isGlass -> ColorFilter.tint(Color(0xFFC2C2C2))
+                                        style.isAero -> ColorFilter.tint(AeroPalette.textMuted)
                                         else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                                     },
                                     modifier = Modifier.size(19.dp),

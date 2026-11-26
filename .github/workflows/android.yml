@@ -95,10 +95,10 @@ jobs:
                       main_exported = m_exp.group(1) if m_exp else None
 
               print("Parsed aliases:", alias_icons, "MainActivity exported:", main_exported)
-              if len(alias_icons) != 5:
-                  raise AssertionError(f"Expected 5 aliases, got {alias_icons}")
+              if len(alias_icons) != 6:
+                  raise AssertionError(f"Expected 6 aliases, got {alias_icons}")
               icons = [v[0] for v in alias_icons.values()]
-              if not all(icons) or len(set(icons)) != 5:
+              if not all(icons) or len(set(icons)) != 6:
                   raise AssertionError(f"Alias icons not distinct: {alias_icons}")
               for name, (_, en) in alias_icons.items():
                   is_dark = name.endswith("LauncherAliasDark")

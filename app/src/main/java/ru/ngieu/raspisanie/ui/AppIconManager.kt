@@ -26,12 +26,14 @@ object AppIconManager {
             AppIconStyle.AUTO -> when (themeMode) {
                 ThemeModeSetting.NEON -> ResolvedAppIcon.NEON
                 ThemeModeSetting.GLASS -> ResolvedAppIcon.GLASS
+                ThemeModeSetting.AERO -> ResolvedAppIcon.AERO
                 ThemeModeSetting.LIGHT -> ResolvedAppIcon.LIGHT
                 ThemeModeSetting.DARK -> ResolvedAppIcon.DARK
                 ThemeModeSetting.SYSTEM -> if (isSystemDark) ResolvedAppIcon.NEON else ResolvedAppIcon.LIGHT
             }
             AppIconStyle.NEON -> ResolvedAppIcon.NEON
             AppIconStyle.GLASS -> ResolvedAppIcon.GLASS
+            AppIconStyle.AERO -> ResolvedAppIcon.AERO
             AppIconStyle.LIGHT -> ResolvedAppIcon.LIGHT
             AppIconStyle.DARK -> ResolvedAppIcon.DARK
             AppIconStyle.CLASSIC -> ResolvedAppIcon.CLASSIC
