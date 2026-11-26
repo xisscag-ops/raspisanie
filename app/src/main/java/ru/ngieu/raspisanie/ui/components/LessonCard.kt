@@ -53,6 +53,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.PaperPalette
 import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
 import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 import java.time.Duration
@@ -83,6 +84,7 @@ fun LessonCard(
         style.isGlass -> GlassPalette.timelineActiveNow
         style.isAero -> AeroPalette.timelineActiveNow
         style.isTerminal -> TerminalPalette.timelineActiveNow
+        style.isPaper -> PaperPalette.timelineActiveNow
         style.isNeon || isDark -> NeonPalette.timelineActiveNow
         else -> ScheduleAccentColors.currentLessonBorderLight
     }
@@ -93,13 +95,19 @@ fun LessonCard(
             hasAnyCancelled -> when {
                 isStandardDark -> ScheduleAccentColors.cancelBadgeDark
                 style.isTranslucent -> ScheduleAccentColors.cancelBorderNeon
+                style.isPaper -> PaperPalette.cancelLessonBorder
                 else -> ScheduleAccentColors.cancelBorderLight
             }
-            hasAnyChange -> if (isStandardDark) ScheduleAccentColors.changeBadgeDark else Color(0xFFFBBF24)
+            hasAnyChange -> when {
+                isStandardDark -> ScheduleAccentColors.changeBadgeDark
+                style.isPaper -> PaperPalette.changeLessonBorder
+                else -> Color(0xFFFBBF24)
+            }
             style.isNeon -> NeonPalette.timelinePurple
             style.isGlass -> GlassPalette.timelineDot
             style.isAero -> AeroPalette.timelineDot
             style.isTerminal -> TerminalPalette.timelineDot
+            style.isPaper -> PaperPalette.timelineDot
             else -> MaterialTheme.colorScheme.primary
         },
         animationSpec = tween(110),
@@ -111,6 +119,7 @@ fun LessonCard(
         style.isGlass -> GlassPalette.timelineLine
         style.isAero -> Color(0xFFD0F0FF).copy(alpha = 0.90f)
         style.isTerminal -> TerminalPalette.timelineLine
+        style.isPaper -> PaperPalette.timelineLine
         else -> Color(0xFF94A3B8).copy(alpha = 0.45f)
     }
 
@@ -147,6 +156,8 @@ fun LessonCard(
                             Color.White.copy(alpha = 0.45f)
                         style.isTerminal && !isCurrentNow && !hasAnyChange && !hasAnyCancelled ->
                             TerminalPalette.timelineDotGlow
+                        style.isPaper && !isCurrentNow ->
+                            Color.Transparent
                         else ->
                             timelineDotColor.copy(alpha = if (isCurrentNow) 0.56f else 0.28f)
                     },
@@ -166,9 +177,10 @@ fun LessonCard(
                     color = when {
                         isCurrentNow -> timelineDotColor
                         style.isTerminal -> Color(0xFFD8FFD2)
+                        style.isPaper -> PaperPalette.surfacePaper
                         else -> Color.White
                     },
-                    radius = if ((style.isGlass || style.isAero || style.isTerminal) && !isCurrentNow && !hasAnyChange && !hasAnyCancelled) 3.2.dp.toPx() else 2.5.dp.toPx(),
+                    radius = if ((style.isGlass || style.isAero || style.isTerminal || style.isPaper) && !isCurrentNow && !hasAnyChange && !hasAnyCancelled) 3.0.dp.toPx() else 2.5.dp.toPx(),
                     center = Offset(centerX, centerY),
                 )
             },
@@ -196,6 +208,7 @@ fun LessonCard(
                         style.isGlass -> GlassPalette.textPrimary
                         style.isAero -> AeroPalette.textPrimary
                         style.isTerminal -> TerminalPalette.textPrimary
+                        style.isPaper -> PaperPalette.textPrimary
                         else -> MaterialTheme.colorScheme.onSurface
                     },
                 )
@@ -209,6 +222,7 @@ fun LessonCard(
                         style.isGlass -> GlassPalette.textSecondary
                         style.isAero -> AeroPalette.textSecondary
                         style.isTerminal -> TerminalPalette.textSecondary
+                        style.isPaper -> PaperPalette.textSecondary
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                 )
@@ -222,6 +236,7 @@ fun LessonCard(
                         style.isGlass -> GlassPalette.textPrimary
                         style.isAero -> AeroPalette.textPrimary
                         style.isTerminal -> TerminalPalette.textPrimary
+                        style.isPaper -> PaperPalette.textPrimary
                         else -> MaterialTheme.colorScheme.onSurface
                     },
                 )
@@ -248,6 +263,9 @@ fun LessonCard(
             isCurrentNow && style.isTerminal -> Brush.verticalGradient(
                 colors = listOf(TerminalPalette.activeLessonTop, TerminalPalette.activeLessonBottom),
             )
+            isCurrentNow && style.isPaper -> Brush.verticalGradient(
+                colors = listOf(PaperPalette.activeLessonBg, PaperPalette.activeLessonBg),
+            )
             isCurrentNow -> Brush.horizontalGradient(
                 colors = listOf(
                     if (isDark) ScheduleAccentColors.currentLessonBgDark else ScheduleAccentColors.currentLessonBgLight,
@@ -270,6 +288,9 @@ fun LessonCard(
             allCancelled && style.isTerminal -> Brush.verticalGradient(
                 colors = listOf(TerminalPalette.cancelLessonTop, TerminalPalette.cancelLessonBottom),
             )
+            allCancelled && style.isPaper -> Brush.verticalGradient(
+                colors = listOf(PaperPalette.cancelLessonBg, PaperPalette.cancelLessonBg),
+            )
             allCancelled && !style.isTranslucent -> Brush.horizontalGradient(
                 colors = listOf(
                     if (isDark) ScheduleAccentColors.cancelBgDark else ScheduleAccentColors.cancelBgLight,
@@ -291,6 +312,9 @@ fun LessonCard(
             )
             allChanges && style.isTerminal -> Brush.verticalGradient(
                 colors = listOf(TerminalPalette.changeLessonTop, TerminalPalette.changeLessonBottom),
+            )
+            hasAnyChange && style.isPaper -> Brush.verticalGradient(
+                colors = listOf(PaperPalette.changeLessonBg, PaperPalette.changeLessonBg),
             )
             hasAnyChange && !style.isTranslucent -> Brush.horizontalGradient(
                 colors = listOf(
@@ -326,6 +350,7 @@ fun LessonCard(
             )
             style.isAero -> AeroPalette.cardFillBrush()
             style.isTerminal -> TerminalPalette.cardFillBrush()
+            style.isPaper -> PaperPalette.cardFillBrush()
             else -> Brush.verticalGradient(
                 colors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface),
             )
@@ -349,16 +374,21 @@ fun LessonCard(
                 style.isTranslucent -> Brush.horizontalGradient(
                     colors = listOf(ScheduleAccentColors.cancelBorderNeon, Color(0xFFEF4444)),
                 )
+                style.isPaper -> Brush.horizontalGradient(
+                    colors = listOf(PaperPalette.cancelLessonBorder, PaperPalette.cancelLessonBorder),
+                )
                 else -> Brush.horizontalGradient(
                     colors = listOf(ScheduleAccentColors.cancelBorderLight, ScheduleAccentColors.cancelBorderLight),
                 )
             }
-            hasAnyChange -> if (isStandardDark) {
-                Brush.horizontalGradient(
+            hasAnyChange -> when {
+                isStandardDark -> Brush.horizontalGradient(
                     colors = listOf(ScheduleAccentColors.changeBorderDark, Color(0xFF78430C)),
                 )
-            } else {
-                Brush.horizontalGradient(
+                style.isPaper -> Brush.horizontalGradient(
+                    colors = listOf(PaperPalette.changeLessonBorder, PaperPalette.changeLessonBorder),
+                )
+                else -> Brush.horizontalGradient(
                     colors = listOf(Color(0xFFFBBF24), Color(0xFFF59E0B)),
                 )
             }
@@ -374,6 +404,7 @@ fun LessonCard(
             )
             style.isAero -> AeroPalette.glassBorderBrush()
             style.isTerminal -> TerminalPalette.glassBorderBrush()
+            style.isPaper -> PaperPalette.borderBrush()
             else -> Brush.linearGradient(
                 colors = listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
             )
@@ -397,6 +428,7 @@ fun LessonCard(
                 style.isGlass -> 22.dp
                 style.isAero -> 16.dp
                 style.isTerminal -> 14.dp
+                style.isPaper -> 16.dp
                 else -> 18.dp
             },
             fillBrush = cardFillBrush,
@@ -417,6 +449,7 @@ fun LessonCard(
                                 style.isGlass -> Color(0x38F4F4F4)
                                 style.isAero -> Color(0x52BCEFFE)
                                 style.isTerminal -> TerminalPalette.divider
+                                style.isPaper -> PaperPalette.divider
                                 else -> MaterialTheme.colorScheme.outlineVariant
                             },
                         )
@@ -486,7 +519,11 @@ private fun SubgroupLessonRow(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            val pillShape = if (style.isTerminal) CutCornerShape(6.dp) else RoundedCornerShape(10.dp)
+            val pillShape = when {
+                style.isTerminal -> CutCornerShape(6.dp)
+                style.isPaper -> RoundedCornerShape(50)
+                else -> RoundedCornerShape(10.dp)
+            }
             Box(
                 modifier = Modifier
                     .clip(pillShape)
@@ -496,6 +533,7 @@ private fun SubgroupLessonRow(
                             style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.typePillBg, GlassPalette.typePillBg))
                             style.isAero -> Brush.verticalGradient(listOf(AeroPalette.typePillFillTop, AeroPalette.typePillFillBottom))
                             style.isTerminal -> Brush.verticalGradient(listOf(TerminalPalette.typePillBgTop, TerminalPalette.typePillBgBottom))
+                            style.isPaper -> PaperPalette.activeFillBrush()
                             else -> Brush.verticalGradient(
                                 listOf(
                                     MaterialTheme.colorScheme.secondaryContainer,
@@ -540,6 +578,7 @@ private fun SubgroupLessonRow(
                         style.isGlass -> GlassPalette.typePillText
                         style.isAero -> AeroPalette.typePillText
                         style.isTerminal -> TerminalPalette.typePillText
+                        style.isPaper -> PaperPalette.activeText
                         else -> MaterialTheme.colorScheme.onSecondaryContainer
                     },
                 )
@@ -560,6 +599,7 @@ private fun SubgroupLessonRow(
                                 style.isGlass -> GlassPalette.secondaryPillBg
                                 style.isAero -> AeroPalette.secondaryPillBg
                                 style.isTerminal -> TerminalPalette.secondaryPillBg
+                                style.isPaper -> PaperPalette.secondaryPillBg
                                 else -> MaterialTheme.colorScheme.secondaryContainer
                             },
                         )
@@ -570,6 +610,7 @@ private fun SubgroupLessonRow(
                                 style.isGlass -> Color(0x40F4F4F4)
                                 style.isAero -> AeroPalette.secondaryPillBorder
                                 style.isTerminal -> TerminalPalette.secondaryPillBorder
+                                style.isPaper -> PaperPalette.secondaryPillBorder
                                 else -> MaterialTheme.colorScheme.outlineVariant
                             },
                             shape = pillShape,
@@ -585,6 +626,7 @@ private fun SubgroupLessonRow(
                             style.isGlass -> GlassPalette.secondaryPillText
                             style.isAero -> AeroPalette.secondaryPillText
                             style.isTerminal -> TerminalPalette.secondaryPillText
+                            style.isPaper -> PaperPalette.textPrimary
                             else -> MaterialTheme.colorScheme.onSecondaryContainer
                         },
                     )
@@ -701,6 +743,7 @@ private fun SubgroupLessonRow(
             style.isGlass -> GlassPalette.textPrimary
             style.isAero -> AeroPalette.textPrimary
             style.isTerminal -> TerminalPalette.textPrimary
+            style.isPaper -> PaperPalette.textPrimary
             else -> MaterialTheme.colorScheme.onSurface
         }
         Text(
@@ -721,7 +764,7 @@ private fun SubgroupLessonRow(
             ) {
                 Image(
                     painter = painterResource(
-                        id = if (style.isGlass || style.isAero || style.isTerminal) R.drawable.ic_glass_room else R.drawable.ic_neon_room,
+                        id = if (style.isGlass || style.isAero || style.isTerminal || style.isPaper) R.drawable.ic_glass_room else R.drawable.ic_neon_room,
                     ),
                     contentDescription = null,
                     colorFilter = when {
@@ -729,6 +772,7 @@ private fun SubgroupLessonRow(
                         style.isGlass -> ColorFilter.tint(GlassPalette.iconTint)
                         style.isAero -> ColorFilter.tint(AeroPalette.iconTint)
                         style.isTerminal -> ColorFilter.tint(TerminalPalette.iconTint)
+                        style.isPaper -> ColorFilter.tint(PaperPalette.iconTint)
                         else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                     },
                     modifier = Modifier.size(14.dp),
@@ -741,6 +785,7 @@ private fun SubgroupLessonRow(
                         style.isGlass -> GlassPalette.textSecondary
                         style.isAero -> AeroPalette.textSecondary
                         style.isTerminal -> TerminalPalette.textSecondary
+                        style.isPaper -> PaperPalette.textSecondary
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
@@ -764,6 +809,7 @@ private fun SubgroupLessonRow(
                         style.isGlass -> ColorFilter.tint(GlassPalette.iconTint)
                         style.isAero -> ColorFilter.tint(AeroPalette.iconTint)
                         style.isTerminal -> ColorFilter.tint(TerminalPalette.iconTint)
+                        style.isPaper -> ColorFilter.tint(PaperPalette.iconTint)
                         else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                     },
                     modifier = Modifier.size(14.dp),
@@ -776,6 +822,7 @@ private fun SubgroupLessonRow(
                         style.isGlass -> GlassPalette.textSecondary
                         style.isAero -> AeroPalette.textSecondary
                         style.isTerminal -> TerminalPalette.textSecondary
+                        style.isPaper -> PaperPalette.textSecondary
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
@@ -796,6 +843,7 @@ private fun SubgroupLessonRow(
                         style.isGlass -> ColorFilter.tint(GlassPalette.iconTint)
                         style.isAero -> ColorFilter.tint(AeroPalette.iconTint)
                         style.isTerminal -> ColorFilter.tint(TerminalPalette.iconTint)
+                        style.isPaper -> ColorFilter.tint(PaperPalette.iconTint)
                         else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                     },
                     modifier = Modifier.size(14.dp),
@@ -808,6 +856,7 @@ private fun SubgroupLessonRow(
                         style.isGlass -> GlassPalette.textSecondary
                         style.isAero -> AeroPalette.textSecondary
                         style.isTerminal -> TerminalPalette.textSecondary
+                        style.isPaper -> PaperPalette.textSecondary
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     maxLines = 1,
@@ -883,6 +932,7 @@ private fun PairProgressFooter(
         style.isGlass -> GlassPalette.textSecondary
         style.isAero -> AeroPalette.textPrimary.copy(alpha = 0.92f)
         style.isTerminal -> TerminalPalette.textSecondary
+        style.isPaper -> PaperPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -931,6 +981,7 @@ private fun PairProgressFooter(
                         style.isGlass -> GlassPalette.progressTrack
                         style.isAero -> AeroPalette.progressTrack
                         style.isTerminal -> TerminalPalette.progressTrack
+                        style.isPaper -> PaperPalette.progressTrack
                         style.isDark -> labelColor.copy(alpha = if (isRunning) 0.35f else 1f)
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     },
@@ -956,6 +1007,7 @@ private fun PairProgressFooter(
                     )
                     isFinished && style.isAero -> AeroPalette.progressFillBrush()
                     isFinished && style.isTerminal -> TerminalPalette.progressFillBrush()
+                    isFinished && style.isPaper -> PaperPalette.progressFillBrush()
                     else -> Brush.horizontalGradient(
                         colors = listOf(
                             MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),

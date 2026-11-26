@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,6 +73,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.PaperPalette
 import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 import kotlin.math.abs
 
@@ -88,6 +90,7 @@ fun TetrisGameDialog(
         style.isGlass -> GlassPalette.textPrimary
         style.isAero -> AeroPalette.textPrimary
         style.isTerminal -> TerminalPalette.textPrimary
+        style.isPaper -> PaperPalette.textPrimary
         else -> MaterialTheme.colorScheme.onBackground
     }
     val subColor = when {
@@ -95,6 +98,7 @@ fun TetrisGameDialog(
         style.isGlass -> GlassPalette.textSecondary
         style.isAero -> AeroPalette.textSecondary
         style.isTerminal -> TerminalPalette.textSecondary
+        style.isPaper -> PaperPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -160,9 +164,11 @@ fun TetrisGameDialog(
                                 style.isGlass -> "Стеклянный Тетрис"
                                 style.isAero -> "Аэро Тетрис"
                                 style.isTerminal -> "Терминал Тетрис"
+                                style.isPaper -> "Бумажный Тетрис"
                                 else -> "Неоновый Тетрис"
                             },
                             fontSize = 20.sp,
+                            fontFamily = if (style.isPaper) FontFamily.Serif else null,
                             fontWeight = FontWeight.Bold,
                             color = titleColor,
                             maxLines = 1,
@@ -176,6 +182,7 @@ fun TetrisGameDialog(
                                 style.isGlass -> GlassPalette.textSecondary
                                 style.isAero -> AeroPalette.textSecondary
                                 style.isTerminal -> TerminalPalette.textSecondary
+                                style.isPaper -> PaperPalette.textSecondary
                                 else -> MaterialTheme.colorScheme.primary
                             },
                             maxLines = 1,
@@ -221,7 +228,12 @@ fun TetrisGameDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         TetrisStatItem(label = "Счёт", value = gameState.score.toString(), titleColor = titleColor, subColor = subColor)
-                        TetrisStatItem(label = "Рекорд", value = gameState.bestScore.toString(), titleColor = Color(0xFF34D399), subColor = subColor)
+                        TetrisStatItem(
+                            label = "Рекорд",
+                            value = gameState.bestScore.toString(),
+                            titleColor = if (style.isPaper) PaperPalette.textPrimary else Color(0xFF34D399),
+                            subColor = subColor,
+                        )
                         TetrisStatItem(label = "Линии", value = "${gameState.linesCleared} • ур.${gameState.level}", titleColor = titleColor, subColor = subColor)
 
                         Row(
@@ -262,6 +274,7 @@ fun TetrisGameDialog(
                             style.isGlass -> Brush.verticalGradient(listOf(Color(0xCF1C1C1C), Color(0xDF101010)))
                             style.isAero -> Brush.verticalGradient(listOf(Color(0xD4073E73), Color(0xE004274E)))
                             style.isTerminal -> Brush.verticalGradient(listOf(Color(0xEA08190A), Color(0xF2040D05)))
+                            style.isPaper -> Brush.verticalGradient(listOf(Color(0xFF22231F), Color(0xFF171815)))
                             else -> Brush.verticalGradient(listOf(Color(0xFF10172A), Color(0xFF0B1120)))
                         },
                         borderBrush = when {
@@ -269,6 +282,7 @@ fun TetrisGameDialog(
                             style.isGlass -> Brush.linearGradient(listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom))
                             style.isAero -> AeroPalette.glassBorderBrush()
                             style.isTerminal -> TerminalPalette.activeBorderBrush()
+                            style.isPaper -> PaperPalette.borderBrush()
                             else -> Brush.linearGradient(listOf(MaterialTheme.colorScheme.outline, MaterialTheme.colorScheme.outline))
                         },
                         borderWidth = 1.4.dp,
@@ -323,13 +337,21 @@ fun TetrisGameDialog(
                                                 text = if (gameState.isGameOver) "Игра окончена" else "Пауза",
                                                 style = MaterialTheme.typography.titleMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (style.isTerminal) TerminalPalette.textPrimary else Color.White,
+                                                color = when {
+                                                    style.isTerminal -> TerminalPalette.textPrimary
+                                                    style.isPaper -> PaperPalette.textPrimary
+                                                    else -> Color.White
+                                                },
                                             )
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = "Счёт: ${gameState.score} • Рекорд: ${gameState.bestScore}",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = if (style.isTerminal) TerminalPalette.textSecondary else Color(0xFFCBD5E1),
+                                                color = when {
+                                                    style.isTerminal -> TerminalPalette.textSecondary
+                                                    style.isPaper -> PaperPalette.textSecondary
+                                                    else -> Color(0xFFCBD5E1)
+                                                },
                                             )
                                             Spacer(modifier = Modifier.height(12.dp))
                                             GlassCard(
@@ -340,6 +362,7 @@ fun TetrisGameDialog(
                                                     )
                                                     style.isAero -> AeroPalette.activeFillBrush()
                                                     style.isTerminal -> TerminalPalette.activeFillBrush()
+                                                    style.isPaper -> PaperPalette.activeFillBrush()
                                                     else -> Brush.verticalGradient(
                                                         listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
                                                     )
@@ -361,7 +384,11 @@ fun TetrisGameDialog(
                                                     text = if (gameState.isGameOver) "Играть снова" else "Продолжить",
                                                     style = MaterialTheme.typography.labelLarge,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (style.isTerminal) TerminalPalette.textPrimary else Color.White,
+                                                    color = when {
+                                                        style.isTerminal -> TerminalPalette.textPrimary
+                                                        style.isPaper -> PaperPalette.activeText
+                                                        else -> Color.White
+                                                    },
                                                     modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
                                                 )
                                             }
@@ -654,7 +681,7 @@ private fun TetrisIconCircleButton(
     onClick: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
-    val buttonShape = if (style.isAero || style.isTerminal) RoundedCornerShape(10.dp) else CircleShape
+    val buttonShape = if (style.isAero || style.isTerminal || style.isPaper) RoundedCornerShape(10.dp) else CircleShape
     Box(
         modifier = Modifier
             .size(38.dp)
@@ -665,6 +692,7 @@ private fun TetrisIconCircleButton(
                     style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelFillTop, GlassPalette.panelFillTop))
                     style.isAero -> AeroPalette.panelFillBrush()
                     style.isTerminal -> TerminalPalette.panelFillBrush()
+                    style.isPaper -> PaperPalette.panelFillBrush()
                     else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface))
                 },
                 shape = buttonShape,
@@ -676,6 +704,7 @@ private fun TetrisIconCircleButton(
                     style.isGlass -> GlassPalette.panelBorderTop
                     style.isAero -> AeroPalette.borderTop
                     style.isTerminal -> TerminalPalette.borderTop
+                    style.isPaper -> PaperPalette.borderInk
                     else -> MaterialTheme.colorScheme.outlineVariant
                 },
                 shape = buttonShape,
@@ -691,6 +720,7 @@ private fun TetrisIconCircleButton(
                 style.isGlass -> GlassPalette.textPrimary
                 style.isAero -> AeroPalette.textPrimary
                 style.isTerminal -> TerminalPalette.iconTint
+                style.isPaper -> PaperPalette.iconTint
                 else -> MaterialTheme.colorScheme.onSurface
             },
             modifier = Modifier.size(19.dp),
@@ -716,6 +746,7 @@ private fun TetrisControlButton(
         )
         highlighted && style.isAero -> AeroPalette.activeFillBrush()
         highlighted && style.isTerminal -> TerminalPalette.activeFillBrush()
+        highlighted && style.isPaper -> PaperPalette.activeFillBrush()
         highlighted -> Brush.verticalGradient(
             listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
         )
@@ -738,6 +769,8 @@ private fun TetrisControlButton(
                 contentDescription = contentDescription,
                 tint = when {
                     style.isTerminal -> TerminalPalette.iconTint
+                    highlighted && style.isPaper -> PaperPalette.activeText
+                    style.isPaper -> PaperPalette.iconTint
                     highlighted || style.isTranslucent -> Color.White
                     else -> MaterialTheme.colorScheme.onSurface
                 },

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +42,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.PaperPalette
 import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
 import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 import java.time.DayOfWeek
@@ -68,6 +70,7 @@ fun DaySelectorBottomDock(
                 style.isGlass -> 26.dp
                 style.isAero -> 20.dp
                 style.isTerminal -> 14.dp
+                style.isPaper -> 18.dp
                 else -> 24.dp
             },
             fillBrush = when {
@@ -86,6 +89,7 @@ fun DaySelectorBottomDock(
                 )
                 style.isAero -> AeroPalette.dockFillBrush()
                 style.isTerminal -> TerminalPalette.dockFillBrush()
+                style.isPaper -> PaperPalette.dockFillBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface,
@@ -109,6 +113,7 @@ fun DaySelectorBottomDock(
                 )
                 style.isAero -> AeroPalette.glassBorderBrush()
                 style.isTerminal -> TerminalPalette.glassBorderBrush()
+                style.isPaper -> PaperPalette.borderBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.outlineVariant,
@@ -130,7 +135,10 @@ fun DaySelectorBottomDock(
                 todayDate = todayDate,
                 lessonsByDay = lessonsByDay,
                 onSelectDate = onSelectDate,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                modifier = Modifier.padding(
+                    horizontal = if (style.isPaper) 2.dp else 6.dp,
+                    vertical = if (style.isPaper) 2.dp else 6.dp,
+                ),
             )
         }
     }
@@ -149,9 +157,10 @@ fun DaySelectorRow(
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (style.isPaper) 0.dp else 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        weekDays.forEach { date ->
+        weekDays.forEachIndexed { index, date ->
             val isSelected = date == selectedDate
             val isToday = date == todayDate
             val dayLessons = lessonsByDay[date].orEmpty()
@@ -159,36 +168,42 @@ fun DaySelectorRow(
             val hasCancelled = dayLessons.any { it.isCancelled }
             val isStandardDark = !style.isTranslucent && style.isDark
 
-            val scale = if (isSelected) 1.02f else 1f
+            val scale = if (isSelected && !style.isPaper) 1.02f else 1f
 
             val labelColor = when {
                 isSelected && style.isTerminal -> TerminalPalette.textPrimary
+                isSelected && style.isPaper -> PaperPalette.activeText
                 isSelected -> Color.White
                 style.isNeon -> NeonPalette.textSecondary
                 style.isGlass -> GlassPalette.textMuted
                 style.isAero -> AeroPalette.textMuted
                 style.isTerminal -> TerminalPalette.textSecondary
+                style.isPaper -> PaperPalette.textSecondary
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
 
             val numberColor = when {
                 isSelected && style.isTerminal -> TerminalPalette.textPrimary
+                isSelected && style.isPaper -> PaperPalette.activeText
                 isSelected -> if (style.isGlass) Color(0xFFF5F5F5) else Color.White
                 isToday && style.isNeon -> Color(0xFF38BDF8)
                 isToday && style.isGlass -> Color.White
                 isToday && style.isAero -> Color.White
                 isToday && style.isTerminal -> TerminalPalette.timelineDot
+                isToday && style.isPaper -> PaperPalette.textPrimary
                 isToday -> MaterialTheme.colorScheme.primary
                 style.isNeon -> NeonPalette.textPrimary
                 style.isGlass -> Color(0xFFF5F5F5)
                 style.isAero -> AeroPalette.textPrimary
                 style.isTerminal -> TerminalPalette.textPrimary
+                style.isPaper -> PaperPalette.textPrimary
                 else -> MaterialTheme.colorScheme.onSurface
             }
 
             val tileRadius = when {
                 style.isAero -> 13.dp
                 style.isTerminal -> 9.dp
+                style.isPaper -> 15.dp
                 else -> 16.dp
             }
             val shape = if (style.isTerminal) CutCornerShape(tileRadius) else RoundedCornerShape(tileRadius)
@@ -201,8 +216,15 @@ fun DaySelectorRow(
                 )
                 isSelected && style.isAero -> AeroPalette.activeFillBrush()
                 isSelected && style.isTerminal -> TerminalPalette.activeFillBrush()
+                isSelected && style.isPaper -> PaperPalette.activeFillBrush()
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
+                )
+                style.isPaper && isToday -> Brush.verticalGradient(
+                    colors = listOf(PaperPalette.surfaceMuted, PaperPalette.surfaceMuted),
+                )
+                style.isPaper -> Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Transparent),
                 )
                 style.isNeon && isToday -> Brush.verticalGradient(
                     colors = listOf(Color(0xB8212A56), Color(0xA6141B3A)),
@@ -274,6 +296,10 @@ fun DaySelectorRow(
                     colors = listOf(Color(0xA6BCEFFE), Color(0x4D3D8EC2)),
                 )
                 style.isTerminal -> TerminalPalette.glassBorderBrush()
+                style.isPaper && isSelected -> PaperPalette.activeFillBrush()
+                style.isPaper -> Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Transparent),
+                )
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                 )
@@ -349,12 +375,14 @@ fun DaySelectorRow(
                         ) {
                             val dotColor = when {
                                 isSelected && style.isTerminal -> TerminalPalette.timelineDot
+                                isSelected && style.isPaper -> PaperPalette.activeText
                                 isSelected -> Color.White
                                 hasCancelled -> if (isStandardDark) ScheduleAccentColors.cancelBadgeDark else Color(0xFFF87171)
                                 hasChanges -> if (isStandardDark) ScheduleAccentColors.changeBadgeDark else Color(0xFFFBBF24)
                                 style.isGlass -> Color(0xFFFAFAFA)
                                 style.isAero -> Color(0xFFEAF8FF)
                                 style.isTerminal -> TerminalPalette.timelineDot
+                                style.isPaper -> PaperPalette.textPrimary
                                 style.isNeon && date.dayOfWeek.value >= 5 -> Color(0xFF38BDF8)
                                 style.isNeon -> Color(0xFFA78BFA)
                                 else -> MaterialTheme.colorScheme.primary
@@ -368,6 +396,14 @@ fun DaySelectorRow(
                         }
                     }
                 }
+            }
+            if (style.isPaper && index < weekDays.lastIndex) {
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(48.dp)
+                        .background(PaperPalette.divider),
+                )
             }
         }
     }
