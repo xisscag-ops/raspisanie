@@ -21,6 +21,7 @@ enum class AppVisualSkin {
     NEON,
     GLASS,
     AERO,
+    TERMINAL,
     STANDARD,
 }
 
@@ -32,7 +33,12 @@ data class AppVisualStyle(
     val isNeon: Boolean get() = skin == AppVisualSkin.NEON
     val isGlass: Boolean get() = skin == AppVisualSkin.GLASS
     val isAero: Boolean get() = skin == AppVisualSkin.AERO
-    val isTranslucent: Boolean get() = skin == AppVisualSkin.NEON || skin == AppVisualSkin.GLASS || skin == AppVisualSkin.AERO
+    val isTerminal: Boolean get() = skin == AppVisualSkin.TERMINAL
+    val isTranslucent: Boolean get() =
+        skin == AppVisualSkin.NEON ||
+            skin == AppVisualSkin.GLASS ||
+            skin == AppVisualSkin.AERO ||
+            skin == AppVisualSkin.TERMINAL
 }
 
 val LocalAppVisualStyle = staticCompositionLocalOf {
@@ -279,6 +285,110 @@ object AeroPalette {
     )
 }
 
+object TerminalPalette {
+    val backgroundBase = Color(0xFF040B05)
+    val vignetteCenter = Color(0xFF0B2410)
+    val scanline = Color(0x2E000000)
+
+    // Поверхности панелей и карточек — тёмный фосфорный ЭЛТ-экран
+    val panelFillTop = Color(0xE00A1F0D)
+    val panelFillBottom = Color(0xEB051107)
+
+    val cardFillTop = Color(0xD90A1C0D)
+    val cardFillBottom = Color(0xE6061108)
+
+    val dockFillTop = Color(0xE8071609)
+    val dockFillBottom = Color(0xF0040D05)
+
+    val dayTileFillTop = Color(0xCF08180B)
+    val dayTileFillBottom = Color(0xDE040D06)
+
+    // Активные состояния: «Открыть сегодня», выбранная вкладка, выбранный день
+    val activeFillTop = Color(0xF2174B1B)
+    val activeFillBottom = Color(0xF50C2B0F)
+
+    // Контуры HUD
+    val borderTop = Color(0xEB57E84A)
+    val borderBottom = Color(0xB8329E2B)
+    val activeBorderTop = Color(0xFF8CFF78)
+    val activeBorderBottom = Color(0xEB4BE33E)
+    val divider = Color(0x7050D443)
+    val glowGreen = Color(0xFF39FF4C)
+
+    // Бейджи типов занятий и подгрупп
+    val typePillBgTop = Color(0xE6113316)
+    val typePillBgBottom = Color(0xEB091F0C)
+    val typePillBorder = Color(0xFF55DF48)
+    val typePillText = Color(0xFF9BFF95)
+
+    val secondaryPillBg = Color(0xAD0D2711)
+    val secondaryPillBorder = Color(0x9942B83A)
+    val secondaryPillText = Color(0xFF7BE875)
+
+    // Текст и иконки (фосфорный зелёный)
+    val textPrimary = Color(0xFF96FF91)
+    val textSecondary = Color(0xFF5EC45A)
+    val textMuted = Color(0xFF4BA648)
+    val iconTint = Color(0xFF84FF7F)
+
+    // Таймлайн и маркер времени
+    val timelineLine = Color(0xD950D443)
+    val timelineDot = Color(0xFF77FF62)
+    val timelineDotGlow = Color(0x6631FF20)
+    val timelineActiveNow = Color(0xFFA7FF83)
+
+    // Полоса прогресса дня и пары
+    val progressTrack = Color(0xA60E2B12)
+    val progressFillStart = Color(0xFF8CFF84)
+    val progressFillEnd = Color(0xFF38EB3C)
+
+    // Состояния текущей пары / замены / отмены
+    val activeLessonTop = Color(0xEA14441A)
+    val activeLessonBottom = Color(0xEE09260D)
+    val activeLessonBorder = Color(0xFF8CFF78)
+    val activeLessonAccent = Color(0xFF64FF58)
+
+    val changeLessonTop = Color(0xDC302B09)
+    val changeLessonBottom = Color(0xE41E1B05)
+    val changeBorder = Color(0xFFFACC15)
+
+    val cancelLessonTop = Color(0xDC340E10)
+    val cancelLessonBottom = Color(0xE421080A)
+    val cancelBorder = Color(0xFFFF5C5C)
+
+    fun panelFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(panelFillTop, panelFillBottom),
+    )
+
+    fun cardFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(cardFillTop, cardFillBottom),
+    )
+
+    fun dockFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(dockFillTop, dockFillBottom),
+    )
+
+    fun dayTileFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(dayTileFillTop, dayTileFillBottom),
+    )
+
+    fun activeFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(activeFillTop, activeFillBottom),
+    )
+
+    fun glassBorderBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(borderTop, borderBottom),
+    )
+
+    fun activeBorderBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(activeBorderTop, activeBorderBottom),
+    )
+
+    fun progressFillBrush(): Brush = Brush.horizontalGradient(
+        colors = listOf(progressFillEnd, progressFillStart),
+    )
+}
+
 private val NeonColors = darkColorScheme(
     primary = Color(0xFF9333EA),
     onPrimary = Color(0xFFFFFFFF),
@@ -358,6 +468,33 @@ private val AeroColors = darkColorScheme(
     onError = Color(0xFF4C0519),
     errorContainer = Color(0xFF64131E),
     onErrorContainer = Color(0xFFFFE4E6),
+)
+
+private val TerminalColors = darkColorScheme(
+    primary = Color(0xFF64FF58),
+    onPrimary = Color(0xFF031505),
+    primaryContainer = Color(0xFF123C16),
+    onPrimaryContainer = TerminalPalette.textPrimary,
+    secondary = Color(0xFF5EC45A),
+    onSecondary = Color(0xFF041706),
+    secondaryContainer = Color(0xFF0D2810),
+    onSecondaryContainer = TerminalPalette.textPrimary,
+    tertiary = Color(0xFFA7FF83),
+    onTertiary = Color(0xFF031A05),
+    tertiaryContainer = Color(0xFF14441A),
+    onTertiaryContainer = Color(0xFFD9FFD2),
+    background = TerminalPalette.backgroundBase,
+    onBackground = TerminalPalette.textPrimary,
+    surface = Color(0xFF081A0B),
+    onSurface = TerminalPalette.textPrimary,
+    surfaceVariant = Color(0xFF0F2B13),
+    onSurfaceVariant = TerminalPalette.textSecondary,
+    outline = Color(0xFF50D443),
+    outlineVariant = Color(0x6650D443),
+    error = Color(0xFFFF5C5C),
+    onError = Color(0xFF2B0505),
+    errorContainer = Color(0xFF340E10),
+    onErrorContainer = Color(0xFFFFD6D6),
 )
 
 private val LightColors = lightColorScheme(
@@ -463,12 +600,13 @@ fun NgieuTheme(
         ThemeModeSetting.NEON -> AppVisualSkin.NEON
         ThemeModeSetting.GLASS -> AppVisualSkin.GLASS
         ThemeModeSetting.AERO -> AppVisualSkin.AERO
+        ThemeModeSetting.TERMINAL -> AppVisualSkin.TERMINAL
         ThemeModeSetting.SYSTEM -> if (systemDark) AppVisualSkin.NEON else AppVisualSkin.STANDARD
         ThemeModeSetting.LIGHT -> AppVisualSkin.STANDARD
         ThemeModeSetting.DARK -> AppVisualSkin.STANDARD
     }
     val isDark = when (themeMode) {
-        ThemeModeSetting.NEON, ThemeModeSetting.GLASS, ThemeModeSetting.AERO -> true
+        ThemeModeSetting.NEON, ThemeModeSetting.GLASS, ThemeModeSetting.AERO, ThemeModeSetting.TERMINAL -> true
         ThemeModeSetting.SYSTEM -> systemDark
         ThemeModeSetting.LIGHT -> false
         ThemeModeSetting.DARK -> true
@@ -478,6 +616,7 @@ fun NgieuTheme(
         skin == AppVisualSkin.NEON -> NeonColors
         skin == AppVisualSkin.GLASS -> GlassColors
         skin == AppVisualSkin.AERO -> AeroColors
+        skin == AppVisualSkin.TERMINAL -> TerminalColors
         isDark -> DarkColors
         else -> LightColors
     }

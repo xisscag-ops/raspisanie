@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -19,6 +20,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -30,6 +32,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 
 /**
  * Полноэкранный фон оформления:
@@ -51,6 +54,33 @@ fun NeonAuroraBackground(
             .fillMaxSize()
             .background(baseBg)
             .drawBehind {
+                if (style.isTerminal) {
+                    val w = size.width
+                    val h = size.height
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                TerminalPalette.vignetteCenter.copy(alpha = 0.85f),
+                                TerminalPalette.backgroundBase,
+                            ),
+                            center = Offset(w * 0.5f, h * 0.42f),
+                            radius = maxOf(w, h) * 0.72f,
+                        ),
+                    )
+                    // Тонкие горизонтальные CRT-строки развёртки
+                    val step = 3.5.dp.toPx()
+                    var y = 0f
+                    while (y < h) {
+                        drawLine(
+                            color = TerminalPalette.scanline,
+                            start = Offset(0f, y),
+                            end = Offset(w, y),
+                            strokeWidth = 1.dp.toPx(),
+                        )
+                        y += step
+                    }
+                    return@drawBehind
+                }
                 if (!style.isNeon) return@drawBehind
                 val w = size.width
                 val h = size.height
@@ -155,7 +185,12 @@ fun GlassCard(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
-    val shape: Shape = RoundedCornerShape(cornerRadius)
+    val cutSize = (cornerRadius * 0.65f).coerceIn(4.dp, 13.dp)
+    val shape: Shape = if (style.isTerminal) {
+        CutCornerShape(cutSize)
+    } else {
+        RoundedCornerShape(cornerRadius)
+    }
 
     val defaultFill = when {
         style.isNeon -> Brush.verticalGradient(
@@ -172,6 +207,7 @@ fun GlassCard(
             ),
         )
         style.isAero -> AeroPalette.cardFillBrush()
+        style.isTerminal -> TerminalPalette.cardFillBrush()
         else -> Brush.verticalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.surface,
@@ -195,6 +231,7 @@ fun GlassCard(
             ),
         )
         style.isAero -> AeroPalette.glassBorderBrush()
+        style.isTerminal -> TerminalPalette.glassBorderBrush()
         else -> Brush.linearGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.outlineVariant,
@@ -205,6 +242,22 @@ fun GlassCard(
 
     val glowModifier = if (glowColor != null && style.isTranslucent) {
         Modifier.drawBehind {
+            if (style.isTerminal) {
+                val c = cutSize.toPx()
+                val pad1 = 2.5.dp.toPx()
+                drawPath(
+                    path = chamferedRectPath(-pad1, -pad1, size.width + pad1 * 2, size.height + pad1 * 2, c + pad1 * 0.45f),
+                    color = glowColor.copy(alpha = 0.22f),
+                    style = Stroke(width = 3.dp.toPx()),
+                )
+                val pad2 = 5.dp.toPx()
+                drawPath(
+                    path = chamferedRectPath(-pad2, -pad2, size.width + pad2 * 2, size.height + pad2 * 2, c + pad2 * 0.45f),
+                    color = glowColor.copy(alpha = 0.09f),
+                    style = Stroke(width = 4.dp.toPx()),
+                )
+                return@drawBehind
+            }
             val radiusPx = cornerRadius.toPx()
             val outerAlpha = when {
                 style.isGlass -> 0.14f
@@ -239,8 +292,8 @@ fun GlassCard(
         Modifier
     }
 
-    val aeroInnerContourModifier = if (style.isAero) {
-        Modifier.drawWithContent {
+    val innerAccentModifier = when {
+        style.isAero -> Modifier.drawWithContent {
             drawContent()
             val inset = 1.8.dp.toPx()
             val r = (cornerRadius - 1.5.dp).coerceAtLeast(0.dp).toPx()
@@ -254,8 +307,25 @@ fun GlassCard(
                 )
             }
         }
-    } else {
-        Modifier
+        style.isTerminal -> Modifier.drawWithContent {
+            drawContent()
+            val inset = 2.5.dp.toPx()
+            val c = (cutSize - 2.dp).coerceAtLeast(2.dp).toPx()
+            if (size.width > inset * 2 + c && size.height > inset * 2 + c) {
+                drawPath(
+                    path = chamferedRectPath(
+                        left = inset,
+                        top = inset,
+                        width = size.width - inset * 2,
+                        height = size.height - inset * 2,
+                        cut = c,
+                    ),
+                    color = TerminalPalette.glowGreen.copy(alpha = 0.14f),
+                    style = Stroke(width = 0.75.dp.toPx()),
+                )
+            }
+        }
+        else -> Modifier
     }
 
     Box(
@@ -264,8 +334,31 @@ fun GlassCard(
             .clip(shape)
             .background(brush = fillBrush ?: defaultFill, shape = shape)
             .border(width = borderWidth, brush = borderBrush ?: defaultBorder, shape = shape)
-            .then(aeroInnerContourModifier)
+            .then(innerAccentModifier)
             .let { mod -> if (onClick != null) mod.clickable(onClick = onClick) else mod },
         content = content,
     )
+}
+
+private fun chamferedRectPath(
+    left: Float,
+    top: Float,
+    width: Float,
+    height: Float,
+    cut: Float,
+): Path {
+    val c = cut.coerceAtMost(minOf(width, height) * 0.45f)
+    val right = left + width
+    val bottom = top + height
+    return Path().apply {
+        moveTo(left + c, top)
+        lineTo(right - c, top)
+        lineTo(right, top + c)
+        lineTo(right, bottom - c)
+        lineTo(right - c, bottom)
+        lineTo(left + c, bottom)
+        lineTo(left, bottom - c)
+        lineTo(left, top + c)
+        close()
+    }
 }
