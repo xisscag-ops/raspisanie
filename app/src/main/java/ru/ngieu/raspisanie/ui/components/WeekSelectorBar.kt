@@ -10,6 +10,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronLeft
@@ -43,6 +45,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -67,12 +70,14 @@ fun WeekSelectorBar(
         style.isNeon -> NeonPalette.textPrimary
         style.isGlass -> GlassPalette.textPrimary
         style.isAero -> AeroPalette.textPrimary
+        style.isTerminal -> TerminalPalette.textPrimary
         else -> MaterialTheme.colorScheme.onBackground
     }
     val inactiveSubColor = when {
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary
         style.isAero -> AeroPalette.textSecondary
+        style.isTerminal -> TerminalPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -128,22 +133,26 @@ fun WeekSelectorBar(
                 enter = scaleIn(tween(110)) + fadeIn(tween(110)),
                 exit = scaleOut(tween(90)) + fadeOut(tween(90)),
             ) {
+                val todayShape = if (style.isTerminal) CutCornerShape(8.dp) else RoundedCornerShape(20.dp)
                 Surface(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = todayShape,
                     color = when {
                         style.isNeon -> Color(0x409333EA)
                         style.isGlass -> GlassPalette.typePillBg
                         style.isAero -> AeroPalette.activeFillMidUpper
+                        style.isTerminal -> TerminalPalette.activeFillTop
                         else -> MaterialTheme.colorScheme.primaryContainer
                     },
                     contentColor = when {
                         style.isNeon -> Color(0xFFE9D5FF)
                         style.isGlass -> Color.White
                         style.isAero -> Color.White
+                        style.isTerminal -> TerminalPalette.textPrimary
                         else -> MaterialTheme.colorScheme.onPrimaryContainer
                     },
+                    border = if (style.isTerminal) BorderStroke(1.dp, TerminalPalette.activeBorderTop) else null,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(todayShape)
                         .clickable(onClick = onGoToday),
                 ) {
                     Row(
@@ -183,6 +192,7 @@ fun WeekSelectorBar(
                         listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                     )
                     selected && style.isAero -> AeroPalette.activeFillBrush()
+                    selected && style.isTerminal -> TerminalPalette.activeFillBrush()
                     selected -> Brush.verticalGradient(
                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
@@ -196,6 +206,7 @@ fun WeekSelectorBar(
                         listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom),
                     )
                     selected && style.isAero -> AeroPalette.activeBorderBrush()
+                    selected && style.isTerminal -> TerminalPalette.activeBorderBrush()
                     selected -> Brush.linearGradient(
                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
@@ -206,11 +217,13 @@ fun WeekSelectorBar(
                         listOf(GlassPalette.cardBorderTop, GlassPalette.cardBorderBottom),
                     )
                     style.isAero -> AeroPalette.glassBorderBrush()
+                    style.isTerminal -> TerminalPalette.glassBorderBrush()
                     else -> Brush.linearGradient(
                         listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
                     )
                 }
                 val textColor = when {
+                    selected && style.isTerminal -> TerminalPalette.textPrimary
                     selected && style.isTranslucent -> Color.White
                     selected -> MaterialTheme.colorScheme.onPrimary
                     else -> inactiveSubColor
@@ -246,6 +259,7 @@ fun WeekSelectorBar(
                                 color = when {
                                     selected -> textColor
                                     style.isGlass || style.isAero -> Color.White
+                                    style.isTerminal -> TerminalPalette.timelineDot
                                     else -> Color(0xFF38BDF8)
                                 },
                             )

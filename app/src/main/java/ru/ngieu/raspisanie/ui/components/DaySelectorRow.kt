@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,6 +42,7 @@ import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
+import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 import java.time.DayOfWeek
 import java.time.LocalDate
 
@@ -65,6 +67,7 @@ fun DaySelectorBottomDock(
             cornerRadius = when {
                 style.isGlass -> 26.dp
                 style.isAero -> 20.dp
+                style.isTerminal -> 14.dp
                 else -> 24.dp
             },
             fillBrush = when {
@@ -82,6 +85,7 @@ fun DaySelectorBottomDock(
                     ),
                 )
                 style.isAero -> AeroPalette.dockFillBrush()
+                style.isTerminal -> TerminalPalette.dockFillBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface,
@@ -104,6 +108,7 @@ fun DaySelectorBottomDock(
                     ),
                 )
                 style.isAero -> AeroPalette.glassBorderBrush()
+                style.isTerminal -> TerminalPalette.glassBorderBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.outlineVariant,
@@ -115,6 +120,7 @@ fun DaySelectorBottomDock(
                 style.isNeon -> Color(0xFF7C3AED)
                 style.isGlass -> Color.White
                 style.isAero -> Color(0xFF38BDF8)
+                style.isTerminal -> TerminalPalette.glowGreen
                 else -> null
             },
         ) {
@@ -156,27 +162,36 @@ fun DaySelectorRow(
             val scale = if (isSelected) 1.02f else 1f
 
             val labelColor = when {
+                isSelected && style.isTerminal -> TerminalPalette.textPrimary
                 isSelected -> Color.White
                 style.isNeon -> NeonPalette.textSecondary
                 style.isGlass -> GlassPalette.textMuted
                 style.isAero -> AeroPalette.textMuted
+                style.isTerminal -> TerminalPalette.textSecondary
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
 
             val numberColor = when {
+                isSelected && style.isTerminal -> TerminalPalette.textPrimary
                 isSelected -> if (style.isGlass) Color(0xFFF5F5F5) else Color.White
                 isToday && style.isNeon -> Color(0xFF38BDF8)
                 isToday && style.isGlass -> Color.White
                 isToday && style.isAero -> Color.White
+                isToday && style.isTerminal -> TerminalPalette.timelineDot
                 isToday -> MaterialTheme.colorScheme.primary
                 style.isNeon -> NeonPalette.textPrimary
                 style.isGlass -> Color(0xFFF5F5F5)
                 style.isAero -> AeroPalette.textPrimary
+                style.isTerminal -> TerminalPalette.textPrimary
                 else -> MaterialTheme.colorScheme.onSurface
             }
 
-            val tileRadius = if (style.isAero) 13.dp else 16.dp
-            val shape = RoundedCornerShape(tileRadius)
+            val tileRadius = when {
+                style.isAero -> 13.dp
+                style.isTerminal -> 9.dp
+                else -> 16.dp
+            }
+            val shape = if (style.isTerminal) CutCornerShape(tileRadius) else RoundedCornerShape(tileRadius)
             val fillBrush = when {
                 isSelected && style.isNeon -> Brush.verticalGradient(
                     colors = listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
@@ -185,6 +200,7 @@ fun DaySelectorRow(
                     colors = listOf(GlassPalette.daySelectedFillTop, GlassPalette.daySelectedFillBottom),
                 )
                 isSelected && style.isAero -> AeroPalette.activeFillBrush()
+                isSelected && style.isTerminal -> TerminalPalette.activeFillBrush()
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                 )
@@ -209,6 +225,10 @@ fun DaySelectorRow(
                     ),
                 )
                 style.isAero -> AeroPalette.dayTileFillBrush()
+                style.isTerminal && isToday -> Brush.verticalGradient(
+                    colors = listOf(Color(0xEB123817), Color(0xEE081E0B)),
+                )
+                style.isTerminal -> TerminalPalette.dayTileFillBrush()
                 isToday -> Brush.verticalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
@@ -231,6 +251,7 @@ fun DaySelectorRow(
                     colors = listOf(GlassPalette.daySelectedBorderTop, GlassPalette.daySelectedBorderBottom),
                 )
                 isSelected && style.isAero -> AeroPalette.activeBorderBrush()
+                isSelected && style.isTerminal -> TerminalPalette.activeBorderBrush()
                 isToday && style.isNeon -> Brush.verticalGradient(
                     colors = listOf(Color(0x8038BDF8), Color(0x40818CF8)),
                 )
@@ -239,6 +260,9 @@ fun DaySelectorRow(
                 )
                 isToday && style.isAero -> Brush.verticalGradient(
                     colors = listOf(Color(0xF0D6F5FF), Color(0xAA78C8F0)),
+                )
+                isToday && style.isTerminal -> Brush.verticalGradient(
+                    colors = listOf(TerminalPalette.activeBorderTop, TerminalPalette.borderBottom),
                 )
                 style.isNeon -> Brush.verticalGradient(
                     colors = listOf(Color(0x28FFFFFF), Color(0x14818CF8)),
@@ -249,6 +273,7 @@ fun DaySelectorRow(
                 style.isAero -> Brush.verticalGradient(
                     colors = listOf(Color(0xA6BCEFFE), Color(0x4D3D8EC2)),
                 )
+                style.isTerminal -> TerminalPalette.glassBorderBrush()
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                 )
@@ -271,7 +296,7 @@ fun DaySelectorRow(
                         scaleY = scale
                     }
                     .drawBehind {
-                        if (isSelected && style.isTranslucent) {
+                        if (isSelected && style.isTranslucent && !style.isTerminal) {
                             val r = tileRadius.toPx()
                             val glow = when {
                                 style.isGlass -> Color.White.copy(alpha = 0.28f)
@@ -323,11 +348,13 @@ fun DaySelectorRow(
                             exit = scaleOut(tween(75)) + fadeOut(tween(75)),
                         ) {
                             val dotColor = when {
+                                isSelected && style.isTerminal -> TerminalPalette.timelineDot
                                 isSelected -> Color.White
                                 hasCancelled -> if (isStandardDark) ScheduleAccentColors.cancelBadgeDark else Color(0xFFF87171)
                                 hasChanges -> if (isStandardDark) ScheduleAccentColors.changeBadgeDark else Color(0xFFFBBF24)
                                 style.isGlass -> Color(0xFFFAFAFA)
                                 style.isAero -> Color(0xFFEAF8FF)
+                                style.isTerminal -> TerminalPalette.timelineDot
                                 style.isNeon && date.dayOfWeek.value >= 5 -> Color(0xFF38BDF8)
                                 style.isNeon -> Color(0xFFA78BFA)
                                 else -> MaterialTheme.colorScheme.primary

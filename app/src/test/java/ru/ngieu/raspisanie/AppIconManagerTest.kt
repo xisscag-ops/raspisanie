@@ -24,6 +24,10 @@ class AppIconManagerTest {
             AppIconManager.resolveIcon(ThemeModeSetting.AERO, AppIconStyle.AUTO, isSystemDark = false),
         )
         assertEquals(
+            ResolvedAppIcon.TERMINAL,
+            AppIconManager.resolveIcon(ThemeModeSetting.TERMINAL, AppIconStyle.AUTO, isSystemDark = false),
+        )
+        assertEquals(
             ResolvedAppIcon.LIGHT,
             AppIconManager.resolveIcon(ThemeModeSetting.LIGHT, AppIconStyle.AUTO, isSystemDark = true),
         )
@@ -55,6 +59,10 @@ class AppIconManagerTest {
             assertEquals(
                 ResolvedAppIcon.AERO,
                 AppIconManager.resolveIcon(theme, AppIconStyle.AERO, isSystemDark = true),
+            )
+            assertEquals(
+                ResolvedAppIcon.TERMINAL,
+                AppIconManager.resolveIcon(theme, AppIconStyle.TERMINAL, isSystemDark = true),
             )
             assertEquals(
                 ResolvedAppIcon.CLASSIC,

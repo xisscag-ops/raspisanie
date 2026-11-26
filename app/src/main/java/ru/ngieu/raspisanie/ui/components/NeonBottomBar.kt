@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -43,6 +45,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 
 private data class NavTabItem(
     val tab: MainNavTab,
@@ -81,6 +84,7 @@ fun NeonTopNavBar(
             cornerRadius = when {
                 style.isGlass -> 24.dp
                 style.isAero -> 16.dp
+                style.isTerminal -> 14.dp
                 else -> 22.dp
             },
             fillBrush = when {
@@ -98,6 +102,7 @@ fun NeonTopNavBar(
                     ),
                 )
                 style.isAero -> AeroPalette.panelFillBrush()
+                style.isTerminal -> TerminalPalette.dockFillBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface,
@@ -120,6 +125,7 @@ fun NeonTopNavBar(
                     ),
                 )
                 style.isAero -> AeroPalette.glassBorderBrush()
+                style.isTerminal -> TerminalPalette.glassBorderBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.outlineVariant,
@@ -130,6 +136,7 @@ fun NeonTopNavBar(
             glowColor = when {
                 style.isGlass -> Color.White
                 style.isAero -> Color(0xFF38BDF8)
+                style.isTerminal -> TerminalPalette.glowGreen
                 else -> null
             },
         ) {
@@ -140,15 +147,17 @@ fun NeonTopNavBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                navItems.forEach { item ->
+                navItems.forEachIndexed { index, item ->
                     val selected = item.tab == activeTab
                     val labelColor by animateColorAsState(
                         targetValue = when {
+                            selected && style.isTerminal -> TerminalPalette.textPrimary
                             selected && style.isTranslucent -> Color.White
                             selected -> MaterialTheme.colorScheme.onPrimary
                             style.isNeon -> NeonPalette.textSecondary
                             style.isGlass -> GlassPalette.textSecondary
                             style.isAero -> AeroPalette.textMuted
+                            style.isTerminal -> TerminalPalette.textSecondary
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         animationSpec = tween(90),
@@ -158,9 +167,14 @@ fun NeonTopNavBar(
                     val pillCorner = when {
                         style.isGlass -> 19.dp
                         style.isAero -> 13.dp
+                        style.isTerminal -> 9.dp
                         else -> 17.dp
                     }
-                    val pillShape = RoundedCornerShape(pillCorner)
+                    val pillShape = if (style.isTerminal) {
+                        CutCornerShape(pillCorner)
+                    } else {
+                        RoundedCornerShape(pillCorner)
+                    }
                     val activeBrush = when {
                         style.isNeon -> Brush.verticalGradient(
                             colors = listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
@@ -169,6 +183,7 @@ fun NeonTopNavBar(
                             colors = listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                         )
                         style.isAero -> AeroPalette.activeFillBrush()
+                        style.isTerminal -> TerminalPalette.activeFillBrush()
                         else -> Brush.verticalGradient(
                             colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                         )
@@ -181,6 +196,7 @@ fun NeonTopNavBar(
                             colors = listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom),
                         )
                         style.isAero -> AeroPalette.activeBorderBrush()
+                        style.isTerminal -> TerminalPalette.activeBorderBrush()
                         else -> Brush.verticalGradient(
                             colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                         )
@@ -190,7 +206,7 @@ fun NeonTopNavBar(
                         modifier = Modifier
                             .weight(1f)
                             .drawBehind {
-                                if (selected && style.isTranslucent) {
+                                if (selected && style.isTranslucent && !style.isTerminal) {
                                     val r = pillCorner.toPx()
                                     val halo = when {
                                         style.isGlass -> Color.White.copy(alpha = 0.14f)
@@ -214,7 +230,7 @@ fun NeonTopNavBar(
                                     Modifier
                                         .background(brush = activeBrush, shape = pillShape)
                                         .border(
-                                            width = 1.dp,
+                                            width = if (style.isTerminal) 1.3.dp else 1.dp,
                                             brush = activeBorderBrush,
                                             shape = pillShape,
                                         )
@@ -233,16 +249,18 @@ fun NeonTopNavBar(
                             Box {
                                 Image(
                                     painter = painterResource(
-                                        id = if (style.isGlass || style.isAero) item.glassIconRes else item.iconRes,
+                                        id = if (style.isGlass || style.isAero || style.isTerminal) item.glassIconRes else item.iconRes,
                                     ),
                                     contentDescription = item.label,
                                     colorFilter = when {
                                         selected && style.isNeon -> null
+                                        selected && style.isTerminal -> ColorFilter.tint(TerminalPalette.textPrimary)
                                         selected && (style.isGlass || style.isAero) -> ColorFilter.tint(Color.White)
                                         selected -> ColorFilter.tint(MaterialTheme.colorScheme.onPrimary)
                                         style.isNeon -> ColorFilter.tint(NeonPalette.textSecondary)
                                         style.isGlass -> ColorFilter.tint(Color(0xFFC2C2C2))
                                         style.isAero -> ColorFilter.tint(AeroPalette.textMuted)
+                                        style.isTerminal -> ColorFilter.tint(TerminalPalette.textSecondary)
                                         else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                                     },
                                     modifier = Modifier.size(19.dp),
@@ -253,7 +271,9 @@ fun NeonTopNavBar(
                                             .align(Alignment.TopEnd)
                                             .size(7.dp)
                                             .clip(CircleShape)
-                                            .background(NeonPalette.timelineActiveNow),
+                                            .background(
+                                                if (style.isTerminal) TerminalPalette.timelineDot else NeonPalette.timelineActiveNow,
+                                            ),
                                     )
                                 }
                             }
@@ -267,6 +287,15 @@ fun NeonTopNavBar(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
+                    }
+
+                    if (style.isTerminal && index < navItems.lastIndex) {
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(26.dp)
+                                .background(TerminalPalette.divider),
+                        )
                     }
                 }
             }

@@ -32,6 +32,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
+import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -52,6 +53,7 @@ object ScheduleShareRenderer {
         val isNeon: Boolean,
         val isGlass: Boolean,
         val isAero: Boolean,
+        val isTerminal: Boolean,
         val isDark: Boolean,
         val bgBase: Int,
         val cardTop: Int,
@@ -274,7 +276,7 @@ object ScheduleShareRenderer {
 
                 val hasAnyChange = measuredSlot.slot.lessons.any { it.isChange }
                 val hasAnyCancelled = measuredSlot.slot.lessons.any { it.isCancelled }
-                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && colors.isDark
+                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && !colors.isTerminal && colors.isDark
                 val dotColor = when {
                     hasAnyCancelled -> when {
                         isStandardDark -> ScheduleAccentColors.cancelBadgeDark.toArgb()
@@ -436,12 +438,14 @@ object ScheduleShareRenderer {
                             colors.isNeon -> Color.argb(72, 139, 92, 246)
                             colors.isGlass -> Color.argb(97, 149, 149, 149)
                             colors.isAero -> Color.argb(130, 29, 110, 166)
+                            colors.isTerminal -> Color.argb(215, 20, 68, 26)
                             else -> colors.pillBg
                         },
                         textColor = when {
                             colors.isNeon -> Color.parseColor("#E9D5FF")
                             colors.isGlass -> Color.parseColor("#CDCDCD")
                             colors.isAero -> Color.parseColor("#EAF7FF")
+                            colors.isTerminal -> Color.parseColor("#96FF91")
                             else -> colors.pillText
                         },
                     ),
@@ -455,6 +459,7 @@ object ScheduleShareRenderer {
                     bgColor = when {
                         colors.isGlass -> Color.argb(133, 191, 191, 191)
                         colors.isAero -> Color.argb(235, 131, 196, 233)
+                        colors.isTerminal -> Color.argb(215, 14, 52, 18)
                         colors.isNeon -> Color.parseColor("#28325C")
                         colors.isDark -> Color.parseColor("#283244")
                         else -> Color.parseColor("#E9EEF5")
@@ -462,6 +467,7 @@ object ScheduleShareRenderer {
                     textColor = when {
                         colors.isGlass -> Color.parseColor("#F8F8F8")
                         colors.isAero -> Color.parseColor("#07375D")
+                        colors.isTerminal -> Color.parseColor("#96FF91")
                         colors.isNeon -> Color.parseColor("#E2E8F0")
                         colors.isDark -> Color.parseColor("#E4E7EC")
                         else -> typeColor
@@ -470,7 +476,7 @@ object ScheduleShareRenderer {
             )
 
             if (lesson.isChange) {
-                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && colors.isDark
+                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && !colors.isTerminal && colors.isDark
                 add(
                     BadgeSpec(
                         text = "Замена",
@@ -489,7 +495,7 @@ object ScheduleShareRenderer {
             }
 
             if (lesson.isCancelled) {
-                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && colors.isDark
+                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && !colors.isTerminal && colors.isDark
                 add(
                     BadgeSpec(
                         text = "Отмена",
@@ -601,6 +607,31 @@ object ScheduleShareRenderer {
             return
         }
 
+        if (colors.isTerminal) {
+            val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = RadialGradient(
+                    width * 0.5f,
+                    height * 0.34f,
+                    width * 0.92f,
+                    intArrayOf(Color.parseColor("#0C2711"), Color.TRANSPARENT),
+                    null,
+                    Shader.TileMode.CLAMP,
+                )
+            }
+            canvas.drawRect(0f, 0f, width, height, glowPaint)
+
+            val scanPaint = Paint().apply {
+                color = Color.argb(28, 0, 0, 0)
+                strokeWidth = 2f
+            }
+            var sy = 0f
+            while (sy < height) {
+                canvas.drawLine(0f, sy, width, sy, scanPaint)
+                sy += 5f
+            }
+            return
+        }
+
         if (!colors.isNeon) return
 
         val topVioletPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -651,6 +682,7 @@ object ScheduleShareRenderer {
                     colors.isNeon -> intArrayOf(Color.parseColor("#C7242D58"), Color.parseColor("#BA141B38"))
                     colors.isGlass -> intArrayOf(Color.parseColor("#8C737373"), Color.parseColor("#782C2C2C"))
                     colors.isAero -> intArrayOf(Color.parseColor("#DF338AC0"), Color.parseColor("#E307558D"))
+                    colors.isTerminal -> intArrayOf(Color.parseColor("#DF0E2E12"), Color.parseColor("#EB061608"))
                     else -> intArrayOf(colors.cardTop, colors.cardBottom)
                 },
                 null,
@@ -684,6 +716,7 @@ object ScheduleShareRenderer {
                 bgColor = when {
                     colors.isGlass -> Color.argb(133, 191, 191, 191)
                     colors.isAero -> Color.argb(235, 131, 196, 233)
+                    colors.isTerminal -> Color.argb(225, 22, 72, 27)
                     else -> Color.argb(56, 56, 189, 248)
                 },
                 textColor = colors.todayAccent,
@@ -751,8 +784,14 @@ object ScheduleShareRenderer {
         val isNeon = themeMode == ThemeModeSetting.NEON
         val isGlass = themeMode == ThemeModeSetting.GLASS
         val isAero = themeMode == ThemeModeSetting.AERO
+        val isTerminal = themeMode == ThemeModeSetting.TERMINAL
         val isDark = when (themeMode) {
-            ThemeModeSetting.NEON, ThemeModeSetting.GLASS, ThemeModeSetting.AERO, ThemeModeSetting.DARK -> true
+            ThemeModeSetting.NEON,
+            ThemeModeSetting.GLASS,
+            ThemeModeSetting.AERO,
+            ThemeModeSetting.TERMINAL,
+            ThemeModeSetting.DARK,
+            -> true
             ThemeModeSetting.LIGHT -> false
             ThemeModeSetting.SYSTEM -> systemDark
         }
@@ -762,6 +801,7 @@ object ScheduleShareRenderer {
                 isNeon = true,
                 isGlass = false,
                 isAero = false,
+                isTerminal = false,
                 isDark = true,
                 bgBase = NeonPalette.backgroundBase.toArgb(),
                 cardTop = Color.parseColor("#B51D254B"),
@@ -783,6 +823,7 @@ object ScheduleShareRenderer {
                 isNeon = false,
                 isGlass = true,
                 isAero = false,
+                isTerminal = false,
                 isDark = true,
                 bgBase = GlassPalette.backgroundBase.toArgb(),
                 cardTop = Color.parseColor("#858A8A8A"),
@@ -804,6 +845,7 @@ object ScheduleShareRenderer {
                 isNeon = false,
                 isGlass = false,
                 isAero = true,
+                isTerminal = false,
                 isDark = true,
                 bgBase = AeroPalette.backgroundBase.toArgb(),
                 cardTop = AeroPalette.cardFillTop.toArgb(),
@@ -821,10 +863,33 @@ object ScheduleShareRenderer {
                 pillBg = Color.argb(235, 131, 196, 233),
                 pillText = Color.parseColor("#07375D"),
             )
+            isTerminal -> ThemeColors(
+                isNeon = false,
+                isGlass = false,
+                isAero = false,
+                isTerminal = true,
+                isDark = true,
+                bgBase = TerminalPalette.backgroundBase.toArgb(),
+                cardTop = TerminalPalette.cardFillTop.toArgb(),
+                cardBottom = TerminalPalette.cardFillBottom.toArgb(),
+                cardBorder = TerminalPalette.borderTop.toArgb(),
+                changeCardTop = TerminalPalette.changeLessonTop.toArgb(),
+                changeCardBottom = TerminalPalette.changeLessonBottom.toArgb(),
+                changeBorder = Color.parseColor("#FBBF24"),
+                textPrimary = TerminalPalette.textPrimary.toArgb(),
+                textSecondary = TerminalPalette.textSecondary.toArgb(),
+                divider = TerminalPalette.divider.toArgb(),
+                timelineLine = TerminalPalette.timelineLine.toArgb(),
+                timelineDot = TerminalPalette.timelineDot.toArgb(),
+                todayAccent = TerminalPalette.textPrimary.toArgb(),
+                pillBg = Color.argb(225, 22, 72, 27),
+                pillText = TerminalPalette.textPrimary.toArgb(),
+            )
             isDark -> ThemeColors(
                 isNeon = false,
                 isGlass = false,
                 isAero = false,
+                isTerminal = false,
                 isDark = true,
                 bgBase = Color.parseColor("#0D111A"),
                 cardTop = Color.parseColor("#151B26"),
@@ -846,6 +911,7 @@ object ScheduleShareRenderer {
                 isNeon = false,
                 isGlass = false,
                 isAero = false,
+                isTerminal = false,
                 isDark = false,
                 bgBase = Color.parseColor("#F6F8FC"),
                 cardTop = Color.parseColor("#FFFFFF"),
