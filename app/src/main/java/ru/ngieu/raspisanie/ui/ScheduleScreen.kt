@@ -119,6 +119,7 @@ import ru.ngieu.raspisanie.ui.components.TetrisGameDialog
 import ru.ngieu.raspisanie.ui.components.VerticalListWithHorizontalBias
 import ru.ngieu.raspisanie.ui.components.WeekSelectorBar
 import ru.ngieu.raspisanie.ui.components.fullDayName
+import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
@@ -415,11 +416,13 @@ private fun NeonTopHeader(
     val titleColor = when {
         style.isNeon -> NeonPalette.textPrimary
         style.isGlass -> GlassPalette.textPrimary
+        style.isAero -> AeroPalette.textPrimary
         else -> MaterialTheme.colorScheme.onBackground
     }
     val subtitleColor = when {
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary
+        style.isAero -> AeroPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -434,6 +437,13 @@ private fun NeonTopHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            if (style.isAero) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_aero_windows_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
             Text(
                 text = if (activeActorKind == ActorKind.TEACHER) groupName else "Группа $groupName",
                 fontSize = 22.sp,
@@ -508,6 +518,7 @@ private fun NeonTopHeader(
                     colorFilter = when {
                         style.isNeon -> null
                         style.isGlass -> ColorFilter.tint(GlassPalette.textSecondary)
+                        style.isAero -> ColorFilter.tint(AeroPalette.textPrimary)
                         else -> ColorFilter.tint(subtitleColor)
                     },
                     modifier = Modifier.size(13.dp),
@@ -522,6 +533,7 @@ private fun NeonTopHeader(
                     style.isGlass -> Brush.verticalGradient(
                         colors = listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                     )
+                    style.isAero -> AeroPalette.panelFillBrush()
                     else -> Brush.horizontalGradient(
                         colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
@@ -529,18 +541,20 @@ private fun NeonTopHeader(
                 val todayBtnBorder = when {
                     style.isNeon -> NeonPalette.activeDayBorder.copy(alpha = 0.72f)
                     style.isGlass -> GlassPalette.panelBorderTop
+                    style.isAero -> AeroPalette.borderTop
                     else -> MaterialTheme.colorScheme.primary
                 }
                 val todayBtnContent = when {
-                    style.isNeon || style.isGlass -> Color.White
+                    style.isTranslucent -> Color.White
                     else -> MaterialTheme.colorScheme.onPrimary
                 }
+                val todayShape = RoundedCornerShape(if (style.isAero) 10.dp else 12.dp)
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(brush = todayBtnBrush, shape = RoundedCornerShape(12.dp))
-                        .border(width = 1.dp, color = todayBtnBorder, shape = RoundedCornerShape(12.dp))
+                        .clip(todayShape)
+                        .background(brush = todayBtnBrush, shape = todayShape)
+                        .border(width = 1.dp, color = todayBtnBorder, shape = todayShape)
                         .clickable(onClick = onClickToday)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -573,6 +587,7 @@ private fun NeonTopHeader(
                             when {
                                 style.isNeon -> Color(0x3838BDF8)
                                 style.isGlass -> GlassPalette.secondaryPillBg
+                                style.isAero -> AeroPalette.secondaryPillBg
                                 else -> MaterialTheme.colorScheme.secondaryContainer
                             },
                         )
@@ -581,6 +596,7 @@ private fun NeonTopHeader(
                             color = when {
                                 style.isNeon -> Color(0x667DD3FC)
                                 style.isGlass -> Color(0x4DF4F4F4)
+                                style.isAero -> AeroPalette.secondaryPillBorder
                                 else -> MaterialTheme.colorScheme.outlineVariant
                             },
                             shape = RoundedCornerShape(12.dp),
@@ -595,6 +611,7 @@ private fun NeonTopHeader(
                         color = when {
                             style.isNeon -> Color(0xFF7DD3FC)
                             style.isGlass -> GlassPalette.textPrimary
+                            style.isAero -> AeroPalette.textPrimary
                             else -> MaterialTheme.colorScheme.onSecondaryContainer
                         },
                         maxLines = 1,
@@ -613,23 +630,26 @@ private fun HeaderVectorCircleButton(
     onClick: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
+    val buttonShape = if (style.isAero) RoundedCornerShape(10.dp) else CircleShape
     val fill = when {
         style.isNeon -> Brush.verticalGradient(listOf(Color(0xBA242D58), Color(0xB3161E41)))
         style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelFillTop, GlassPalette.panelFillBottom))
+        style.isAero -> AeroPalette.panelFillBrush()
         else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface))
     }
     val border = when {
         style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom))
         style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom))
+        style.isAero -> AeroPalette.glassBorderBrush()
         else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant))
     }
 
     Box(
         modifier = Modifier
             .size(38.dp)
-            .clip(CircleShape)
-            .background(brush = fill, shape = CircleShape)
-            .border(width = 1.dp, brush = border, shape = CircleShape)
+            .clip(buttonShape)
+            .background(brush = fill, shape = buttonShape)
+            .border(width = 1.dp, brush = border, shape = buttonShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -639,6 +659,7 @@ private fun HeaderVectorCircleButton(
             tint = when {
                 style.isNeon -> Color(0xFFC4B5FD)
                 style.isGlass -> Color(0xFFF5F5F5)
+                style.isAero -> Color.White
                 else -> MaterialTheme.colorScheme.primary
             },
             modifier = Modifier.size(19.dp),
@@ -656,26 +677,31 @@ private fun HeaderCircleButton(
     onClick: () -> Unit,
 ) {
     val style = LocalAppVisualStyle.current
+    val buttonShape = if (style.isAero) RoundedCornerShape(10.dp) else CircleShape
     val fill = when {
         highlighted && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
         highlighted && style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
+        highlighted && style.isAero -> AeroPalette.activeFillBrush()
         highlighted -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.primaryContainer))
         style.isNeon -> Brush.verticalGradient(listOf(Color(0xBA242D58), Color(0xB3161E41)))
         style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelFillTop, GlassPalette.panelFillBottom))
+        style.isAero -> AeroPalette.panelFillBrush()
         else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface))
     }
     val border = when {
+        highlighted && style.isAero -> AeroPalette.activeBorderBrush()
         style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.glassBorderTop, NeonPalette.glassBorderBottom))
         style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom))
+        style.isAero -> AeroPalette.glassBorderBrush()
         else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant))
     }
 
     Box(
         modifier = Modifier
             .size(38.dp)
-            .clip(CircleShape)
-            .background(brush = fill, shape = CircleShape)
-            .border(width = 1.dp, brush = border, shape = CircleShape)
+            .clip(buttonShape)
+            .background(brush = fill, shape = buttonShape)
+            .border(width = 1.dp, brush = border, shape = buttonShape)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -685,6 +711,7 @@ private fun HeaderCircleButton(
                 color = when {
                     style.isNeon -> NeonPalette.textPrimary
                     style.isGlass -> GlassPalette.textPrimary
+                    style.isAero -> AeroPalette.textPrimary
                     else -> MaterialTheme.colorScheme.primary
                 },
                 modifier = Modifier.size(17.dp),
@@ -696,6 +723,7 @@ private fun HeaderCircleButton(
                 colorFilter = when {
                     style.isNeon -> null
                     style.isGlass -> if (iconRes == R.drawable.ic_glass_game) null else ColorFilter.tint(Color(0xFFF5F5F5))
+                    style.isAero -> ColorFilter.tint(Color.White)
                     else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
                 },
                 alpha = if (enabled) 1f else 0.4f,
@@ -723,11 +751,13 @@ private fun NeonSearchBar(
     val textColor = when {
         style.isNeon -> NeonPalette.textPrimary
         style.isGlass -> GlassPalette.textPrimary
+        style.isAero -> AeroPalette.textPrimary
         else -> MaterialTheme.colorScheme.onSurface
     }
     val hintColor = when {
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary
+        style.isAero -> AeroPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -763,6 +793,7 @@ private fun NeonSearchBar(
                     colorFilter = when {
                         style.isNeon -> null
                         style.isGlass -> ColorFilter.tint(GlassPalette.textSecondary)
+                        style.isAero -> ColorFilter.tint(AeroPalette.textPrimary)
                         else -> ColorFilter.tint(hintColor)
                     },
                     modifier = Modifier.size(18.dp),
@@ -785,7 +816,7 @@ private fun NeonSearchBar(
                         cursorBrush = SolidColor(
                             when {
                                 style.isNeon -> Color(0xFF38BDF8)
-                                style.isGlass -> Color.White
+                                style.isGlass || style.isAero -> Color.White
                                 else -> MaterialTheme.colorScheme.primary
                             },
                         ),
@@ -864,6 +895,7 @@ private fun NeonSearchBar(
                                 color = when {
                                     style.isNeon -> Color(0xFF7DD3FC)
                                     style.isGlass -> GlassPalette.textPrimary
+                                    style.isAero -> AeroPalette.textPrimary
                                     else -> MaterialTheme.colorScheme.primary
                                 },
                             )
@@ -874,6 +906,7 @@ private fun NeonSearchBar(
                                 color = when {
                                     style.isNeon -> Color(0x24FFFFFF)
                                     style.isGlass -> Color(0x33F4F4F4)
+                                    style.isAero -> Color(0x52BCEFFE)
                                     else -> MaterialTheme.colorScheme.outlineVariant
                                 },
                             )
@@ -945,6 +978,7 @@ private fun NeonSearchBar(
                                             colorFilter = when {
                                                 style.isNeon -> null
                                                 style.isGlass -> ColorFilter.tint(GlassPalette.iconTint)
+                                                style.isAero -> ColorFilter.tint(AeroPalette.iconTint)
                                                 else -> ColorFilter.tint(hintColor)
                                             },
                                             modifier = Modifier.size(18.dp),
@@ -956,7 +990,7 @@ private fun NeonSearchBar(
                                                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
                                                 color = when {
                                                     isCurrent && style.isNeon -> Color(0xFF7DD3FC)
-                                                    isCurrent && style.isGlass -> Color.White
+                                                    isCurrent && (style.isGlass || style.isAero) -> Color.White
                                                     isCurrent -> MaterialTheme.colorScheme.primary
                                                     else -> textColor
                                                 },
@@ -999,6 +1033,7 @@ private fun SearchFilterChip(
     val fillBrush = when {
         selected && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
         selected && style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
+        selected && style.isAero -> AeroPalette.activeFillBrush()
         selected -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
         else -> null
     }
@@ -1006,6 +1041,7 @@ private fun SearchFilterChip(
         selected -> Color.White
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary
+        style.isAero -> AeroPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -1241,32 +1277,63 @@ private fun DayLessonsList(
 
         item(key = "day_title_$pageDate") {
             val title = "${fullDayName(pageDate.dayOfWeek)}, ${pageDate.format(dayHeaderDateFormatter)}"
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 2.dp, bottom = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = when {
-                        style.isNeon -> NeonPalette.textSecondary
-                        style.isGlass -> GlassPalette.textSecondary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-                Text(
-                    text = pairsCountLabel(daySlots.size),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = when {
-                        style.isNeon -> NeonPalette.textSecondary
-                        style.isGlass -> GlassPalette.textSecondary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
+            if (style.isAero) {
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp, bottom = 6.dp),
+                    cornerRadius = 12.dp,
+                    fillBrush = AeroPalette.panelFillBrush(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AeroPalette.textPrimary,
+                        )
+                        Text(
+                            text = pairsCountLabel(daySlots.size),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = AeroPalette.textPrimary,
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp, bottom = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = when {
+                            style.isNeon -> NeonPalette.textSecondary
+                            style.isGlass -> GlassPalette.textSecondary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                    Text(
+                        text = pairsCountLabel(daySlots.size),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = when {
+                            style.isNeon -> NeonPalette.textSecondary
+                            style.isGlass -> GlassPalette.textSecondary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
             }
         }
 
@@ -1486,10 +1553,11 @@ private fun WeekHorizontalPager(
                                 fontWeight = FontWeight.Bold,
                                 color = when {
                                     isToday && style.isNeon -> Color(0xFF38BDF8)
-                                    isToday && style.isGlass -> Color.White
+                                    isToday && (style.isGlass || style.isAero) -> Color.White
                                     isToday -> MaterialTheme.colorScheme.primary
                                     style.isNeon -> NeonPalette.textPrimary
                                     style.isGlass -> GlassPalette.textPrimary
+                                    style.isAero -> AeroPalette.textPrimary
                                     else -> MaterialTheme.colorScheme.onBackground
                                 },
                             )
@@ -1501,6 +1569,7 @@ private fun WeekHorizontalPager(
                                             when {
                                                 style.isNeon -> Color(0x3838BDF8)
                                                 style.isGlass -> GlassPalette.typePillBg
+                                                style.isAero -> AeroPalette.typePillFillTop
                                                 else -> MaterialTheme.colorScheme.primaryContainer
                                             },
                                         )
@@ -1513,6 +1582,7 @@ private fun WeekHorizontalPager(
                                         color = when {
                                             style.isNeon -> Color(0xFF7DD3FC)
                                             style.isGlass -> GlassPalette.typePillText
+                                            style.isAero -> AeroPalette.typePillText
                                             else -> MaterialTheme.colorScheme.onPrimaryContainer
                                         },
                                     )
@@ -1525,6 +1595,7 @@ private fun WeekHorizontalPager(
                             color = when {
                                 style.isNeon -> NeonPalette.textSecondary
                                 style.isGlass -> GlassPalette.textSecondary
+                                style.isAero -> AeroPalette.textSecondary
                                 else -> MaterialTheme.colorScheme.onSurfaceVariant
                             },
                         )
@@ -1545,6 +1616,7 @@ private fun WeekHorizontalPager(
                                 color = when {
                                     style.isNeon -> NeonPalette.textSecondary
                                     style.isGlass -> GlassPalette.textSecondary
+                                    style.isAero -> AeroPalette.textSecondary
                                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                                 },
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -1589,11 +1661,13 @@ private fun SubgroupsAndGroupTab(
     val titleColor = when {
         style.isNeon -> NeonPalette.textPrimary
         style.isGlass -> GlassPalette.textPrimary
+        style.isAero -> AeroPalette.textPrimary
         else -> MaterialTheme.colorScheme.onSurface
     }
     val subColor = when {
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary
+        style.isAero -> AeroPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -1641,12 +1715,12 @@ private fun SubgroupsAndGroupTab(
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(
-                                    if (style.isGlass) {
-                                        Brush.verticalGradient(
+                                    when {
+                                        style.isGlass -> Brush.verticalGradient(
                                             listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                                         )
-                                    } else {
-                                        Brush.verticalGradient(
+                                        style.isAero -> AeroPalette.activeFillBrush()
+                                        else -> Brush.verticalGradient(
                                             listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
                                         )
                                     },
@@ -1689,6 +1763,7 @@ private fun SubgroupsAndGroupTab(
                                 selected && style.isGlass -> Brush.verticalGradient(
                                     listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                                 )
+                                selected && style.isAero -> AeroPalette.activeFillBrush()
                                 selected -> Brush.verticalGradient(
                                     listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                                 )
@@ -1701,6 +1776,7 @@ private fun SubgroupsAndGroupTab(
                                 selected && style.isGlass -> Brush.linearGradient(
                                     listOf(GlassPalette.panelBorderTop, GlassPalette.panelBorderBottom),
                                 )
+                                selected && style.isAero -> AeroPalette.activeBorderBrush()
                                 selected -> Brush.linearGradient(
                                     listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                                 )
@@ -1710,6 +1786,7 @@ private fun SubgroupsAndGroupTab(
                                 style.isGlass -> Brush.linearGradient(
                                     listOf(GlassPalette.cardBorderTop, GlassPalette.cardBorderBottom),
                                 )
+                                style.isAero -> AeroPalette.glassBorderBrush()
                                 else -> Brush.linearGradient(
                                     listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
                                 )
@@ -1778,12 +1855,12 @@ private fun SubgroupsAndGroupTab(
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(14.dp))
                                 .background(
-                                    if (style.isGlass) {
-                                        Brush.verticalGradient(
+                                    when {
+                                        style.isGlass -> Brush.verticalGradient(
                                             listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                                         )
-                                    } else {
-                                        Brush.verticalGradient(
+                                        style.isAero -> AeroPalette.activeFillBrush()
+                                        else -> Brush.verticalGradient(
                                             listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
                                         )
                                     },
@@ -1839,6 +1916,7 @@ private fun SubgroupsAndGroupTab(
                                 color = when {
                                     style.isNeon -> Color(0xFF7DD3FC)
                                     style.isGlass -> GlassPalette.textPrimary
+                                    style.isAero -> AeroPalette.textPrimary
                                     else -> MaterialTheme.colorScheme.primary
                                 },
                                 textAlign = TextAlign.Center,
@@ -1875,6 +1953,7 @@ private fun SubgroupsAndGroupTab(
                                 tint = when {
                                     style.isNeon -> Color(0xFF38BDF8)
                                     style.isGlass -> GlassPalette.textPrimary
+                                    style.isAero -> AeroPalette.textPrimary
                                     else -> MaterialTheme.colorScheme.primary
                                 },
                                 modifier = Modifier.size(18.dp),
@@ -1920,11 +1999,13 @@ private fun SettingsTab(
     val titleColor = when {
         style.isNeon -> NeonPalette.textPrimary
         style.isGlass -> GlassPalette.textPrimary
+        style.isAero -> AeroPalette.textPrimary
         else -> MaterialTheme.colorScheme.onSurface
     }
     val subColor = when {
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary
+        style.isAero -> AeroPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val navBottomPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -1951,12 +2032,13 @@ private fun SettingsTab(
                     ) {
                         Image(
                             painter = painterResource(
-                                id = if (style.isGlass) R.drawable.ic_glass_themes else R.drawable.ic_neon_themes,
+                                id = if (style.isGlass || style.isAero) R.drawable.ic_glass_themes else R.drawable.ic_neon_themes,
                             ),
                             contentDescription = null,
                             colorFilter = when {
                                 style.isNeon -> null
                                 style.isGlass -> ColorFilter.tint(GlassPalette.textPrimary)
+                                style.isAero -> ColorFilter.tint(AeroPalette.textPrimary)
                                 else -> ColorFilter.tint(MaterialTheme.colorScheme.primary)
                             },
                             modifier = Modifier.size(20.dp),
@@ -1979,6 +2061,7 @@ private fun SettingsTab(
                             val pillBrush = when {
                                 selected && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
                                 selected && style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
+                                selected && style.isAero -> AeroPalette.activeFillBrush()
                                 selected -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
                                 else -> null
                             }
@@ -1986,6 +2069,7 @@ private fun SettingsTab(
                             GlassCard(
                                 cornerRadius = 12.dp,
                                 fillBrush = pillBrush,
+                                borderBrush = if (selected && style.isAero) AeroPalette.activeBorderBrush() else null,
                                 onClick = { onSelectTheme(mode) },
                             ) {
                                 Text(
@@ -2040,6 +2124,7 @@ private fun SettingsTab(
                             val pillBrush = when {
                                 selected && style.isNeon -> Brush.verticalGradient(listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd))
                                 selected && style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
+                                selected && style.isAero -> AeroPalette.activeFillBrush()
                                 selected -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
                                 else -> null
                             }
@@ -2047,6 +2132,7 @@ private fun SettingsTab(
                                 modifier = Modifier.weight(1f),
                                 cornerRadius = 12.dp,
                                 fillBrush = pillBrush,
+                                borderBrush = if (selected && style.isAero) AeroPalette.activeBorderBrush() else null,
                                 onClick = { onSelectWeekMode(mode) },
                             ) {
                                 Text(
@@ -2085,6 +2171,7 @@ private fun SettingsTab(
                                     tint = when {
                                         style.isNeon -> Color(0xFF38BDF8)
                                         style.isGlass -> GlassPalette.textPrimary
+                                        style.isAero -> AeroPalette.textPrimary
                                         else -> MaterialTheme.colorScheme.primary
                                     },
                                     modifier = Modifier.size(16.dp),
@@ -2116,6 +2203,7 @@ private fun SettingsTab(
                                     tint = when {
                                         style.isNeon -> Color(0xFFA855F7)
                                         style.isGlass -> GlassPalette.textPrimary
+                                        style.isAero -> AeroPalette.textPrimary
                                         else -> MaterialTheme.colorScheme.primary
                                     },
                                     modifier = Modifier.size(16.dp),
@@ -2141,6 +2229,7 @@ private fun SettingsTab(
                 glowColor = when {
                     style.isNeon -> Color(0xFF8B5CF6)
                     style.isGlass -> Color.White
+                    style.isAero -> Color(0xFF38BDF8)
                     else -> null
                 },
                 onClick = onOpenGame,
@@ -2157,12 +2246,12 @@ private fun SettingsTab(
                             .size(40.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(
-                                if (style.isGlass) {
-                                    Brush.verticalGradient(
+                                when {
+                                    style.isGlass -> Brush.verticalGradient(
                                         listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                                     )
-                                } else {
-                                    Brush.verticalGradient(
+                                    style.isAero -> AeroPalette.activeFillBrush()
+                                    else -> Brush.verticalGradient(
                                         listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
                                     )
                                 },
@@ -2178,7 +2267,11 @@ private fun SettingsTab(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (style.isGlass) "Стеклянный Тетрис" else "Неоновый Тетрис",
+                            text = when {
+                                style.isGlass -> "Стеклянный Тетрис"
+                                style.isAero -> "Аэро Тетрис"
+                                else -> "Неоновый Тетрис"
+                            },
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = titleColor,
@@ -2200,6 +2293,7 @@ private fun SettingsTab(
                         color = when {
                             style.isNeon -> Color(0xFF7DD3FC)
                             style.isGlass -> GlassPalette.textPrimary
+                            style.isAero -> AeroPalette.textPrimary
                             else -> MaterialTheme.colorScheme.primary
                         },
                     )
@@ -2240,6 +2334,7 @@ private fun SettingsTab(
                             colorFilter = when {
                                 style.isNeon -> null
                                 style.isGlass -> ColorFilter.tint(GlassPalette.textSecondary)
+                                style.isAero -> ColorFilter.tint(AeroPalette.textPrimary)
                                 else -> ColorFilter.tint(subColor)
                             },
                             modifier = Modifier.size(14.dp),
@@ -2272,6 +2367,7 @@ private fun SettingsTab(
                                         color = when {
                                             style.isNeon -> Color(0x1EFFFFFF)
                                             style.isGlass -> Color(0x2EF4F4F4)
+                                            style.isAero -> Color(0x52BCEFFE)
                                             else -> MaterialTheme.colorScheme.outlineVariant
                                         },
                                     )
@@ -2380,6 +2476,7 @@ private fun AppIconSelectorCard(
                                 selected && style.isGlass -> Brush.verticalGradient(
                                     listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                                 )
+                                selected && style.isAero -> AeroPalette.activeFillBrush()
                                 selected -> Brush.verticalGradient(
                                     listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                                 )
@@ -2389,6 +2486,7 @@ private fun AppIconSelectorCard(
                                 AppIconStyle.AUTO -> resolvedIcon
                                 AppIconStyle.NEON -> ResolvedAppIcon.NEON
                                 AppIconStyle.GLASS -> ResolvedAppIcon.GLASS
+                                AppIconStyle.AERO -> ResolvedAppIcon.AERO
                                 AppIconStyle.LIGHT -> ResolvedAppIcon.LIGHT
                                 AppIconStyle.DARK -> ResolvedAppIcon.DARK
                                 AppIconStyle.CLASSIC -> ResolvedAppIcon.CLASSIC
@@ -2398,6 +2496,7 @@ private fun AppIconSelectorCard(
                                 modifier = Modifier.weight(1f),
                                 cornerRadius = 14.dp,
                                 fillBrush = pillBrush,
+                                borderBrush = if (selected && style.isAero) AeroPalette.activeBorderBrush() else null,
                                 onClick = { onSelectIconStyle(option) },
                             ) {
                                 Column(
@@ -2432,10 +2531,10 @@ private fun AppIconSelectorCard(
                                                     .size(18.dp)
                                                     .clip(CircleShape)
                                                     .background(
-                                                        if (style.isGlass) {
-                                                            Color(0xFF2B2B2B)
-                                                        } else {
-                                                            MaterialTheme.colorScheme.primary
+                                                        when {
+                                                            style.isGlass -> Color(0xFF2B2B2B)
+                                                            style.isAero -> Color(0xFF0A60A6)
+                                                            else -> MaterialTheme.colorScheme.primary
                                                         },
                                                     )
                                                     .border(1.dp, Color.White, CircleShape),
@@ -2462,6 +2561,9 @@ private fun AppIconSelectorCard(
                                     )
                                 }
                             }
+                        }
+                        repeat(3 - rowItems.size) {
+                            Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -2495,6 +2597,7 @@ private fun AppIconSelectorCard(
                             style.isGlass -> Brush.verticalGradient(
                                 listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom),
                             )
+                            style.isAero -> AeroPalette.activeFillBrush()
                             else -> Brush.verticalGradient(
                                 listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                             )
@@ -2525,6 +2628,7 @@ private fun iconPreviewRes(icon: ResolvedAppIcon): Int {
     return when (icon) {
         ResolvedAppIcon.NEON -> R.drawable.ic_icon_preview_neon
         ResolvedAppIcon.GLASS -> R.drawable.ic_icon_preview_glass
+        ResolvedAppIcon.AERO -> R.drawable.ic_icon_preview_aero
         ResolvedAppIcon.LIGHT -> R.drawable.ic_icon_preview_light
         ResolvedAppIcon.DARK -> R.drawable.ic_icon_preview_dark
         ResolvedAppIcon.CLASSIC -> R.drawable.ic_launcher
@@ -2541,16 +2645,19 @@ private fun AppUpdateCard(
     val titleColor = when {
         style.isNeon -> NeonPalette.textPrimary
         style.isGlass -> GlassPalette.textPrimary
+        style.isAero -> AeroPalette.textPrimary
         else -> MaterialTheme.colorScheme.onSurface
     }
     val subColor = when {
         style.isNeon -> NeonPalette.textSecondary
         style.isGlass -> GlassPalette.textSecondary
+        style.isAero -> AeroPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val accentColor = when {
         style.isNeon -> Color(0xFF2DD4BF)
         style.isGlass -> GlassPalette.textPrimary
+        style.isAero -> Color(0xFF7CE2FF)
         else -> MaterialTheme.colorScheme.primary
     }
 
@@ -2712,6 +2819,7 @@ private fun AppUpdateCard(
                     val installBrush = when {
                         style.isNeon -> Brush.verticalGradient(listOf(Color(0xFF14B8A6), Color(0xFF0F766E)))
                         style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.activeTabFillTop, GlassPalette.activeTabFillBottom))
+                        style.isAero -> AeroPalette.activeFillBrush()
                         else -> Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
                     }
                     GlassCard(
@@ -2777,6 +2885,7 @@ private fun LoadingView(groupName: String) {
                 color = when {
                     style.isNeon -> Color(0xFFA855F7)
                     style.isGlass -> GlassPalette.textPrimary
+                    style.isAero -> AeroPalette.textPrimary
                     else -> MaterialTheme.colorScheme.primary
                 },
             )
@@ -2786,6 +2895,7 @@ private fun LoadingView(groupName: String) {
                 color = when {
                     style.isNeon -> NeonPalette.textSecondary
                     style.isGlass -> GlassPalette.textSecondary
+                    style.isAero -> AeroPalette.textPrimary
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
@@ -2824,6 +2934,7 @@ private fun ErrorView(
                     color = when {
                         style.isNeon -> NeonPalette.textPrimary
                         style.isGlass -> GlassPalette.textPrimary
+                        style.isAero -> AeroPalette.textPrimary
                         else -> MaterialTheme.colorScheme.onSurface
                     },
                     textAlign = TextAlign.Center,
@@ -2834,6 +2945,7 @@ private fun ErrorView(
                     color = when {
                         style.isNeon -> NeonPalette.textSecondary
                         style.isGlass -> GlassPalette.textSecondary
+                        style.isAero -> AeroPalette.textSecondary
                         else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     textAlign = TextAlign.Center,
@@ -2907,6 +3019,7 @@ private fun EmptyDayCard(hasSearchQuery: Boolean) {
                 tint = when {
                     style.isNeon -> Color(0xFF38BDF8)
                     style.isGlass -> GlassPalette.textPrimary
+                    style.isAero -> AeroPalette.textPrimary
                     else -> MaterialTheme.colorScheme.primary
                 },
             )
@@ -2917,6 +3030,7 @@ private fun EmptyDayCard(hasSearchQuery: Boolean) {
                 color = when {
                     style.isNeon -> NeonPalette.textPrimary
                     style.isGlass -> GlassPalette.textPrimary
+                    style.isAero -> AeroPalette.textPrimary
                     else -> MaterialTheme.colorScheme.onSurface
                 },
             )
@@ -2930,6 +3044,7 @@ private fun EmptyDayCard(hasSearchQuery: Boolean) {
                 color = when {
                     style.isNeon -> NeonPalette.textSecondary
                     style.isGlass -> GlassPalette.textSecondary
+                    style.isAero -> AeroPalette.textSecondary
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
                 textAlign = TextAlign.Center,

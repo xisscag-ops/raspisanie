@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ru.ngieu.raspisanie.data.Lesson
+import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
@@ -61,7 +62,11 @@ fun DaySelectorBottomDock(
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         GlassCard(
-            cornerRadius = if (style.isGlass) 26.dp else 24.dp,
+            cornerRadius = when {
+                style.isGlass -> 26.dp
+                style.isAero -> 20.dp
+                else -> 24.dp
+            },
             fillBrush = when {
                 style.isNeon -> Brush.horizontalGradient(
                     colors = listOf(
@@ -76,6 +81,7 @@ fun DaySelectorBottomDock(
                         GlassPalette.dockFillBottom,
                     ),
                 )
+                style.isAero -> AeroPalette.dockFillBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface,
@@ -97,6 +103,7 @@ fun DaySelectorBottomDock(
                         GlassPalette.dockBorderBottom,
                     ),
                 )
+                style.isAero -> AeroPalette.glassBorderBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.outlineVariant,
@@ -107,6 +114,7 @@ fun DaySelectorBottomDock(
             glowColor = when {
                 style.isNeon -> Color(0xFF7C3AED)
                 style.isGlass -> Color.White
+                style.isAero -> Color(0xFF38BDF8)
                 else -> null
             },
         ) {
@@ -151,6 +159,7 @@ fun DaySelectorRow(
                 isSelected -> Color.White
                 style.isNeon -> NeonPalette.textSecondary
                 style.isGlass -> GlassPalette.textMuted
+                style.isAero -> AeroPalette.textMuted
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             }
 
@@ -158,13 +167,16 @@ fun DaySelectorRow(
                 isSelected -> if (style.isGlass) Color(0xFFF5F5F5) else Color.White
                 isToday && style.isNeon -> Color(0xFF38BDF8)
                 isToday && style.isGlass -> Color.White
+                isToday && style.isAero -> Color.White
                 isToday -> MaterialTheme.colorScheme.primary
                 style.isNeon -> NeonPalette.textPrimary
                 style.isGlass -> Color(0xFFF5F5F5)
+                style.isAero -> AeroPalette.textPrimary
                 else -> MaterialTheme.colorScheme.onSurface
             }
 
-            val shape = RoundedCornerShape(16.dp)
+            val tileRadius = if (style.isAero) 13.dp else 16.dp
+            val shape = RoundedCornerShape(tileRadius)
             val fillBrush = when {
                 isSelected && style.isNeon -> Brush.verticalGradient(
                     colors = listOf(NeonPalette.activeDayStart, NeonPalette.activeDayEnd),
@@ -172,6 +184,7 @@ fun DaySelectorRow(
                 isSelected && style.isGlass -> Brush.linearGradient(
                     colors = listOf(GlassPalette.daySelectedFillTop, GlassPalette.daySelectedFillBottom),
                 )
+                isSelected && style.isAero -> AeroPalette.activeFillBrush()
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                 )
@@ -187,6 +200,15 @@ fun DaySelectorRow(
                 style.isGlass -> Brush.linearGradient(
                     colors = listOf(GlassPalette.dayTileFillTop, GlassPalette.dayTileFillBottom),
                 )
+                style.isAero && isToday -> Brush.verticalGradient(
+                    colorStops = arrayOf(
+                        0.00f to Color(0xE63D9ED6),
+                        0.46f to Color(0xE62282C2),
+                        0.50f to Color(0xEB0865A8),
+                        1.00f to Color(0xEB157BC0),
+                    ),
+                )
+                style.isAero -> AeroPalette.dayTileFillBrush()
                 isToday -> Brush.verticalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f),
@@ -208,17 +230,24 @@ fun DaySelectorRow(
                 isSelected && style.isGlass -> Brush.linearGradient(
                     colors = listOf(GlassPalette.daySelectedBorderTop, GlassPalette.daySelectedBorderBottom),
                 )
+                isSelected && style.isAero -> AeroPalette.activeBorderBrush()
                 isToday && style.isNeon -> Brush.verticalGradient(
                     colors = listOf(Color(0x8038BDF8), Color(0x40818CF8)),
                 )
                 isToday && style.isGlass -> Brush.linearGradient(
                     colors = listOf(Color(0x99F4F4F4), Color(0x408C8C8C)),
                 )
+                isToday && style.isAero -> Brush.verticalGradient(
+                    colors = listOf(Color(0xF0D6F5FF), Color(0xAA78C8F0)),
+                )
                 style.isNeon -> Brush.verticalGradient(
                     colors = listOf(Color(0x28FFFFFF), Color(0x14818CF8)),
                 )
                 style.isGlass -> Brush.linearGradient(
                     colors = listOf(GlassPalette.dayTileBorderTop, GlassPalette.dayTileBorderBottom),
+                )
+                style.isAero -> Brush.verticalGradient(
+                    colors = listOf(Color(0xA6BCEFFE), Color(0x4D3D8EC2)),
                 )
                 isSelected -> Brush.verticalGradient(
                     colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
@@ -243,11 +272,11 @@ fun DaySelectorRow(
                     }
                     .drawBehind {
                         if (isSelected && style.isTranslucent) {
-                            val r = 16.dp.toPx()
-                            val glow = if (style.isGlass) {
-                                Color.White.copy(alpha = 0.28f)
-                            } else {
-                                Color(0xFF9333EA).copy(alpha = 0.35f)
+                            val r = tileRadius.toPx()
+                            val glow = when {
+                                style.isGlass -> Color.White.copy(alpha = 0.28f)
+                                style.isAero -> Color(0xFF7DD3FC).copy(alpha = 0.36f)
+                                else -> Color(0xFF9333EA).copy(alpha = 0.35f)
                             }
                             drawRoundRect(
                                 color = glow,
@@ -298,6 +327,7 @@ fun DaySelectorRow(
                                 hasCancelled -> if (isStandardDark) ScheduleAccentColors.cancelBadgeDark else Color(0xFFF87171)
                                 hasChanges -> if (isStandardDark) ScheduleAccentColors.changeBadgeDark else Color(0xFFFBBF24)
                                 style.isGlass -> Color(0xFFFAFAFA)
+                                style.isAero -> Color(0xFFEAF8FF)
                                 style.isNeon && date.dayOfWeek.value >= 5 -> Color(0xFF38BDF8)
                                 style.isNeon -> Color(0xFFA78BFA)
                                 else -> MaterialTheme.colorScheme.primary

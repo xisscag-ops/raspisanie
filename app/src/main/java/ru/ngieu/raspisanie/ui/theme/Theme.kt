@@ -10,6 +10,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -19,6 +20,7 @@ import ru.ngieu.raspisanie.data.ThemeModeSetting
 enum class AppVisualSkin {
     NEON,
     GLASS,
+    AERO,
     STANDARD,
 }
 
@@ -29,7 +31,8 @@ data class AppVisualStyle(
 ) {
     val isNeon: Boolean get() = skin == AppVisualSkin.NEON
     val isGlass: Boolean get() = skin == AppVisualSkin.GLASS
-    val isTranslucent: Boolean get() = skin == AppVisualSkin.NEON || skin == AppVisualSkin.GLASS
+    val isAero: Boolean get() = skin == AppVisualSkin.AERO
+    val isTranslucent: Boolean get() = skin == AppVisualSkin.NEON || skin == AppVisualSkin.GLASS || skin == AppVisualSkin.AERO
 }
 
 val LocalAppVisualStyle = staticCompositionLocalOf {
@@ -128,6 +131,154 @@ object GlassPalette {
     val activeLessonAccent = Color(0xFF34D399)
 }
 
+object AeroPalette {
+    val backgroundBase = Color(0xFF0A4D8C)
+
+    // Двухполосный глянец Windows 7 Aero Glass: светлый небесный верх -> глубокий сапфировый горизонт -> нижний блик
+    val panelFillTop = Color(0xDF338AC0)
+    val panelFillMidUpper = Color(0xDF1F72AA)
+    val panelFillMidLower = Color(0xE307558D)
+    val panelFillBottom = Color(0xE3116CA5)
+
+    val cardFillTop = Color(0xDB3E89B6)
+    val cardFillMidUpper = Color(0xDB2A75A5)
+    val cardFillMidLower = Color(0xDF115F94)
+    val cardFillBottom = Color(0xE010679F)
+
+    val dockFillTop = Color(0xDC3086BB)
+    val dockFillMidUpper = Color(0xDC1F70A7)
+    val dockFillMidLower = Color(0xE007548A)
+    val dockFillBottom = Color(0xE01068A0)
+
+    val dayTileFillTop = Color(0xD43085BB)
+    val dayTileFillMidUpper = Color(0xD41E70A6)
+    val dayTileFillMidLower = Color(0xDB07548A)
+    val dayTileFillBottom = Color(0xDB116AA1)
+
+    // Активные элементы: кнопка «Открыть сегодня», выбранная вкладка, выбранный день
+    val activeFillTop = Color(0xF537AEEF)
+    val activeFillMidUpper = Color(0xF51387E0)
+    val activeFillMidLower = Color(0xF70062CA)
+    val activeFillBottom = Color(0xF5019EE5)
+
+    // Стеклянные контуры и внутренний блик
+    val borderTop = Color(0xEBC6F1FF)
+    val borderMid = Color(0x7A4FAAD9)
+    val borderBottom = Color(0xCC9EE0FC)
+    val innerContour = Color(0x4DBCEFFE)
+
+    val activeBorderTop = Color(0xFFF5FCFF)
+    val activeBorderBottom = Color(0xD9AEE8FF)
+
+    // Плашки типа пары («Практика», «Лекция») — светлое ледяное стекло + тёмный шрифт Aero
+    val typePillFillTop = Color(0xF09AD5F4)
+    val typePillFillBottom = Color(0xEB7AC1E8)
+    val typePillBorder = Color(0xFFF2FBFF)
+    val typePillText = Color(0xFF07375D)
+
+    val secondaryPillBg = Color(0x781D6EA6)
+    val secondaryPillBorder = Color(0x88BCEFFE)
+    val secondaryPillText = Color(0xFFEAF7FF)
+
+    val textPrimary = Color(0xFFFFFFFF)
+    val textSecondary = Color(0xFFC4E6FF)
+    val textMuted = Color(0xFFD8F0FF)
+    val iconTint = Color(0xFFFFFFFF)
+
+    // Вертикальная шкала и маркеры времени
+    val timelineLineTop = Color(0xFFE2F6FE)
+    val timelineLineBottom = Color(0xFFA6E2FE)
+    val timelineDot = Color(0xFF2888C8)
+    val timelineDotGlow = Color(0x88BCEFFE)
+    val timelineActiveNow = Color(0xFF34D399)
+
+    // Светящаяся голубая полоса прогресса Aero
+    val progressTrack = Color(0x8200375E)
+    val progressFillTop = Color(0xFF99E6FF)
+    val progressFillMid = Color(0xFF37CEFF)
+    val progressFillBottom = Color(0xFF0078C8)
+
+    // Состояние идущей сейчас пары / замены / отмены в Aero
+    val activeLessonTop = Color(0xDE1B8C75)
+    val activeLessonMid = Color(0xE00A5B4D)
+    val activeLessonBottom = Color(0xE00E7561)
+    val activeLessonBorder = Color(0xFF5EEAD4)
+    val activeLessonAccent = Color(0xFF34D399)
+
+    val changeLessonTop = Color(0xDC9E6C1A)
+    val changeLessonMid = Color(0xDE6B450B)
+    val changeLessonBottom = Color(0xDE825510)
+
+    val cancelLessonTop = Color(0xDC982634)
+    val cancelLessonMid = Color(0xDE64131E)
+    val cancelLessonBottom = Color(0xDE7A1926)
+
+    fun panelFillBrush(): Brush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to panelFillTop,
+            0.46f to panelFillMidUpper,
+            0.50f to panelFillMidLower,
+            1.00f to panelFillBottom,
+        ),
+    )
+
+    fun cardFillBrush(): Brush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to cardFillTop,
+            0.46f to cardFillMidUpper,
+            0.50f to cardFillMidLower,
+            1.00f to cardFillBottom,
+        ),
+    )
+
+    fun dockFillBrush(): Brush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to dockFillTop,
+            0.46f to dockFillMidUpper,
+            0.50f to dockFillMidLower,
+            1.00f to dockFillBottom,
+        ),
+    )
+
+    fun dayTileFillBrush(): Brush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to dayTileFillTop,
+            0.46f to dayTileFillMidUpper,
+            0.50f to dayTileFillMidLower,
+            1.00f to dayTileFillBottom,
+        ),
+    )
+
+    fun activeFillBrush(): Brush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to activeFillTop,
+            0.46f to activeFillMidUpper,
+            0.50f to activeFillMidLower,
+            1.00f to activeFillBottom,
+        ),
+    )
+
+    fun glassBorderBrush(): Brush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to borderTop,
+            0.50f to borderMid,
+            1.00f to borderBottom,
+        ),
+    )
+
+    fun activeBorderBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(activeBorderTop, activeBorderBottom),
+    )
+
+    fun progressFillBrush(): Brush = Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to progressFillTop,
+            0.48f to progressFillMid,
+            1.00f to progressFillBottom,
+        ),
+    )
+}
+
 private val NeonColors = darkColorScheme(
     primary = Color(0xFF9333EA),
     onPrimary = Color(0xFFFFFFFF),
@@ -179,6 +330,33 @@ private val GlassColors = darkColorScheme(
     error = Color(0xFFFB7185),
     onError = Color(0xFF4C0519),
     errorContainer = Color(0xFF4A1922),
+    onErrorContainer = Color(0xFFFFE4E6),
+)
+
+private val AeroColors = darkColorScheme(
+    primary = Color(0xFF37CEFF),
+    onPrimary = Color(0xFF032544),
+    primaryContainer = Color(0xFF0A5E9E),
+    onPrimaryContainer = Color(0xFFFFFFFF),
+    secondary = Color(0xFF83C4E9),
+    onSecondary = Color(0xFF07375D),
+    secondaryContainer = Color(0xFF0C4A7A),
+    onSecondaryContainer = Color(0xFFEAF7FF),
+    tertiary = Color(0xFF34D399),
+    onTertiary = Color(0xFF022C22),
+    tertiaryContainer = Color(0xFF0B5D4D),
+    onTertiaryContainer = Color(0xFFD1FAE5),
+    background = AeroPalette.backgroundBase,
+    onBackground = AeroPalette.textPrimary,
+    surface = Color(0xFF0F568D),
+    onSurface = AeroPalette.textPrimary,
+    surfaceVariant = Color(0xFF176BA8),
+    onSurfaceVariant = AeroPalette.textSecondary,
+    outline = Color(0xFF7EC9EE),
+    outlineVariant = Color(0x52BCEFFE),
+    error = Color(0xFFFB7185),
+    onError = Color(0xFF4C0519),
+    errorContainer = Color(0xFF64131E),
     onErrorContainer = Color(0xFFFFE4E6),
 )
 
@@ -284,12 +462,13 @@ fun NgieuTheme(
     val skin = when (themeMode) {
         ThemeModeSetting.NEON -> AppVisualSkin.NEON
         ThemeModeSetting.GLASS -> AppVisualSkin.GLASS
+        ThemeModeSetting.AERO -> AppVisualSkin.AERO
         ThemeModeSetting.SYSTEM -> if (systemDark) AppVisualSkin.NEON else AppVisualSkin.STANDARD
         ThemeModeSetting.LIGHT -> AppVisualSkin.STANDARD
         ThemeModeSetting.DARK -> AppVisualSkin.STANDARD
     }
     val isDark = when (themeMode) {
-        ThemeModeSetting.NEON, ThemeModeSetting.GLASS -> true
+        ThemeModeSetting.NEON, ThemeModeSetting.GLASS, ThemeModeSetting.AERO -> true
         ThemeModeSetting.SYSTEM -> systemDark
         ThemeModeSetting.LIGHT -> false
         ThemeModeSetting.DARK -> true
@@ -298,6 +477,7 @@ fun NgieuTheme(
     val colorScheme = when {
         skin == AppVisualSkin.NEON -> NeonColors
         skin == AppVisualSkin.GLASS -> GlassColors
+        skin == AppVisualSkin.AERO -> AeroColors
         isDark -> DarkColors
         else -> LightColors
     }

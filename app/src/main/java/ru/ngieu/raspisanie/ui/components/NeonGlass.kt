@@ -13,17 +13,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import ru.ngieu.raspisanie.R
+import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
@@ -32,6 +35,7 @@ import ru.ngieu.raspisanie.ui.theme.NeonPalette
  * Полноэкранный фон оформления:
  * - В режиме NEON: неоновое фиолетово-голубое свечение поверх глубокого тёмного фона.
  * - В режиме GLASS: монохромные шёлковые волны (отдельно прикреплённый фон).
+ * - В режиме AERO: классические глянцевые обои Windows 7 Aero.
  * - В стандартных темах: ровный фон MaterialTheme.
  */
 @Composable
@@ -127,6 +131,13 @@ fun NeonAuroraBackground(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
+        } else if (style.isAero) {
+            Image(
+                painter = painterResource(id = R.drawable.bg_aero_wallpaper),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
         content()
     }
@@ -160,6 +171,7 @@ fun GlassCard(
                 1.0f to GlassPalette.cardFillBottom,
             ),
         )
+        style.isAero -> AeroPalette.cardFillBrush()
         else -> Brush.verticalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.surface,
@@ -182,6 +194,7 @@ fun GlassCard(
                 1.0f to GlassPalette.cardBorderBottom,
             ),
         )
+        style.isAero -> AeroPalette.glassBorderBrush()
         else -> Brush.linearGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.outlineVariant,
@@ -193,8 +206,16 @@ fun GlassCard(
     val glowModifier = if (glowColor != null && style.isTranslucent) {
         Modifier.drawBehind {
             val radiusPx = cornerRadius.toPx()
-            val outerAlpha = if (style.isGlass) 0.14f else 0.22f
-            val haloAlpha = if (style.isGlass) 0.06f else 0.10f
+            val outerAlpha = when {
+                style.isGlass -> 0.14f
+                style.isAero -> 0.22f
+                else -> 0.22f
+            }
+            val haloAlpha = when {
+                style.isGlass -> 0.06f
+                style.isAero -> 0.10f
+                else -> 0.10f
+            }
             drawRoundRect(
                 color = glowColor.copy(alpha = outerAlpha),
                 topLeft = Offset(-3.dp.toPx(), -2.dp.toPx()),
@@ -218,12 +239,32 @@ fun GlassCard(
         Modifier
     }
 
+    val aeroInnerContourModifier = if (style.isAero) {
+        Modifier.drawWithContent {
+            drawContent()
+            val inset = 1.8.dp.toPx()
+            val r = (cornerRadius - 1.5.dp).coerceAtLeast(0.dp).toPx()
+            if (size.width > inset * 2 && size.height > inset * 2) {
+                drawRoundRect(
+                    color = AeroPalette.innerContour,
+                    topLeft = Offset(inset, inset),
+                    size = Size(size.width - inset * 2, size.height - inset * 2),
+                    cornerRadius = CornerRadius(r, r),
+                    style = Stroke(width = 0.85.dp.toPx()),
+                )
+            }
+        }
+    } else {
+        Modifier
+    }
+
     Box(
         modifier = modifier
             .then(glowModifier)
             .clip(shape)
             .background(brush = fillBrush ?: defaultFill, shape = shape)
             .border(width = borderWidth, brush = borderBrush ?: defaultBorder, shape = shape)
+            .then(aeroInnerContourModifier)
             .let { mod -> if (onClick != null) mod.clickable(onClick = onClick) else mod },
         content = content,
     )

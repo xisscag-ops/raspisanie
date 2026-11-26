@@ -57,6 +57,7 @@ import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.LiveLessonState
 import ru.ngieu.raspisanie.domain.ScheduleEngine
 import ru.ngieu.raspisanie.ui.DayProgressSummary
+import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.AppVisualSkin
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
@@ -113,6 +114,7 @@ fun LiveLessonBanner(
                 GlassPalette.panelFillBottom,
             ),
         )
+        style.isAero -> AeroPalette.panelFillBrush()
         else -> Brush.horizontalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.secondaryContainer,
@@ -134,6 +136,7 @@ fun LiveLessonBanner(
                 GlassPalette.panelBorderBottom,
             ),
         )
+        style.isAero -> AeroPalette.glassBorderBrush()
         else -> Brush.horizontalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.outlineVariant,
@@ -148,12 +151,17 @@ fun LiveLessonBanner(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = tween(130)),
-        cornerRadius = if (style.isGlass) 22.dp else 20.dp,
+        cornerRadius = when {
+            style.isGlass -> 22.dp
+            style.isAero -> 16.dp
+            else -> 20.dp
+        },
         fillBrush = capsuleBrush,
         borderBrush = borderBrush,
         glowColor = when {
             style.isNeon -> Color(0xFF7C3AED)
             style.isGlass -> Color.White
+            style.isAero -> Color(0xFF38BDF8)
             else -> null
         },
         onClick = if (canExpand) {
@@ -178,11 +186,13 @@ fun LiveLessonBanner(
                     val primaryTextColor = when {
                         style.isNeon -> NeonPalette.textPrimary
                         style.isGlass -> GlassPalette.textPrimary
+                        style.isAero -> AeroPalette.textPrimary
                         else -> MaterialTheme.colorScheme.onSecondaryContainer
                     }
                     val secondaryTextColor = when {
                         style.isNeon -> NeonPalette.textSecondary
                         style.isGlass -> GlassPalette.textSecondary
+                        style.isAero -> AeroPalette.textSecondary
                         else -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                     }
 
@@ -236,31 +246,30 @@ fun LiveLessonBanner(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp))
+                            .height(if (style.isAero) 7.dp else 6.dp)
+                            .clip(RoundedCornerShape(4.dp))
                             .background(
                                 when {
                                     style.isNeon -> Color(0x38FFFFFF)
                                     style.isGlass -> GlassPalette.progressTrack
+                                    style.isAero -> AeroPalette.progressTrack
                                     else -> MaterialTheme.colorScheme.surfaceVariant
                                 },
                             ),
                     ) {
                         if (animatedProgress > 0f) {
+                            val progressBrush = when {
+                                style.isNeon -> Brush.horizontalGradient(listOf(NeonPalette.progressStart, NeonPalette.progressEnd))
+                                style.isGlass -> Brush.horizontalGradient(listOf(GlassPalette.progressFillStart, GlassPalette.progressFillEnd))
+                                style.isAero -> AeroPalette.progressFillBrush()
+                                else -> Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary))
+                            }
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth(animatedProgress.coerceAtLeast(0.04f))
                                     .fillMaxHeight()
-                                    .clip(RoundedCornerShape(3.dp))
-                                    .background(
-                                        brush = Brush.horizontalGradient(
-                                            colors = when {
-                                                style.isNeon -> listOf(NeonPalette.progressStart, NeonPalette.progressEnd)
-                                                style.isGlass -> listOf(GlassPalette.progressFillStart, GlassPalette.progressFillEnd)
-                                                else -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
-                                            },
-                                        ),
-                                    ),
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(brush = progressBrush),
                             )
                         }
                     }
@@ -273,17 +282,25 @@ fun LiveLessonBanner(
                         .size(30.dp)
                         .clip(CircleShape)
                         .background(
-                            when {
-                                style.isNeon -> Color(0x28FFFFFF)
-                                style.isGlass -> GlassPalette.panelFillTop
-                                else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                            brush = when {
+                                style.isAero -> AeroPalette.panelFillBrush()
+                                style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelFillTop, GlassPalette.panelFillTop))
+                                style.isNeon -> Brush.verticalGradient(listOf(Color(0x28FFFFFF), Color(0x28FFFFFF)))
+                                else -> Brush.verticalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                    ),
+                                )
                             },
+                            shape = CircleShape,
                         )
                         .border(
                             width = 1.dp,
                             color = when {
                                 style.isNeon -> Color(0x30FFFFFF)
                                 style.isGlass -> GlassPalette.panelBorderTop
+                                style.isAero -> AeroPalette.borderTop
                                 else -> MaterialTheme.colorScheme.outlineVariant
                             },
                             shape = CircleShape,
@@ -296,6 +313,7 @@ fun LiveLessonBanner(
                         colorFilter = when {
                             style.isNeon -> null
                             style.isGlass -> ColorFilter.tint(Color(0xFFF5F5F5))
+                            style.isAero -> ColorFilter.tint(Color.White)
                             else -> ColorFilter.tint(MaterialTheme.colorScheme.onSecondaryContainer)
                         },
                         modifier = Modifier
@@ -334,11 +352,13 @@ private fun DaySummaryStrip(
     val textColor = when (skin) {
         AppVisualSkin.NEON -> NeonPalette.textPrimary
         AppVisualSkin.GLASS -> GlassPalette.textPrimary
+        AppVisualSkin.AERO -> AeroPalette.textPrimary
         AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer
     }
     val subColor = when (skin) {
         AppVisualSkin.NEON -> NeonPalette.textSecondary
         AppVisualSkin.GLASS -> GlassPalette.textSecondary
+        AppVisualSkin.AERO -> AeroPalette.textSecondary
         AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
     }
 
@@ -377,6 +397,7 @@ private fun DaySummaryStrip(
             tint = when (skin) {
                 AppVisualSkin.NEON -> Color(0xFF38BDF8)
                 AppVisualSkin.GLASS -> Color(0xFFF5F5F5)
+                AppVisualSkin.AERO -> Color(0xFFEAF8FF)
                 AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.primary
             },
             modifier = Modifier.size(18.dp),
@@ -409,11 +430,13 @@ private fun LiveDetailsStrip(
     val textColor = when (skin) {
         AppVisualSkin.NEON -> NeonPalette.textPrimary
         AppVisualSkin.GLASS -> GlassPalette.textPrimary
+        AppVisualSkin.AERO -> AeroPalette.textPrimary
         AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer
     }
     val subColor = when (skin) {
         AppVisualSkin.NEON -> NeonPalette.textSecondary
         AppVisualSkin.GLASS -> GlassPalette.textSecondary
+        AppVisualSkin.AERO -> AeroPalette.textSecondary
         AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
     }
 
@@ -460,6 +483,7 @@ private fun LiveDetailsStrip(
             tint = when (skin) {
                 AppVisualSkin.NEON -> Color(0xFF38BDF8)
                 AppVisualSkin.GLASS -> Color(0xFFF5F5F5)
+                AppVisualSkin.AERO -> Color(0xFFEAF8FF)
                 AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.primary
             },
             modifier = Modifier.size(18.dp),

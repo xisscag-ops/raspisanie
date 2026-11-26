@@ -28,6 +28,7 @@ import ru.ngieu.raspisanie.data.Lesson
 import ru.ngieu.raspisanie.data.ThemeModeSetting
 import ru.ngieu.raspisanie.domain.LessonSlot
 import ru.ngieu.raspisanie.domain.ScheduleEngine
+import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
 import ru.ngieu.raspisanie.ui.theme.ScheduleAccentColors
@@ -50,6 +51,7 @@ object ScheduleShareRenderer {
     private data class ThemeColors(
         val isNeon: Boolean,
         val isGlass: Boolean,
+        val isAero: Boolean,
         val isDark: Boolean,
         val bgBase: Int,
         val cardTop: Int,
@@ -272,7 +274,7 @@ object ScheduleShareRenderer {
 
                 val hasAnyChange = measuredSlot.slot.lessons.any { it.isChange }
                 val hasAnyCancelled = measuredSlot.slot.lessons.any { it.isCancelled }
-                val isStandardDark = !colors.isNeon && !colors.isGlass && colors.isDark
+                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && colors.isDark
                 val dotColor = when {
                     hasAnyCancelled -> when {
                         isStandardDark -> ScheduleAccentColors.cancelBadgeDark.toArgb()
@@ -433,11 +435,13 @@ object ScheduleShareRenderer {
                         bgColor = when {
                             colors.isNeon -> Color.argb(72, 139, 92, 246)
                             colors.isGlass -> Color.argb(97, 149, 149, 149)
+                            colors.isAero -> Color.argb(130, 29, 110, 166)
                             else -> colors.pillBg
                         },
                         textColor = when {
                             colors.isNeon -> Color.parseColor("#E9D5FF")
                             colors.isGlass -> Color.parseColor("#CDCDCD")
+                            colors.isAero -> Color.parseColor("#EAF7FF")
                             else -> colors.pillText
                         },
                     ),
@@ -450,12 +454,14 @@ object ScheduleShareRenderer {
                     text = lesson.lessonType.label,
                     bgColor = when {
                         colors.isGlass -> Color.argb(133, 191, 191, 191)
+                        colors.isAero -> Color.argb(235, 131, 196, 233)
                         colors.isNeon -> Color.parseColor("#28325C")
                         colors.isDark -> Color.parseColor("#283244")
                         else -> Color.parseColor("#E9EEF5")
                     },
                     textColor = when {
                         colors.isGlass -> Color.parseColor("#F8F8F8")
+                        colors.isAero -> Color.parseColor("#07375D")
                         colors.isNeon -> Color.parseColor("#E2E8F0")
                         colors.isDark -> Color.parseColor("#E4E7EC")
                         else -> typeColor
@@ -464,7 +470,7 @@ object ScheduleShareRenderer {
             )
 
             if (lesson.isChange) {
-                val isStandardDark = !colors.isNeon && !colors.isGlass && colors.isDark
+                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && colors.isDark
                 add(
                     BadgeSpec(
                         text = "Замена",
@@ -483,7 +489,7 @@ object ScheduleShareRenderer {
             }
 
             if (lesson.isCancelled) {
-                val isStandardDark = !colors.isNeon && !colors.isGlass && colors.isDark
+                val isStandardDark = !colors.isNeon && !colors.isGlass && !colors.isAero && colors.isDark
                 add(
                     BadgeSpec(
                         text = "Отмена",
@@ -575,8 +581,9 @@ object ScheduleShareRenderer {
         }
         canvas.drawRect(0f, 0f, width, height, bgPaint)
 
-        if (colors.isGlass) {
-            val wall = BitmapFactory.decodeResource(context.resources, R.drawable.bg_glass_waves)
+        if (colors.isGlass || colors.isAero) {
+            val wallRes = if (colors.isAero) R.drawable.bg_aero_wallpaper else R.drawable.bg_glass_waves
+            val wall = BitmapFactory.decodeResource(context.resources, wallRes)
             if (wall != null) {
                 val scale = maxOf(width / wall.width.toFloat(), height / wall.height.toFloat())
                 val drawnW = wall.width * scale
@@ -643,6 +650,7 @@ object ScheduleShareRenderer {
                 when {
                     colors.isNeon -> intArrayOf(Color.parseColor("#C7242D58"), Color.parseColor("#BA141B38"))
                     colors.isGlass -> intArrayOf(Color.parseColor("#8C737373"), Color.parseColor("#782C2C2C"))
+                    colors.isAero -> intArrayOf(Color.parseColor("#DF338AC0"), Color.parseColor("#E307558D"))
                     else -> intArrayOf(colors.cardTop, colors.cardBottom)
                 },
                 null,
@@ -673,7 +681,11 @@ object ScheduleShareRenderer {
                 left = rect.left + 28f + subW + 14f,
                 top = subBaseline - 24f,
                 text = "Сегодня",
-                bgColor = if (colors.isGlass) Color.argb(133, 191, 191, 191) else Color.argb(56, 56, 189, 248),
+                bgColor = when {
+                    colors.isGlass -> Color.argb(133, 191, 191, 191)
+                    colors.isAero -> Color.argb(235, 131, 196, 233)
+                    else -> Color.argb(56, 56, 189, 248)
+                },
                 textColor = colors.todayAccent,
                 textPaint = badgePaint,
             )
@@ -738,8 +750,9 @@ object ScheduleShareRenderer {
             Configuration.UI_MODE_NIGHT_YES
         val isNeon = themeMode == ThemeModeSetting.NEON
         val isGlass = themeMode == ThemeModeSetting.GLASS
+        val isAero = themeMode == ThemeModeSetting.AERO
         val isDark = when (themeMode) {
-            ThemeModeSetting.NEON, ThemeModeSetting.GLASS, ThemeModeSetting.DARK -> true
+            ThemeModeSetting.NEON, ThemeModeSetting.GLASS, ThemeModeSetting.AERO, ThemeModeSetting.DARK -> true
             ThemeModeSetting.LIGHT -> false
             ThemeModeSetting.SYSTEM -> systemDark
         }
@@ -748,6 +761,7 @@ object ScheduleShareRenderer {
             isNeon -> ThemeColors(
                 isNeon = true,
                 isGlass = false,
+                isAero = false,
                 isDark = true,
                 bgBase = NeonPalette.backgroundBase.toArgb(),
                 cardTop = Color.parseColor("#B51D254B"),
@@ -768,6 +782,7 @@ object ScheduleShareRenderer {
             isGlass -> ThemeColors(
                 isNeon = false,
                 isGlass = true,
+                isAero = false,
                 isDark = true,
                 bgBase = GlassPalette.backgroundBase.toArgb(),
                 cardTop = Color.parseColor("#858A8A8A"),
@@ -785,9 +800,31 @@ object ScheduleShareRenderer {
                 pillBg = Color.argb(133, 191, 191, 191),
                 pillText = Color.parseColor("#F8F8F8"),
             )
+            isAero -> ThemeColors(
+                isNeon = false,
+                isGlass = false,
+                isAero = true,
+                isDark = true,
+                bgBase = AeroPalette.backgroundBase.toArgb(),
+                cardTop = AeroPalette.cardFillTop.toArgb(),
+                cardBottom = AeroPalette.cardFillBottom.toArgb(),
+                cardBorder = AeroPalette.borderTop.toArgb(),
+                changeCardTop = AeroPalette.changeLessonTop.toArgb(),
+                changeCardBottom = AeroPalette.changeLessonBottom.toArgb(),
+                changeBorder = Color.parseColor("#FBBF24"),
+                textPrimary = AeroPalette.textPrimary.toArgb(),
+                textSecondary = AeroPalette.textSecondary.toArgb(),
+                divider = Color.argb(82, 188, 239, 254),
+                timelineLine = Color.argb(230, 208, 240, 255),
+                timelineDot = AeroPalette.timelineDot.toArgb(),
+                todayAccent = Color.parseColor("#07375D"),
+                pillBg = Color.argb(235, 131, 196, 233),
+                pillText = Color.parseColor("#07375D"),
+            )
             isDark -> ThemeColors(
                 isNeon = false,
                 isGlass = false,
+                isAero = false,
                 isDark = true,
                 bgBase = Color.parseColor("#0D111A"),
                 cardTop = Color.parseColor("#151B26"),
@@ -808,6 +845,7 @@ object ScheduleShareRenderer {
             else -> ThemeColors(
                 isNeon = false,
                 isGlass = false,
+                isAero = false,
                 isDark = false,
                 bgBase = Color.parseColor("#F6F8FC"),
                 cardTop = Color.parseColor("#FFFFFF"),
