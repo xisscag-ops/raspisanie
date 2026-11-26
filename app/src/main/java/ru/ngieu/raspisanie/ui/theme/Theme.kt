@@ -3,6 +3,7 @@ package ru.ngieu.raspisanie.ui.theme
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontFamily
 import androidx.core.view.WindowCompat
 import ru.ngieu.raspisanie.data.LessonType
 import ru.ngieu.raspisanie.data.ThemeModeSetting
@@ -22,6 +24,7 @@ enum class AppVisualSkin {
     GLASS,
     AERO,
     TERMINAL,
+    PAPER,
     STANDARD,
 }
 
@@ -34,6 +37,7 @@ data class AppVisualStyle(
     val isGlass: Boolean get() = skin == AppVisualSkin.GLASS
     val isAero: Boolean get() = skin == AppVisualSkin.AERO
     val isTerminal: Boolean get() = skin == AppVisualSkin.TERMINAL
+    val isPaper: Boolean get() = skin == AppVisualSkin.PAPER
     val isTranslucent: Boolean get() =
         skin == AppVisualSkin.NEON ||
             skin == AppVisualSkin.GLASS ||
@@ -389,6 +393,76 @@ object TerminalPalette {
     )
 }
 
+object PaperPalette {
+    // Тёплый бумажный фон (#F8F6F0 / #E8E5DC) и графитовые чернила (#171815 / #2D2E2A)
+    val backgroundBase = Color(0xFFF3F0E6)
+    val surfacePaper = Color(0xFFF8F6F0)
+    val surfaceElevated = Color(0xFFFAF8F3)
+    val surfaceMuted = Color(0xFFEBE7DC)
+
+    // Тонкая чернильная обводка и разделители (21, 31, 32, 39, 46, 49, 65, 67, 82)
+    val borderInk = Color(0xDB181915)
+    val borderSubtle = Color(0x52181915)
+    val divider = Color(0x36171815)
+    val headerDivider = Color(0x66171815)
+
+    // Активная подложка: глубокий тёплый графит #2D2E2A + кремовый текст #EFEDE1 (22, 24, 50, 66, 81)
+    val activeFill = Color(0xFF2D2E2A)
+    val activeText = Color(0xFFEFEDE1)
+    val secondaryPillBg = Color(0xFFE9E6DC)
+    val secondaryPillBorder = Color(0x99181915)
+
+    // Кнопка сворачивания сводки дня (38 · Свернуть — круглая подложка)
+    val chevronCircleBg = Color(0x241C1C1C)
+
+    // Чернила текста и иконок
+    val textPrimary = Color(0xFF171815)
+    val textSecondary = Color(0xFF5A5B54)
+    val textMuted = Color(0xFF777870)
+    val iconTint = Color(0xFF171815)
+
+    // Таймлайн и маркер времени (47, 48)
+    val timelineLine = Color(0xCC171815)
+    val timelineDot = Color(0xFF171815)
+    val timelineActiveNow = Color(0xFF1F6E4A)
+
+    // Полоса прогресса (59 · Карточка — линия прогресса)
+    val progressTrack = Color(0x26171815)
+    val progressFill = Color(0xFF171815)
+
+    // Семантические состояния в бумажной палитре
+    val activeLessonBg = Color(0xFFEAF2EC)
+    val activeLessonBorder = Color(0xFF1F6E4A)
+    val changeLessonBg = Color(0xFFF7EFE0)
+    val changeLessonBorder = Color(0xFFB46914)
+    val cancelLessonBg = Color(0xFFF7E9E8)
+    val cancelLessonBorder = Color(0xFFB33939)
+
+    fun panelFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(surfacePaper, surfacePaper),
+    )
+
+    fun cardFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(surfaceElevated, surfacePaper),
+    )
+
+    fun dockFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(surfacePaper, surfacePaper),
+    )
+
+    fun activeFillBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(activeFill, activeFill),
+    )
+
+    fun borderBrush(): Brush = Brush.verticalGradient(
+        colors = listOf(borderInk, borderInk),
+    )
+
+    fun progressFillBrush(): Brush = Brush.horizontalGradient(
+        colors = listOf(progressFill, progressFill),
+    )
+}
+
 private val NeonColors = darkColorScheme(
     primary = Color(0xFF9333EA),
     onPrimary = Color(0xFFFFFFFF),
@@ -497,6 +571,46 @@ private val TerminalColors = darkColorScheme(
     onErrorContainer = Color(0xFFFFD6D6),
 )
 
+private val PaperColors = lightColorScheme(
+    primary = PaperPalette.activeFill,
+    onPrimary = PaperPalette.activeText,
+    primaryContainer = PaperPalette.surfaceMuted,
+    onPrimaryContainer = PaperPalette.textPrimary,
+    secondary = PaperPalette.textSecondary,
+    onSecondary = PaperPalette.activeText,
+    secondaryContainer = PaperPalette.secondaryPillBg,
+    onSecondaryContainer = PaperPalette.textPrimary,
+    tertiary = PaperPalette.timelineActiveNow,
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = PaperPalette.activeLessonBg,
+    onTertiaryContainer = PaperPalette.textPrimary,
+    background = PaperPalette.backgroundBase,
+    onBackground = PaperPalette.textPrimary,
+    surface = PaperPalette.surfacePaper,
+    onSurface = PaperPalette.textPrimary,
+    surfaceVariant = PaperPalette.surfaceMuted,
+    onSurfaceVariant = PaperPalette.textSecondary,
+    outline = PaperPalette.borderInk,
+    outlineVariant = PaperPalette.divider,
+    error = PaperPalette.cancelLessonBorder,
+    onError = Color(0xFFFFFFFF),
+    errorContainer = PaperPalette.cancelLessonBg,
+    onErrorContainer = Color(0xFF5C1919),
+)
+
+private val DefaultTypography = Typography()
+private val PaperTypography = Typography(
+    displayLarge = DefaultTypography.displayLarge.copy(fontFamily = FontFamily.Serif),
+    displayMedium = DefaultTypography.displayMedium.copy(fontFamily = FontFamily.Serif),
+    displaySmall = DefaultTypography.displaySmall.copy(fontFamily = FontFamily.Serif),
+    headlineLarge = DefaultTypography.headlineLarge.copy(fontFamily = FontFamily.Serif),
+    headlineMedium = DefaultTypography.headlineMedium.copy(fontFamily = FontFamily.Serif),
+    headlineSmall = DefaultTypography.headlineSmall.copy(fontFamily = FontFamily.Serif),
+    titleLarge = DefaultTypography.titleLarge.copy(fontFamily = FontFamily.Serif),
+    titleMedium = DefaultTypography.titleMedium.copy(fontFamily = FontFamily.Serif),
+    titleSmall = DefaultTypography.titleSmall.copy(fontFamily = FontFamily.Serif),
+)
+
 private val LightColors = lightColorScheme(
     primary = Color(0xFF155EEF),
     onPrimary = Color(0xFFFFFFFF),
@@ -601,6 +715,7 @@ fun NgieuTheme(
         ThemeModeSetting.GLASS -> AppVisualSkin.GLASS
         ThemeModeSetting.AERO -> AppVisualSkin.AERO
         ThemeModeSetting.TERMINAL -> AppVisualSkin.TERMINAL
+        ThemeModeSetting.PAPER -> AppVisualSkin.PAPER
         ThemeModeSetting.SYSTEM -> if (systemDark) AppVisualSkin.NEON else AppVisualSkin.STANDARD
         ThemeModeSetting.LIGHT -> AppVisualSkin.STANDARD
         ThemeModeSetting.DARK -> AppVisualSkin.STANDARD
@@ -608,7 +723,7 @@ fun NgieuTheme(
     val isDark = when (themeMode) {
         ThemeModeSetting.NEON, ThemeModeSetting.GLASS, ThemeModeSetting.AERO, ThemeModeSetting.TERMINAL -> true
         ThemeModeSetting.SYSTEM -> systemDark
-        ThemeModeSetting.LIGHT -> false
+        ThemeModeSetting.PAPER, ThemeModeSetting.LIGHT -> false
         ThemeModeSetting.DARK -> true
     }
 
@@ -617,6 +732,7 @@ fun NgieuTheme(
         skin == AppVisualSkin.GLASS -> GlassColors
         skin == AppVisualSkin.AERO -> AeroColors
         skin == AppVisualSkin.TERMINAL -> TerminalColors
+        skin == AppVisualSkin.PAPER -> PaperColors
         isDark -> DarkColors
         else -> LightColors
     }
@@ -636,6 +752,7 @@ fun NgieuTheme(
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
+            typography = if (skin == AppVisualSkin.PAPER) PaperTypography else DefaultTypography,
             content = content,
         )
     }

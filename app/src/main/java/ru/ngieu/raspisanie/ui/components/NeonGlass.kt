@@ -32,6 +32,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.PaperPalette
 import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 
 /**
@@ -54,6 +55,21 @@ fun NeonAuroraBackground(
             .fillMaxSize()
             .background(baseBg)
             .drawBehind {
+                if (style.isPaper) {
+                    val w = size.width
+                    val h = size.height
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                PaperPalette.surfaceElevated,
+                                PaperPalette.backgroundBase,
+                            ),
+                            center = Offset(w * 0.5f, h * 0.25f),
+                            radius = maxOf(w, h) * 0.85f,
+                        ),
+                    )
+                    return@drawBehind
+                }
                 if (style.isTerminal) {
                     val w = size.width
                     val h = size.height
@@ -208,6 +224,7 @@ fun GlassCard(
         )
         style.isAero -> AeroPalette.cardFillBrush()
         style.isTerminal -> TerminalPalette.cardFillBrush()
+        style.isPaper -> PaperPalette.cardFillBrush()
         else -> Brush.verticalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.surface,
@@ -232,6 +249,7 @@ fun GlassCard(
         )
         style.isAero -> AeroPalette.glassBorderBrush()
         style.isTerminal -> TerminalPalette.glassBorderBrush()
+        style.isPaper -> PaperPalette.borderBrush()
         else -> Brush.linearGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.outlineVariant,

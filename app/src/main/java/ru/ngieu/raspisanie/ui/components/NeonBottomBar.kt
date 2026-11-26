@@ -45,6 +45,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.PaperPalette
 import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 
 private data class NavTabItem(
@@ -85,6 +86,7 @@ fun NeonTopNavBar(
                 style.isGlass -> 24.dp
                 style.isAero -> 16.dp
                 style.isTerminal -> 14.dp
+                style.isPaper -> 18.dp
                 else -> 22.dp
             },
             fillBrush = when {
@@ -103,6 +105,7 @@ fun NeonTopNavBar(
                 )
                 style.isAero -> AeroPalette.panelFillBrush()
                 style.isTerminal -> TerminalPalette.dockFillBrush()
+                style.isPaper -> PaperPalette.dockFillBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.surface,
@@ -126,6 +129,7 @@ fun NeonTopNavBar(
                 )
                 style.isAero -> AeroPalette.glassBorderBrush()
                 style.isTerminal -> TerminalPalette.glassBorderBrush()
+                style.isPaper -> PaperPalette.borderBrush()
                 else -> Brush.horizontalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.outlineVariant,
@@ -152,12 +156,14 @@ fun NeonTopNavBar(
                     val labelColor by animateColorAsState(
                         targetValue = when {
                             selected && style.isTerminal -> TerminalPalette.textPrimary
+                            selected && style.isPaper -> PaperPalette.activeText
                             selected && style.isTranslucent -> Color.White
                             selected -> MaterialTheme.colorScheme.onPrimary
                             style.isNeon -> NeonPalette.textSecondary
                             style.isGlass -> GlassPalette.textSecondary
                             style.isAero -> AeroPalette.textMuted
                             style.isTerminal -> TerminalPalette.textSecondary
+                            style.isPaper -> PaperPalette.textPrimary
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         animationSpec = tween(90),
@@ -168,6 +174,7 @@ fun NeonTopNavBar(
                         style.isGlass -> 19.dp
                         style.isAero -> 13.dp
                         style.isTerminal -> 9.dp
+                        style.isPaper -> 13.dp
                         else -> 17.dp
                     }
                     val pillShape = if (style.isTerminal) {
@@ -184,6 +191,7 @@ fun NeonTopNavBar(
                         )
                         style.isAero -> AeroPalette.activeFillBrush()
                         style.isTerminal -> TerminalPalette.activeFillBrush()
+                        style.isPaper -> PaperPalette.activeFillBrush()
                         else -> Brush.verticalGradient(
                             colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                         )
@@ -197,6 +205,7 @@ fun NeonTopNavBar(
                         )
                         style.isAero -> AeroPalette.activeBorderBrush()
                         style.isTerminal -> TerminalPalette.activeBorderBrush()
+                        style.isPaper -> PaperPalette.activeFillBrush()
                         else -> Brush.verticalGradient(
                             colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                         )
@@ -249,18 +258,20 @@ fun NeonTopNavBar(
                             Box {
                                 Image(
                                     painter = painterResource(
-                                        id = if (style.isGlass || style.isAero || style.isTerminal) item.glassIconRes else item.iconRes,
+                                        id = if (style.isGlass || style.isAero || style.isTerminal || style.isPaper) item.glassIconRes else item.iconRes,
                                     ),
                                     contentDescription = item.label,
                                     colorFilter = when {
                                         selected && style.isNeon -> null
                                         selected && style.isTerminal -> ColorFilter.tint(TerminalPalette.textPrimary)
+                                        selected && style.isPaper -> ColorFilter.tint(PaperPalette.activeText)
                                         selected && (style.isGlass || style.isAero) -> ColorFilter.tint(Color.White)
                                         selected -> ColorFilter.tint(MaterialTheme.colorScheme.onPrimary)
                                         style.isNeon -> ColorFilter.tint(NeonPalette.textSecondary)
                                         style.isGlass -> ColorFilter.tint(Color(0xFFC2C2C2))
                                         style.isAero -> ColorFilter.tint(AeroPalette.textMuted)
                                         style.isTerminal -> ColorFilter.tint(TerminalPalette.textSecondary)
+                                        style.isPaper -> ColorFilter.tint(PaperPalette.iconTint)
                                         else -> ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant)
                                     },
                                     modifier = Modifier.size(19.dp),
@@ -272,7 +283,11 @@ fun NeonTopNavBar(
                                             .size(7.dp)
                                             .clip(CircleShape)
                                             .background(
-                                                if (style.isTerminal) TerminalPalette.timelineDot else NeonPalette.timelineActiveNow,
+                                                when {
+                                                    style.isTerminal -> TerminalPalette.timelineDot
+                                                    style.isPaper -> PaperPalette.timelineActiveNow
+                                                    else -> NeonPalette.timelineActiveNow
+                                                },
                                             ),
                                     )
                                 }
@@ -289,12 +304,14 @@ fun NeonTopNavBar(
                         }
                     }
 
-                    if (style.isTerminal && index < navItems.lastIndex) {
+                    if ((style.isTerminal || style.isPaper) && index < navItems.lastIndex) {
                         Box(
                             modifier = Modifier
                                 .width(1.dp)
                                 .height(26.dp)
-                                .background(TerminalPalette.divider),
+                                .background(
+                                    if (style.isPaper) PaperPalette.divider else TerminalPalette.divider,
+                                ),
                         )
                     }
                 }

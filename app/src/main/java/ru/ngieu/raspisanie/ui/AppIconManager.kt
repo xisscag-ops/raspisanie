@@ -28,6 +28,7 @@ object AppIconManager {
                 ThemeModeSetting.GLASS -> ResolvedAppIcon.GLASS
                 ThemeModeSetting.AERO -> ResolvedAppIcon.AERO
                 ThemeModeSetting.TERMINAL -> ResolvedAppIcon.TERMINAL
+                ThemeModeSetting.PAPER -> ResolvedAppIcon.PAPER
                 ThemeModeSetting.LIGHT -> ResolvedAppIcon.LIGHT
                 ThemeModeSetting.DARK -> ResolvedAppIcon.DARK
                 ThemeModeSetting.SYSTEM -> if (isSystemDark) ResolvedAppIcon.NEON else ResolvedAppIcon.LIGHT
@@ -36,6 +37,7 @@ object AppIconManager {
             AppIconStyle.GLASS -> ResolvedAppIcon.GLASS
             AppIconStyle.AERO -> ResolvedAppIcon.AERO
             AppIconStyle.TERMINAL -> ResolvedAppIcon.TERMINAL
+            AppIconStyle.PAPER -> ResolvedAppIcon.PAPER
             AppIconStyle.LIGHT -> ResolvedAppIcon.LIGHT
             AppIconStyle.DARK -> ResolvedAppIcon.DARK
             AppIconStyle.CLASSIC -> ResolvedAppIcon.CLASSIC

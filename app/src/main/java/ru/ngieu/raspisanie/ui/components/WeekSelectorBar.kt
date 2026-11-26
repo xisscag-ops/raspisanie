@@ -45,6 +45,7 @@ import ru.ngieu.raspisanie.ui.theme.AeroPalette
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.PaperPalette
 import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -71,6 +72,7 @@ fun WeekSelectorBar(
         style.isGlass -> GlassPalette.textPrimary
         style.isAero -> AeroPalette.textPrimary
         style.isTerminal -> TerminalPalette.textPrimary
+        style.isPaper -> PaperPalette.textPrimary
         else -> MaterialTheme.colorScheme.onBackground
     }
     val inactiveSubColor = when {
@@ -78,6 +80,7 @@ fun WeekSelectorBar(
         style.isGlass -> GlassPalette.textSecondary
         style.isAero -> AeroPalette.textSecondary
         style.isTerminal -> TerminalPalette.textSecondary
+        style.isPaper -> PaperPalette.textSecondary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -133,7 +136,11 @@ fun WeekSelectorBar(
                 enter = scaleIn(tween(110)) + fadeIn(tween(110)),
                 exit = scaleOut(tween(90)) + fadeOut(tween(90)),
             ) {
-                val todayShape = if (style.isTerminal) CutCornerShape(8.dp) else RoundedCornerShape(20.dp)
+                val todayShape = when {
+                    style.isTerminal -> CutCornerShape(8.dp)
+                    style.isPaper -> RoundedCornerShape(12.dp)
+                    else -> RoundedCornerShape(20.dp)
+                }
                 Surface(
                     shape = todayShape,
                     color = when {
@@ -141,6 +148,7 @@ fun WeekSelectorBar(
                         style.isGlass -> GlassPalette.typePillBg
                         style.isAero -> AeroPalette.activeFillMidUpper
                         style.isTerminal -> TerminalPalette.activeFillTop
+                        style.isPaper -> PaperPalette.surfaceElevated
                         else -> MaterialTheme.colorScheme.primaryContainer
                     },
                     contentColor = when {
@@ -148,9 +156,14 @@ fun WeekSelectorBar(
                         style.isGlass -> Color.White
                         style.isAero -> Color.White
                         style.isTerminal -> TerminalPalette.textPrimary
+                        style.isPaper -> PaperPalette.textPrimary
                         else -> MaterialTheme.colorScheme.onPrimaryContainer
                     },
-                    border = if (style.isTerminal) BorderStroke(1.dp, TerminalPalette.activeBorderTop) else null,
+                    border = when {
+                        style.isTerminal -> BorderStroke(1.dp, TerminalPalette.activeBorderTop)
+                        style.isPaper -> BorderStroke(1.dp, PaperPalette.borderInk)
+                        else -> null
+                    },
                     modifier = Modifier
                         .clip(todayShape)
                         .clickable(onClick = onGoToday),
@@ -193,6 +206,7 @@ fun WeekSelectorBar(
                     )
                     selected && style.isAero -> AeroPalette.activeFillBrush()
                     selected && style.isTerminal -> TerminalPalette.activeFillBrush()
+                    selected && style.isPaper -> PaperPalette.activeFillBrush()
                     selected -> Brush.verticalGradient(
                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
@@ -207,6 +221,7 @@ fun WeekSelectorBar(
                     )
                     selected && style.isAero -> AeroPalette.activeBorderBrush()
                     selected && style.isTerminal -> TerminalPalette.activeBorderBrush()
+                    selected && style.isPaper -> PaperPalette.activeFillBrush()
                     selected -> Brush.linearGradient(
                         listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary),
                     )
@@ -218,12 +233,14 @@ fun WeekSelectorBar(
                     )
                     style.isAero -> AeroPalette.glassBorderBrush()
                     style.isTerminal -> TerminalPalette.glassBorderBrush()
+                    style.isPaper -> PaperPalette.borderBrush()
                     else -> Brush.linearGradient(
                         listOf(MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.outlineVariant),
                     )
                 }
                 val textColor = when {
                     selected && style.isTerminal -> TerminalPalette.textPrimary
+                    selected && style.isPaper -> PaperPalette.activeText
                     selected && style.isTranslucent -> Color.White
                     selected -> MaterialTheme.colorScheme.onPrimary
                     else -> inactiveSubColor
@@ -260,6 +277,7 @@ fun WeekSelectorBar(
                                     selected -> textColor
                                     style.isGlass || style.isAero -> Color.White
                                     style.isTerminal -> TerminalPalette.timelineDot
+                                    style.isPaper -> PaperPalette.textPrimary
                                     else -> Color(0xFF38BDF8)
                                 },
                             )

@@ -62,6 +62,7 @@ import ru.ngieu.raspisanie.ui.theme.AppVisualSkin
 import ru.ngieu.raspisanie.ui.theme.GlassPalette
 import ru.ngieu.raspisanie.ui.theme.LocalAppVisualStyle
 import ru.ngieu.raspisanie.ui.theme.NeonPalette
+import ru.ngieu.raspisanie.ui.theme.PaperPalette
 import ru.ngieu.raspisanie.ui.theme.TerminalPalette
 import java.time.format.DateTimeFormatter
 
@@ -117,6 +118,7 @@ fun LiveLessonBanner(
         )
         style.isAero -> AeroPalette.panelFillBrush()
         style.isTerminal -> TerminalPalette.panelFillBrush()
+        style.isPaper -> PaperPalette.panelFillBrush()
         else -> Brush.horizontalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.secondaryContainer,
@@ -140,6 +142,7 @@ fun LiveLessonBanner(
         )
         style.isAero -> AeroPalette.glassBorderBrush()
         style.isTerminal -> TerminalPalette.glassBorderBrush()
+        style.isPaper -> PaperPalette.borderBrush()
         else -> Brush.horizontalGradient(
             colors = listOf(
                 MaterialTheme.colorScheme.outlineVariant,
@@ -158,6 +161,7 @@ fun LiveLessonBanner(
             style.isGlass -> 22.dp
             style.isAero -> 16.dp
             style.isTerminal -> 14.dp
+            style.isPaper -> 16.dp
             else -> 20.dp
         },
         fillBrush = capsuleBrush,
@@ -193,6 +197,7 @@ fun LiveLessonBanner(
                         style.isGlass -> GlassPalette.textPrimary
                         style.isAero -> AeroPalette.textPrimary
                         style.isTerminal -> TerminalPalette.textPrimary
+                        style.isPaper -> PaperPalette.textPrimary
                         else -> MaterialTheme.colorScheme.onSecondaryContainer
                     }
                     val secondaryTextColor = when {
@@ -200,6 +205,7 @@ fun LiveLessonBanner(
                         style.isGlass -> GlassPalette.textSecondary
                         style.isAero -> AeroPalette.textSecondary
                         style.isTerminal -> TerminalPalette.textSecondary
+                        style.isPaper -> PaperPalette.textSecondary
                         else -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                     }
 
@@ -261,6 +267,7 @@ fun LiveLessonBanner(
                                     style.isGlass -> GlassPalette.progressTrack
                                     style.isAero -> AeroPalette.progressTrack
                                     style.isTerminal -> TerminalPalette.progressTrack
+                                    style.isPaper -> PaperPalette.progressTrack
                                     else -> MaterialTheme.colorScheme.surfaceVariant
                                 },
                             ),
@@ -271,6 +278,7 @@ fun LiveLessonBanner(
                                 style.isGlass -> Brush.horizontalGradient(listOf(GlassPalette.progressFillStart, GlassPalette.progressFillEnd))
                                 style.isAero -> AeroPalette.progressFillBrush()
                                 style.isTerminal -> TerminalPalette.progressFillBrush()
+                                style.isPaper -> PaperPalette.progressFillBrush()
                                 else -> Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary))
                             }
                             Box(
@@ -295,6 +303,7 @@ fun LiveLessonBanner(
                                 style.isAero -> AeroPalette.panelFillBrush()
                                 style.isGlass -> Brush.verticalGradient(listOf(GlassPalette.panelFillTop, GlassPalette.panelFillTop))
                                 style.isTerminal -> TerminalPalette.panelFillBrush()
+                                style.isPaper -> Brush.verticalGradient(listOf(PaperPalette.chevronCircleBg, PaperPalette.chevronCircleBg))
                                 style.isNeon -> Brush.verticalGradient(listOf(Color(0x28FFFFFF), Color(0x28FFFFFF)))
                                 else -> Brush.verticalGradient(
                                     listOf(
@@ -312,6 +321,7 @@ fun LiveLessonBanner(
                                 style.isGlass -> GlassPalette.panelBorderTop
                                 style.isAero -> AeroPalette.borderTop
                                 style.isTerminal -> TerminalPalette.borderTop
+                                style.isPaper -> Color.Transparent
                                 else -> MaterialTheme.colorScheme.outlineVariant
                             },
                             shape = CircleShape,
@@ -326,6 +336,7 @@ fun LiveLessonBanner(
                             style.isGlass -> ColorFilter.tint(Color(0xFFF5F5F5))
                             style.isAero -> ColorFilter.tint(Color.White)
                             style.isTerminal -> ColorFilter.tint(TerminalPalette.iconTint)
+                            style.isPaper -> ColorFilter.tint(PaperPalette.iconTint)
                             else -> ColorFilter.tint(MaterialTheme.colorScheme.onSecondaryContainer)
                         },
                         modifier = Modifier
@@ -366,6 +377,7 @@ private fun DaySummaryStrip(
         AppVisualSkin.GLASS -> GlassPalette.textPrimary
         AppVisualSkin.AERO -> AeroPalette.textPrimary
         AppVisualSkin.TERMINAL -> TerminalPalette.textPrimary
+        AppVisualSkin.PAPER -> PaperPalette.textPrimary
         AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer
     }
     val subColor = when (skin) {
@@ -373,6 +385,7 @@ private fun DaySummaryStrip(
         AppVisualSkin.GLASS -> GlassPalette.textSecondary
         AppVisualSkin.AERO -> AeroPalette.textSecondary
         AppVisualSkin.TERMINAL -> TerminalPalette.textSecondary
+        AppVisualSkin.PAPER -> PaperPalette.textSecondary
         AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
     }
 
@@ -413,6 +426,7 @@ private fun DaySummaryStrip(
                 AppVisualSkin.GLASS -> Color(0xFFF5F5F5)
                 AppVisualSkin.AERO -> Color(0xFFEAF8FF)
                 AppVisualSkin.TERMINAL -> TerminalPalette.iconTint
+                AppVisualSkin.PAPER -> PaperPalette.iconTint
                 AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.primary
             },
             modifier = Modifier.size(18.dp),
@@ -447,6 +461,7 @@ private fun LiveDetailsStrip(
         AppVisualSkin.GLASS -> GlassPalette.textPrimary
         AppVisualSkin.AERO -> AeroPalette.textPrimary
         AppVisualSkin.TERMINAL -> TerminalPalette.textPrimary
+        AppVisualSkin.PAPER -> PaperPalette.textPrimary
         AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer
     }
     val subColor = when (skin) {
@@ -454,6 +469,7 @@ private fun LiveDetailsStrip(
         AppVisualSkin.GLASS -> GlassPalette.textSecondary
         AppVisualSkin.AERO -> AeroPalette.textSecondary
         AppVisualSkin.TERMINAL -> TerminalPalette.textSecondary
+        AppVisualSkin.PAPER -> PaperPalette.textSecondary
         AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
     }
 
@@ -502,6 +518,7 @@ private fun LiveDetailsStrip(
                 AppVisualSkin.GLASS -> Color(0xFFF5F5F5)
                 AppVisualSkin.AERO -> Color(0xFFEAF8FF)
                 AppVisualSkin.TERMINAL -> TerminalPalette.iconTint
+                AppVisualSkin.PAPER -> PaperPalette.iconTint
                 AppVisualSkin.STANDARD -> MaterialTheme.colorScheme.primary
             },
             modifier = Modifier.size(18.dp),
